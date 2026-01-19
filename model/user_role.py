@@ -1,6 +1,9 @@
-from pydantic import BaseModel
+from sqlalchemy import Column, Integer, String, Text
+from app.database import Base
 
-class UserRole(BaseModel):
-    id: int | None = None
-    name: str
-    description: str | None = None
+class UserRole(Base):
+    __tablename__ = "user_roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    description = Column(Text, nullable=True)
