@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text
-from app.database import Base
+from config.database import Base
 
 class UserRole(Base):
     __tablename__ = "user_roles"
