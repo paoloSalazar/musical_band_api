@@ -2,8 +2,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-import os
-from dotenv import load_dotenv
+from config.database import DATABASE_URL_SQLALCHEMY
 
 from alembic import context
 
@@ -16,13 +15,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+pg8000://user:password@localhost/musical_band_db")
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+config.set_main_option("sqlalchemy.url", DATABASE_URL_SQLALCHEMY)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from app.database import Base
+from config.database import Base
 from model.user_role import UserRole  # Import models to ensure they are registered
 target_metadata = Base.metadata
 

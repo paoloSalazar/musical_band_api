@@ -1,4 +1,4 @@
-from app.database import SessionLocal
+from config.database import SessionLocal
 from model.user_role import UserRole
 
 def get_one(name: str) -> UserRole | None:
