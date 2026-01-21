@@ -1,0 +1,44 @@
+### Get all user roles
+GET http://localhost:8000/api/user-roles/
+
+###
+
+### Get a specific user role
+GET http://localhost:8000/api/user-roles/admin
+
+###
+
+### Create a new user role
+POST http://localhost:8000/api/user-roles/
+Content-Type: application/json
+
+{
+  "name": "moderator",
+  "description": "Content moderator role"
+}
+
+###
+
+### Update an existing user role (PATCH)
+PATCH http://localhost:8000/api/user-roles/
+Content-Type: application/json
+
+{
+  "id": 1,
+  "name": "admin",
+  "description": "Updated administrator role"
+}
+
+###
+
+### Replace an existing user role (PUT)
+PUT http://localhost:8000/api/user-roles/
+Content-Type: application/json
+
+{
+  "id": 1,
+  "name": "superadmin",
+  "description": "Super administrator role"
+}
+
+###
