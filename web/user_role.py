@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from model.user_role import UserRole
-import service.user_role as service
+import services.user_role as service
+from schemas.user_role import UserRole, UserRoleCreate
 
 router = APIRouter(prefix="/api/user-roles")
 
@@ -15,7 +15,7 @@ def get_one(name: str) -> UserRole | None:
     return service.get_one(name)
 
 @router.post("/")
-def create(user_role: UserRole) -> UserRole | None:
+def create(user_role: UserRoleCreate) -> UserRole | None:
     """Create a new user role"""
     return service.create(user_role)
 
