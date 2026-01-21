@@ -1,5 +1,5 @@
 from config.database import SessionLocal
-from model.user_role import UserRole
+from models.user_role import UserRole
 
 def get_one(name: str) -> UserRole | None:
     """return one user role by name"""
