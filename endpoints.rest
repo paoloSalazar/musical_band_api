@@ -4,7 +4,7 @@ GET http://localhost:8000/api/user-roles/
 ###
 
 ### Get a specific user role
-GET http://localhost:8000/api/user-roles/admin
+GET http://localhost:8000/api/user-roles/moderator
 
 ###
 
@@ -25,8 +25,8 @@ Content-Type: application/json
 
 {
   "id": 1,
-  "name": "admin",
-  "description": "Updated administrator role"
+  "name": "moderator",
+  "description": "Content moderator role changed"
 }
 
 ###
@@ -42,3 +42,5 @@ Content-Type: application/json
 }
 
 ###
+### Delete a user role
+DELETE http://localhost:8000/api/user-roles/superadmin
