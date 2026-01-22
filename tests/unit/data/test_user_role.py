@@ -1,0 +1,263 @@
+import pytest
+from models.user_role import UserRole
+import data.user_role as data
+
+def test_get_one_user_role_found(mocker):
+    """Test get_one() when role exists"""
+    # Arrange - Mock SessionLocal and query
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = UserRole(id=1, name="admin", description="Administrator")
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.get_one("admin")
+
+    # Assert - Check result and session calls
+    assert result is not None
+    assert result.id == 1
+    assert result.name == "admin"
+    assert result.description == "Administrator"
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.query.assert_called_once_with(UserRole)
+    mock_query.filter.assert_called_once()
+    mock_query.first.assert_called_once()
+
+def test_get_one_user_role_not_found(mocker):
+    """Test get_one() when role does not exist"""
+    # Arrange - Mock SessionLocal and query to return None
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = None
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.get_one("nonexistent")
+
+    # Assert - Check result is None and session calls
+    assert result is None
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
+def test_get_all_user_roles_empty(mocker):
+    """Test get_all() returns empty list when no roles"""
+    # Arrange - Mock SessionLocal and query to return empty list
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.all.return_value = []
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.get_all()
+
+    # Assert - Check result is empty list
+    assert result == []
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.query.assert_called_once_with(UserRole)
+    mock_query.all.assert_called_once()
+
+def test_get_all_user_roles_with_data(mocker):
+    """Test get_all() returns roles when they exist"""
+    # Arrange - Mock SessionLocal and query to return roles
+    roles = [
+        UserRole(id=1, name="admin", description="Administrator"),
+        UserRole(id=2, name="user", description="Regular user")
+    ]
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.all.return_value = roles
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.get_all()
+
+    # Assert - Check result contains the expected roles
+    assert len(result) == 2
+    assert result[0].id == 1
+    assert result[0].name == "admin"
+    assert result[1].id == 2
+    assert result[1].name == "user"
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
+def test_create_user_role(mocker):
+    """Test create() function"""
+    # Arrange - Mock SessionLocal
+    user_role = UserRole(name="moderator", description="Moderator role")
+    mock_session = mocker.Mock()
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.create(user_role)
+
+    # Assert - Check session methods were called correctly
+    assert result == user_role
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.add.assert_called_once_with(user_role)
+    mock_session.commit.assert_called_once()
+    mock_session.refresh.assert_called_once_with(user_role)
+
+def test_modify_user_role_found(mocker):
+    """Test modify() when role exists"""
+    # Arrange - Mock SessionLocal and query
+    user_role = UserRole(id=1, name="admin", description="Updated Administrator")
+    existing_role = UserRole(id=1, name="admin", description="Administrator")
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = existing_role
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.modify(user_role)
+
+    # Assert - Check result and that description was updated
+    assert result == existing_role
+    assert existing_role.description == "Updated Administrator"
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.commit.assert_called_once()
+    mock_session.refresh.assert_called_once_with(existing_role)
+
+def test_modify_user_role_not_found(mocker):
+    """Test modify() when role does not exist"""
+    # Arrange - Mock SessionLocal and query to return None
+    user_role = UserRole(id=1, name="admin", description="Updated Administrator")
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = None
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.modify(user_role)
+
+    # Assert - Check result is None and commit/refresh not called
+    assert result is None
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.commit.assert_not_called()
+    mock_session.refresh.assert_not_called()
+
+def test_replace_user_role_found(mocker):
+    """Test replace() when role exists"""
+    # Arrange - Mock SessionLocal and query
+    user_role = UserRole(id=1, name="administrator", description="Full Administrator")
+    existing_role = UserRole(id=1, name="admin", description="Administrator")
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = existing_role
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.replace(user_role)
+
+    # Assert - Check result and that fields were updated
+    assert result == existing_role
+    assert existing_role.name == "administrator"
+    assert existing_role.description == "Full Administrator"
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.commit.assert_called_once()
+    mock_session.refresh.assert_called_once_with(existing_role)
+
+def test_replace_user_role_not_found(mocker):
+    """Test replace() when role does not exist"""
+    # Arrange - Mock SessionLocal and query to return None
+    user_role = UserRole(id=1, name="administrator", description="Full Administrator")
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = None
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.replace(user_role)
+
+    # Assert - Check result is None and commit/refresh not called
+    assert result is None
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.commit.assert_not_called()
+    mock_session.refresh.assert_not_called()
+
+def test_delete_user_role_success(mocker):
+    """Test delete() when role exists"""
+    # Arrange - Mock SessionLocal and query
+    existing_role = UserRole(id=1, name="admin", description="Administrator")
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = existing_role
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.delete("admin")
+
+    # Assert - Check result is True and delete was called
+    assert result is True
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.delete.assert_called_once_with(existing_role)
+    mock_session.commit.assert_called_once()
+
+def test_delete_user_role_not_found(mocker):
+    """Test delete() when role does not exist"""
+    # Arrange - Mock SessionLocal and query to return None
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = None
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.delete("nonexistent")
+
+    # Assert - Check result is False and delete/commit not called
+    assert result is False
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.delete.assert_not_called()
+    mock_session.commit.assert_not_called()
