@@ -13,8 +13,8 @@ POST http://localhost:8000/api/user-roles/
 Content-Type: application/json
 
 {
-  "name": "moderator",
-  "description": "Content moderator role"
+  "name": "admin",
+  "description": "Administrator role"
 }
 
 ###
@@ -24,7 +24,6 @@ PATCH http://localhost:8000/api/user-roles/
 Content-Type: application/json
 
 {
-  "id": 1,
   "name": "moderator",
   "description": "Content moderator role changed"
 }
@@ -36,7 +35,7 @@ PUT http://localhost:8000/api/user-roles/
 Content-Type: application/json
 
 {
-  "id": 1,
+  "id": 2,
   "name": "superadmin",
   "description": "Super administrator role"
 }

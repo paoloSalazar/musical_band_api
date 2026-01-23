@@ -100,6 +100,8 @@ def test_create_user_role(mocker):
     """Test create() function"""
     # Arrange - Mock SessionLocal
     user_role = UserRole(name="moderator", description="Moderator role")
+    # Simulate database setting the ID
+    user_role.id = 3
     mock_session = mocker.Mock()
     mock_session_local = mocker.patch('data.user_role.SessionLocal')
     mock_session_local.return_value = mock_session
@@ -109,6 +111,7 @@ def test_create_user_role(mocker):
 
     # Assert - Check session methods were called correctly
     assert result == user_role
+    assert result.id == 3
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
     mock_session.add.assert_called_once_with(user_role)
