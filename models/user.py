@@ -7,11 +7,11 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    lastname = Column(String, nullable=False)
-    second_lastname = Column(String, nullable=True)
-    email = Column(String, unique=True, nullable=False)
-    password = Column(String, nullable=False)
+    name = Column(String(50), nullable=False)
+    lastname = Column(String(50), nullable=False)
+    second_lastname = Column(String(50), nullable=True)
+    email = Column(String(100), unique=True, nullable=False)
+    password = Column(String(128), nullable=False)
     role_id = Column(Integer, ForeignKey('user_roles.id'), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
