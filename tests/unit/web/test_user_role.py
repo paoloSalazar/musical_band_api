@@ -147,3 +147,21 @@ def test_delete_user_role(mocker):
     assert result is None
     mock_service.assert_called_once_with("moderator")
 
+def test_create_user_role_unique_constraint(mocker):
+    """Test create() handles unique constraint violation"""
+    # Arrange - Mock service to raise exception for duplicate role
+    input_data = UserRoleCreate(name="admin", description="Duplicate admin role")
+    mock_service = mocker.patch('web.user_role.service.create')
+    mock_service.side_effect = Exception("Unique constraint violation")
+
+    # Act & Assert - Call function and expect exception
+    with pytest.raises(Exception) as exc_info:
+        create(input_data)
+
+    assert str(exc_info.value) == "Unique constraint violation"
+    mock_service.assert_called_once()
+    # Verify service was called with UserRoleCreate object
+    call_args = mock_service.call_args[0][0]
+    assert isinstance(call_args, UserRoleCreate)
+    assert call_args.name == "admin"
+    assert call_args.description == "Duplicate admin role"

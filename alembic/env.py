@@ -20,7 +20,7 @@ config.set_main_option("sqlalchemy.url", DATABASE_URL_SQLALCHEMY)
 # add your model's MetaData object here
 # for 'autogenerate' support
 from config.database import Base
-from model.user_role import UserRole  # Import models to ensure they are registered
+from models.user_role import UserRole  # Import models to ensure they are registered
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
