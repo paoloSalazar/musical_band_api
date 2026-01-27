@@ -1,6 +1,8 @@
 import pytest
+from fastapi import HTTPException
 from schemas.user_role import UserRole, UserRoleCreate
 from web.user_role import get_all, get_one, create, modify, replace, delete
+from exceptions import NotFoundError, ConflictError, DatabaseError
 
 def test_get_user_roles_empty_list(mocker):
     """Test get_all() returns empty list when no roles"""
@@ -55,15 +57,16 @@ def test_get_user_role_found(mocker):
 
 def test_get_user_role_not_found(mocker):
     """Test get_one() when role doesn't exist"""
-    # Arrange - Mock service to return None
+    # Arrange - Mock service to raise NotFoundError
     mock_service = mocker.patch('web.user_role.service.get_one')
-    mock_service.return_value = None
+    mock_service.side_effect = NotFoundError("User role 'nonexistent' not found")
 
-    # Act - Call function directly
-    result = get_one("nonexistent")
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        get_one("nonexistent")
 
-    # Assert - Check result is None
-    assert result is None
+    assert exc_info.value.status_code == 404
+    assert "User role 'nonexistent' not found" in exc_info.value.detail
     mock_service.assert_called_once_with("nonexistent")
 
 def test_create_user_role(mocker):
@@ -147,21 +150,80 @@ def test_delete_user_role(mocker):
     assert result is None
     mock_service.assert_called_once_with("moderator")
 
-def test_create_user_role_unique_constraint(mocker):
-    """Test create() handles unique constraint violation"""
-    # Arrange - Mock service to raise exception for duplicate role
+def test_create_user_role_conflict(mocker):
+    """Test create() handles conflict when role already exists"""
+    # Arrange - Mock service to raise ConflictError for duplicate role
     input_data = UserRoleCreate(name="admin", description="Duplicate admin role")
     mock_service = mocker.patch('web.user_role.service.create')
-    mock_service.side_effect = Exception("Unique constraint violation")
+    mock_service.side_effect = ConflictError("User role 'admin' already exists")
 
-    # Act & Assert - Call function and expect exception
-    with pytest.raises(Exception) as exc_info:
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
         create(input_data)
 
-    assert str(exc_info.value) == "Unique constraint violation"
+    assert exc_info.value.status_code == 409
+    assert "User role 'admin' already exists" in exc_info.value.detail
     mock_service.assert_called_once()
     # Verify service was called with UserRoleCreate object
     call_args = mock_service.call_args[0][0]
     assert isinstance(call_args, UserRoleCreate)
     assert call_args.name == "admin"
     assert call_args.description == "Duplicate admin role"
+
+def test_modify_user_role_not_found(mocker):
+    """Test modify() when role doesn't exist"""
+    # Arrange - Mock service to raise NotFoundError
+    input_data = UserRole(id=1, name="nonexistent", description="Updated role")
+    mock_service = mocker.patch('web.user_role.service.modify')
+    mock_service.side_effect = NotFoundError("User role 'nonexistent' not found")
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        modify(input_data)
+
+    assert exc_info.value.status_code == 404
+    assert "User role 'nonexistent' not found" in exc_info.value.detail
+    mock_service.assert_called_once()
+
+def test_replace_user_role_not_found(mocker):
+    """Test replace() when role doesn't exist"""
+    # Arrange - Mock service to raise NotFoundError
+    input_data = UserRole(id=1, name="nonexistent", description="Replaced role")
+    mock_service = mocker.patch('web.user_role.service.replace')
+    mock_service.side_effect = NotFoundError("User role with id 1 not found")
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        replace(input_data)
+
+    assert exc_info.value.status_code == 404
+    assert "User role with id 1 not found" in exc_info.value.detail
+    mock_service.assert_called_once()
+
+def test_delete_user_role_not_found(mocker):
+    """Test delete() when role doesn't exist"""
+    # Arrange - Mock service to raise NotFoundError
+    mock_service = mocker.patch('web.user_role.service.delete')
+    mock_service.side_effect = NotFoundError("User role 'nonexistent' not found")
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        delete("nonexistent")
+
+    assert exc_info.value.status_code == 404
+    assert "User role 'nonexistent' not found" in exc_info.value.detail
+    mock_service.assert_called_once_with("nonexistent")
+
+def test_get_all_database_error(mocker):
+    """Test get_all() handles database errors"""
+    # Arrange - Mock service to raise DatabaseError
+    mock_service = mocker.patch('web.user_role.service.get_all')
+    mock_service.side_effect = DatabaseError("Database connection failed")
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        get_all()
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.detail == "Internal server error"
+    mock_service.assert_called_once()

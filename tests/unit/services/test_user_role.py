@@ -2,6 +2,7 @@ import pytest
 from schemas.user_role import UserRole, UserRoleCreate
 from models.user_role import UserRole as DBUserRole
 import services.user_role as service
+from exceptions import NotFoundError
 
 def test_get_all_user_roles_empty(mocker):
     """Test get_all() returns empty list when no roles"""
@@ -61,20 +62,22 @@ def test_get_one_user_role_not_found(mocker):
     mock_data = mocker.patch('services.user_role.data.get_one')
     mock_data.return_value = None
 
-    # Act - Call service function
-    result = service.get_one("nonexistent")
+    # Act & Assert - Call service function and expect NotFoundError
+    with pytest.raises(NotFoundError) as exc_info:
+        service.get_one("nonexistent")
 
-    # Assert - Check result is None
-    assert result is None
+    assert str(exc_info.value) == "User role 'nonexistent' not found"
     mock_data.assert_called_once_with("nonexistent")
 
 def test_create_user_role(mocker):
     """Test create() function"""
-    # Arrange - Mock data.create to return the created DB role
+    # Arrange - Mock data.get_one to return None (role doesn't exist) and data.create to return the created DB role
     user_role_create = UserRoleCreate(name="moderator", description="Moderator role")
     db_role = DBUserRole(id=3, name="moderator", description="Moderator role")
-    mock_data = mocker.patch('services.user_role.data.create')
-    mock_data.return_value = db_role
+    mock_get_one = mocker.patch('services.user_role.data.get_one')
+    mock_get_one.return_value = None
+    mock_create = mocker.patch('services.user_role.data.create')
+    mock_create.return_value = db_role
 
     # Act - Call service function
     result = service.create(user_role_create)
@@ -83,20 +86,24 @@ def test_create_user_role(mocker):
     assert result.id == 3
     assert result.name == "moderator"
     assert result.description == "Moderator role"
-    mock_data.assert_called_once()
+    mock_create.assert_called_once()
+    mock_get_one.assert_called_once_with("moderator")
     # Verify the DBUserRole was created with correct data
-    call_args = mock_data.call_args[0][0]
+    call_args = mock_create.call_args[0][0]
     assert isinstance(call_args, DBUserRole)
     assert call_args.name == "moderator"
     assert call_args.description == "Moderator role"
 
 def test_modify_user_role(mocker):
     """Test modify() function"""
-    # Arrange - Mock data.modify to return the modified DB role
+    # Arrange - Mock data.get_one to return existing role and data.modify to return the modified DB role
     user_role = UserRole(id=1, name="admin", description="Updated Administrator")
-    db_role = DBUserRole(id=1, name="admin", description="Updated Administrator")
-    mock_data = mocker.patch('services.user_role.data.modify')
-    mock_data.return_value = db_role
+    existing_db_role = DBUserRole(id=1, name="admin", description="Administrator")
+    modified_db_role = DBUserRole(id=1, name="admin", description="Updated Administrator")
+    mock_get_one = mocker.patch('services.user_role.data.get_one')
+    mock_get_one.return_value = existing_db_role
+    mock_modify = mocker.patch('services.user_role.data.modify')
+    mock_modify.return_value = modified_db_role
 
     # Act - Call service function
     result = service.modify(user_role)
@@ -105,9 +112,10 @@ def test_modify_user_role(mocker):
     assert result.id == 1
     assert result.name == "admin"
     assert result.description == "Updated Administrator"
-    mock_data.assert_called_once()
+    mock_modify.assert_called_once()
+    mock_get_one.assert_called_once_with("admin")
     # Verify the DBUserRole was created with correct data
-    call_args = mock_data.call_args[0][0]
+    call_args = mock_modify.call_args[0][0]
     assert isinstance(call_args, DBUserRole)
     assert call_args.id == 1
     assert call_args.name == "admin"
@@ -138,26 +146,30 @@ def test_replace_user_role(mocker):
 
 def test_delete_user_role_success(mocker):
     """Test delete() function when role exists"""
-    # Arrange - Mock data.delete to return True
-    mock_data = mocker.patch('services.user_role.data.delete')
-    mock_data.return_value = True
+    # Arrange - Mock data.get_one to return existing role and data.delete to return True
+    existing_db_role = DBUserRole(id=1, name="admin", description="Administrator")
+    mock_get_one = mocker.patch('services.user_role.data.get_one')
+    mock_get_one.return_value = existing_db_role
+    mock_delete = mocker.patch('services.user_role.data.delete')
+    mock_delete.return_value = True
 
     # Act - Call service function
     result = service.delete("admin")
 
     # Assert - Check result is True
     assert result is True
-    mock_data.assert_called_once_with("admin")
+    mock_get_one.assert_called_once_with("admin")
+    mock_delete.assert_called_once_with("admin")
 
 def test_delete_user_role_not_found(mocker):
     """Test delete() function when role does not exist"""
-    # Arrange - Mock data.delete to return False
-    mock_data = mocker.patch('services.user_role.data.delete')
-    mock_data.return_value = False
+    # Arrange - Mock data.get_one to return None
+    mock_get_one = mocker.patch('services.user_role.data.get_one')
+    mock_get_one.return_value = None
 
-    # Act - Call service function
-    result = service.delete("nonexistent")
+    # Act & Assert - Call service function and expect NotFoundError
+    with pytest.raises(NotFoundError) as exc_info:
+        service.delete("nonexistent")
 
-    # Assert - Check result is False
-    assert result is False
-    mock_data.assert_called_once_with("nonexistent")
+    assert str(exc_info.value) == "User role 'nonexistent' not found"
+    mock_get_one.assert_called_once_with("nonexistent")

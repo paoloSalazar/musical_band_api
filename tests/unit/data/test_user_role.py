@@ -1,6 +1,8 @@
 import pytest
 from models.user_role import UserRole
 import data.user_role as data
+from sqlalchemy.exc import SQLAlchemyError
+from exceptions import DatabaseError
 
 def test_get_one_user_role_found(mocker):
     """Test get_one() when role exists"""
@@ -47,6 +49,27 @@ def test_get_one_user_role_not_found(mocker):
     assert result is None
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
+
+def test_get_one_user_role_database_error(mocker):
+    """Test get_one() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and query to raise SQLAlchemyError
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = SQLAlchemyError("Database connection failed")
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.get_one("admin")
+
+    assert "Failed to get user role" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.rollback.assert_not_called()  # No rollback for read operations
 
 def test_get_all_user_roles_empty(mocker):
     """Test get_all() returns empty list when no roles"""
@@ -96,6 +119,26 @@ def test_get_all_user_roles_with_data(mocker):
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
 
+def test_get_all_user_roles_database_error(mocker):
+    """Test get_all() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and query to raise SQLAlchemyError
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.all.side_effect = SQLAlchemyError("Database connection failed")
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.get_all()
+
+    assert "Failed to get all user roles" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.rollback.assert_not_called()  # No rollback for read operations
+
 def test_create_user_role(mocker):
     """Test create() function"""
     # Arrange - Mock SessionLocal
@@ -117,6 +160,25 @@ def test_create_user_role(mocker):
     mock_session.add.assert_called_once_with(user_role)
     mock_session.commit.assert_called_once()
     mock_session.refresh.assert_called_once_with(user_role)
+
+def test_create_user_role_database_error(mocker):
+    """Test create() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and commit to raise SQLAlchemyError
+    user_role = UserRole(name="moderator", description="Moderator role")
+    mock_session = mocker.Mock()
+    mock_session.commit.side_effect = SQLAlchemyError("Database connection failed")
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.create(user_role)
+
+    assert "Failed to create user role" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.rollback.assert_called_once()  # Rollback should be called on error
 
 def test_modify_user_role_found(mocker):
     """Test modify() when role exists"""
@@ -167,6 +229,31 @@ def test_modify_user_role_not_found(mocker):
     mock_session.close.assert_called_once()
     mock_session.commit.assert_not_called()
     mock_session.refresh.assert_not_called()
+
+def test_modify_user_role_database_error(mocker):
+    """Test modify() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and commit to raise SQLAlchemyError
+    user_role = UserRole(id=1, name="admin", description="Updated Administrator")
+    existing_role = UserRole(id=1, name="admin", description="Administrator")
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = existing_role
+    mock_session.commit.side_effect = SQLAlchemyError("Database connection failed")
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.modify(user_role)
+
+    assert "Failed to modify user role" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.rollback.assert_called_once()  # Rollback should be called on error
 
 def test_replace_user_role_found(mocker):
     """Test replace() when role exists"""
@@ -219,6 +306,31 @@ def test_replace_user_role_not_found(mocker):
     mock_session.commit.assert_not_called()
     mock_session.refresh.assert_not_called()
 
+def test_replace_user_role_database_error(mocker):
+    """Test replace() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and commit to raise SQLAlchemyError
+    user_role = UserRole(id=1, name="administrator", description="Full Administrator")
+    existing_role = UserRole(id=1, name="admin", description="Administrator")
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = existing_role
+    mock_session.commit.side_effect = SQLAlchemyError("Database connection failed")
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.replace(user_role)
+
+    assert "Failed to replace user role" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.rollback.assert_called_once()  # Rollback should be called on error
+
 def test_delete_user_role_success(mocker):
     """Test delete() when role exists"""
     # Arrange - Mock SessionLocal and query
@@ -264,3 +376,27 @@ def test_delete_user_role_not_found(mocker):
     mock_session.close.assert_called_once()
     mock_session.delete.assert_not_called()
     mock_session.commit.assert_not_called()
+
+def test_delete_user_role_database_error(mocker):
+    """Test delete() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and commit to raise SQLAlchemyError
+    existing_role = UserRole(id=1, name="admin", description="Administrator")
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = existing_role
+    mock_session.commit.side_effect = SQLAlchemyError("Database connection failed")
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.delete("admin")
+
+    assert "Failed to delete user role" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.rollback.assert_called_once()  # Rollback should be called on error
