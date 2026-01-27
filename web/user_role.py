@@ -30,7 +30,7 @@ def get_one(name: str) -> UserRole | None:
         logger.warning(f"User role '{name}' not found: {str(e)}")
         raise HTTPException(status_code=404, detail=f"User role '{name}' not found")
     except DatabaseError as e:
-        logger.error(f"Database error in get_one: {str(e)}")
+        logger.error("Database error in get_one")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/")
@@ -42,7 +42,7 @@ def create(user_role: UserRoleCreate) -> UserRole | None:
         logger.warning(f"Conflict in create: {str(e)}")
         raise HTTPException(status_code=409, detail=str(e))
     except DatabaseError as e:
-        logger.error(f"Database error in create: {str(e)}")
+        logger.error("Database error in create")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.patch("/")
@@ -53,7 +53,7 @@ def modify(user_role: UserRole) -> UserRole | None:
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except DatabaseError as e:
-        logger.error(f"Database error in get_all: {str(e)}")
+        logger.error("Database error in get_all")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.put("/")

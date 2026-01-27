@@ -12,8 +12,8 @@ def get_one(name: str) -> UserRole | None:
     try:
         return db.query(UserRole).filter(UserRole.name == name).first()
     except SQLAlchemyError as e:
-        logger.error(f"Database error while getting user role '{name}': {str(e)}")
-        raise DatabaseError(f"Failed to get user role: {str(e)}")
+        logger.error(f"Database error while getting user role '{name}'")
+        raise DatabaseError(f"Failed to get user role")
     finally:
         db.close()
 
@@ -23,8 +23,8 @@ def get_all() -> list[UserRole]:
     try:
         return db.query(UserRole).all()
     except SQLAlchemyError as e:
-        logger.error(f"Database error while getting all user roles: {str(e)}")
-        raise DatabaseError(f"Failed to get all user roles: {str(e)}")
+        logger.error("Database error while getting all user roles")
+        raise DatabaseError("Failed to get all user roles")
     finally:
         db.close()
 
@@ -36,9 +36,9 @@ def create(user_role: UserRole) -> UserRole:
         db.refresh(user_role)
         return user_role
     except SQLAlchemyError as e:
-        logger.error(f"Database error while creating user role '{user_role.name}': {str(e)}")
+        logger.error(f"Database error while creating user role '{user_role.name}'")
         db.rollback()
-        raise DatabaseError(f"Failed to create user role: {str(e)}")
+        raise DatabaseError("Failed to create user role")
     finally:
         db.close()
 
@@ -52,9 +52,9 @@ def modify(user_role: UserRole) -> UserRole:
             db.refresh(db_user)
         return db_user
     except SQLAlchemyError as e:
-        logger.error(f"Database error while modifying user role '{user_role.name}': {str(e)}")
+        logger.error(f"Database error while modifying user role '{user_role.name}'")
         db.rollback()
-        raise DatabaseError(f"Failed to modify user role: {str(e)}")
+        raise DatabaseError("Failed to modify user role")
     finally:
         db.close()
 
@@ -69,9 +69,9 @@ def replace(user_role: UserRole) -> UserRole:
             db.refresh(db_user)
         return db_user
     except SQLAlchemyError as e:
-        logger.error(f"Database error while replacing user role '{user_role.name}': {str(e)}")
+        logger.error(f"Database error while replacing user role '{user_role.name}'")
         db.rollback()
-        raise DatabaseError(f"Failed to replace user role: {str(e)}")
+        raise DatabaseError("Failed to replace user role")
     finally:
         db.close()
 
@@ -85,8 +85,8 @@ def delete(name: str) -> bool:
             return True
         return False
     except SQLAlchemyError as e:
-        logger.error(f"Database error while deleting user role '{name}': {str(e)}")
+        logger.error(f"Database error while deleting user role '{name}'")
         db.rollback()
-        raise DatabaseError(f"Failed to delete user role: {str(e)}")
+        raise DatabaseError("Failed to delete user role")
     finally:
         db.close()
