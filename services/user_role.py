@@ -1,34 +1,74 @@
 from schemas.user_role import UserRole, UserRoleCreate
 import data.user_role as data
 from models.user_role import UserRole as DBUserRole
+from exceptions import DatabaseError, NotFoundError, ConflictError
 
 def get_all() -> list[UserRole]:
     """return all user roles"""
-    db_roles = data.get_all()
-    return [UserRole.model_validate(role) for role in db_roles]
+    try:
+        db_roles = data.get_all()
+        return [UserRole.model_validate(role) for role in db_roles]
+    except DatabaseError as e:
+        raise DatabaseError(f"Service error: {str(e)}")
 
 def get_one(name: str) -> UserRole | None:
     """return one user role by name"""
-    db_role = data.get_one(name)
-    return UserRole.model_validate(db_role) if db_role else None
+    try:
+        db_role = data.get_one(name)
+        if db_role:
+            return UserRole.model_validate(db_role)
+        else:
+            raise NotFoundError(f"User role '{name}' not found")
+    except DatabaseError as e:
+        raise DatabaseError(f"Service error: {str(e)}")
 
 def create(user_role: UserRoleCreate) -> UserRole:
-    # Convert Pydantic to SQLAlchemy model
-    db_role = DBUserRole(name=user_role.name, description=user_role.description)
-    created = data.create(db_role)
-    return UserRole.model_validate(created)
+    try:
+        # Check if already exists
+        existing = data.get_one(user_role.name)
+        if existing:
+            raise ConflictError(f"User role '{user_role.name}' already exists")
+        # Convert Pydantic to SQLAlchemy model
+        db_role = DBUserRole(name=user_role.name, description=user_role.description)
+        created = data.create(db_role)
+        return UserRole.model_validate(created)
+    except DatabaseError as e:
+        raise DatabaseError(f"Service error: {str(e)}")
 
 def modify(user_role: UserRole) -> UserRole:
-    # Assuming user_role has id, convert to DB model
-    db_role = DBUserRole(id=user_role.id, name=user_role.name, description=user_role.description)
-    modified = data.modify(db_role)
-    return UserRole.model_validate(modified)
+    try:
+        # Check if exists
+        existing = data.get_one(user_role.name)
+        if not existing:
+            raise NotFoundError(f"User role '{user_role.name}' not found")
+        # Assuming user_role has id, convert to DB model
+        db_role = DBUserRole(id=user_role.id, name=user_role.name, description=user_role.description)
+        modified = data.modify(db_role)
+        if modified:
+            return UserRole.model_validate(modified)
+        else:
+            raise NotFoundError(f"User role '{user_role.name}' not found")
+    except DatabaseError as e:
+        raise DatabaseError(f"Service error: {str(e)}")
 
 def replace(user_role: UserRole) -> UserRole:
-    # Assuming user_role has id
-    db_role = DBUserRole(id=user_role.id, name=user_role.name, description=user_role.description)
-    replaced = data.replace(db_role)
-    return UserRole.model_validate(replaced)
+    try:
+        # Assuming user_role has id
+        db_role = DBUserRole(id=user_role.id, name=user_role.name, description=user_role.description)
+        replaced = data.replace(db_role)
+        if replaced:
+            return UserRole.model_validate(replaced)
+        else:
+            raise NotFoundError(f"User role with id {user_role.id} not found")
+    except DatabaseError as e:
+        raise DatabaseError(f"Service error: {str(e)}")
 
 def delete(name: str) -> bool:
-    return data.delete(name)
+    try:
+        # Check if exists
+        existing = data.get_one(name)
+        if not existing:
+            raise NotFoundError(f"User role '{name}' not found")
+        return data.delete(name)
+    except DatabaseError as e:
+        raise DatabaseError(f"Service error: {str(e)}")

@@ -1,11 +1,15 @@
 from config.database import SessionLocal
 from models.user_role import UserRole
+from sqlalchemy.exc import SQLAlchemyError
+from exceptions import DatabaseError
 
 def get_one(name: str) -> UserRole | None:
     """return one user role by name"""
     db = SessionLocal()
     try:
         return db.query(UserRole).filter(UserRole.name == name).first()
+    except SQLAlchemyError as e:
+        raise DatabaseError(f"Failed to get user role: {str(e)}")
     finally:
         db.close()
 
@@ -14,6 +18,8 @@ def get_all() -> list[UserRole]:
     db = SessionLocal()
     try:
         return db.query(UserRole).all()
+    except SQLAlchemyError as e:
+        raise DatabaseError(f"Failed to get all user roles: {str(e)}")
     finally:
         db.close()
 
@@ -24,6 +30,9 @@ def create(user_role: UserRole) -> UserRole:
         db.commit()
         db.refresh(user_role)
         return user_role
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise DatabaseError(f"Failed to create user role: {str(e)}")
     finally:
         db.close()
 
@@ -36,6 +45,9 @@ def modify(user_role: UserRole) -> UserRole:
             db.commit()
             db.refresh(db_user)
         return db_user
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise DatabaseError(f"Failed to modify user role: {str(e)}")
     finally:
         db.close()
 
@@ -49,6 +61,9 @@ def replace(user_role: UserRole) -> UserRole:
             db.commit()
             db.refresh(db_user)
         return db_user
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise DatabaseError(f"Failed to replace user role: {str(e)}")
     finally:
         db.close()
 
@@ -61,5 +76,8 @@ def delete(name: str) -> bool:
             db.commit()
             return True
         return False
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise DatabaseError(f"Failed to delete user role: {str(e)}")
     finally:
         db.close()
