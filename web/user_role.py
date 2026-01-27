@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 import services.user_role as service
 from schemas.user_role import UserRole, UserRoleCreate
-from exceptions import DatabaseError, NotFoundError, ConflictError
+from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError
 
 logger = logging.getLogger(__name__)
 

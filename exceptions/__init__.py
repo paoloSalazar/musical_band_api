@@ -1,3 +1,3 @@
-from .exceptions import DatabaseError, NotFoundError, ValidationError, ConflictError
+from .exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ValidationError, ConflictError
 
-__all__ = ["DatabaseError", "NotFoundError", "ValidationError", "ConflictError"]
+__all__ = ["DatabaseError", "DatabaseConnectionError", "NotFoundError", "ValidationError", "ConflictError"]

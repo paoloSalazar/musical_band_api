@@ -2,7 +2,7 @@ import logging
 from schemas.user_role import UserRole, UserRoleCreate
 import data.user_role as data
 from models.user_role import UserRole as DBUserRole
-from exceptions import DatabaseError, NotFoundError, ConflictError
+from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ def get_all() -> list[UserRole]:
         roles = [UserRole.model_validate(role) for role in db_roles]
         logger.info(f"Retrieved {len(roles)} user roles")
         return roles
-    except DatabaseError as e:
+    except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in get_all")
         raise DatabaseError("Service error")
 
@@ -27,7 +27,7 @@ def get_one(name: str) -> UserRole | None:
         else:
             logger.warning(f"User role '{name}' not found")
             raise NotFoundError(f"User role '{name}' not found")
-    except DatabaseError as e:
+    except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in get_one")
         raise DatabaseError("Service error")
 
@@ -43,7 +43,7 @@ def create(user_role: UserRoleCreate) -> UserRole:
         created = data.create(db_role)
         logger.info(f"Created new user role '{user_role.name}'")
         return UserRole.model_validate(created)
-    except DatabaseError as e:
+    except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in create")
         raise DatabaseError("Service error")
 
@@ -63,7 +63,7 @@ def modify(user_role: UserRole) -> UserRole:
         else:
             logger.warning(f"User role '{user_role.name}' not found during modification")
             raise NotFoundError(f"User role '{user_role.name}' not found")
-    except DatabaseError as e:
+    except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in modify")
         raise DatabaseError("Service error")
 
@@ -76,7 +76,7 @@ def replace(user_role: UserRole) -> UserRole:
             return UserRole.model_validate(replaced)
         else:
             raise NotFoundError(f"User role with id {user_role.id} not found")
-    except DatabaseError as e:
+    except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in replace")
         raise DatabaseError("Service error")
 
@@ -87,6 +87,6 @@ def delete(name: str) -> bool:
         if not existing:
             raise NotFoundError(f"User role '{name}' not found")
         return data.delete(name)
-    except DatabaseError as e:
+    except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in delete")
         raise DatabaseError("Service error")
