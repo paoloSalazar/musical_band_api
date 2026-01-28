@@ -1,6 +1,8 @@
 import pytest
 from models.user import User
 import data.user as data
+from sqlalchemy.exc import SQLAlchemyError
+from exceptions import DatabaseError
 
 def test_get_one_user_found(mocker):
     """Test get_one() when user exists"""
@@ -55,6 +57,26 @@ def test_get_one_user_not_found(mocker):
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
 
+def test_get_one_user_database_error(mocker):
+    """Test get_one() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and query to raise SQLAlchemyError
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = SQLAlchemyError("Test error")
+
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.get_one("john.doe@example.com")
+
+    assert str(exc_info.value) == "Failed to get user"
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
 def test_get_all_users(mocker):
     """Test get_all() returns list of users"""
     # Arrange - Mock SessionLocal and query
@@ -97,6 +119,25 @@ def test_get_all_users(mocker):
     mock_session.query.assert_called_once_with(User)
     mock_query.all.assert_called_once()
 
+def test_get_all_users_database_error(mocker):
+    """Test get_all() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and query to raise SQLAlchemyError
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.all.side_effect = SQLAlchemyError("Test error")
+
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.get_all()
+
+    assert str(exc_info.value) == "Failed to get all users"
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
 def test_create_user(mocker):
     """Test create() user"""
     # Arrange
@@ -119,6 +160,32 @@ def test_create_user(mocker):
     mock_session.add.assert_called_once_with(user)
     mock_session.commit.assert_called_once()
     mock_session.refresh.assert_called_once_with(user)
+    mock_session.close.assert_called_once()
+
+def test_create_user_database_error(mocker):
+    """Test create() raises DatabaseError on SQLAlchemyError"""
+    # Arrange
+    user = User(
+        name="Jane",
+        lastname="Smith",
+        email="jane.smith@example.com",
+        password="hashedpass",
+        role_id=2
+    )
+    mock_session = mocker.Mock()
+    mock_session.commit.side_effect = SQLAlchemyError("Test error")
+
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.create(user)
+
+    assert str(exc_info.value) == "Failed to create user"
+    mock_session.add.assert_called_once_with(user)
+    mock_session.commit.assert_called_once()
+    mock_session.rollback.assert_called_once()
     mock_session.close.assert_called_once()
 
 def test_modify_user_found(mocker):
@@ -170,4 +237,31 @@ def test_modify_user_not_found(mocker):
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
     mock_session.commit.assert_not_called()
+    mock_session.refresh.assert_not_called()
+
+def test_modify_user_database_error(mocker):
+    """Test modify() raises DatabaseError on SQLAlchemyError"""
+    # Arrange
+    user = User(id=1, name="Updated John", lastname="Doe", email="john.doe@example.com", password="newpass", role_id=1)
+    existing_user = User(id=1, name="John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1)
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = existing_user
+    mock_session.commit.side_effect = SQLAlchemyError("Test error")
+
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.modify(user)
+
+    assert str(exc_info.value) == "Failed to modify user"
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.commit.assert_called_once()
+    mock_session.rollback.assert_called_once()
     mock_session.refresh.assert_not_called()
