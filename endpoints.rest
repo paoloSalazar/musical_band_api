@@ -43,3 +43,38 @@ Content-Type: application/json
 ###
 ### Delete a user role
 DELETE http://localhost:8000/api/user-roles/superadmin
+
+###
+### USERS ENDPOINTS ###
+### Get all users
+GET http://localhost:8000/api/users/
+
+### Post a new user
+POST http://localhost:8000/api/users/
+Content-Type: application/json
+
+{
+  "name": "Jane",
+  "lastname": "Smith",
+  "second_lastname": "Johnson",
+  "email": "jane.smith@example.com",
+  "password": "hashedpass",
+  "role_id": 3
+}
+
+### Get a specific user
+GET http://localhost:8000/api/users/jane.smith@example.com
+
+### Update an existing user (PATCH)
+PATCH http://localhost:8000/api/users/
+Content-Type: application/json
+
+{
+  "id": 1,
+  "name": "Janet",
+  "lastname": "Smith",
+  "second_lastname": "Johnson",
+  "email": "jane.smith@example.com",
+  "password": "newhashedpass",
+  "role_id": 3
+}
