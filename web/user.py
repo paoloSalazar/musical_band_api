@@ -1,10 +1,12 @@
 import logging
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+from fastapi import APIRouter, HTTPException, Depends, Request
 from schemas.user_role import UserRole
 from schemas.auth import Token
 from schemas.user import UserResponse, UserCreate, UserLogin
 import services.user as service
 import services.auth as auth_service
+from auth.auth import decode_access_token
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError, UnauthorizedError
 
 logger = logging.getLogger(__name__)
@@ -12,12 +14,27 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/users")
 
 
+async def get_current_user(request: Request) -> dict:
+    """Dependency to verify JWT token and return current user"""
+    authorization = request.headers.get("Authorization")
+    if authorization is None:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+
+    token = authorization.replace("Bearer ", "")
+    payload = decode_access_token(token)
+
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    return payload
+
+
 @router.get("/")
-def get_all() -> list[UserResponse]:
-    """Get all users"""
+def get_all(current_user: Annotated[dict, Depends(get_current_user)]) -> list[UserResponse]:
+    """Get all users (requires authentication)"""
     try:
         users = service.get_all()
-        logger.info(f"API request: Retrieved {len(users)} users")
+        logger.info(f"API request: Retrieved {len(users)} users by {current_user.get('sub')}")
         return users
     except DatabaseError as e:
         logger.error(f"Database error in get_all: {str(e)}")
@@ -25,7 +42,7 @@ def get_all() -> list[UserResponse]:
 
 
 @router.get("/{email}")
-def get_one(email: str) -> UserResponse:
+def get_one(current_user: Annotated[dict, Depends(get_current_user)], email: str) -> UserResponse:
     """Get one user by email"""
     try:
         user = service.get_one(email)

@@ -1,15 +1,17 @@
+@api = http://localhost:8000/api
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc2NzUyNDg3OSwianRpIjoiNDU3ZDZlNzItOTQwZi00NDY2LTgwYTYtZDBiZmU4ODg2MTZkIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjEiLCJuYmYiOjE3Njc1MjQ4NzksImNzcmYiOiIzN2RhMTBmZS1jMzBiLTRkYmMtYjczNS1hNjRkNDA2OTFhZjQiLCJleHAiOjE3Njc1MjU3Nzl9.LP2Na6x8tBgsGMqCz6-Fq92NDqLlymtf9l5B6g-zYIY
 ### Get all user roles
-GET http://localhost:8000/api/user-roles/
+GET {{api}}/user-roles/
 
 ###
 
 ### Get a specific user role
-GET http://localhost:8000/api/user-roles/moderator
+GET {{api}}/user-roles/admin
 
 ###
 
 ### Create a new user role
-POST http://localhost:8000/api/user-roles/
+POST {{api}}/user-roles/
 Content-Type: application/json
 
 {
@@ -20,7 +22,7 @@ Content-Type: application/json
 ###
 
 ### Update an existing user role (PATCH)
-PATCH http://localhost:8000/api/user-roles/
+PATCH {{api}}/user-roles/
 Content-Type: application/json
 
 {
@@ -31,7 +33,7 @@ Content-Type: application/json
 ###
 
 ### Replace an existing user role (PUT)
-PUT http://localhost:8000/api/user-roles/
+PUT {{api}}/user-roles/
 Content-Type: application/json
 
 {
@@ -42,15 +44,16 @@ Content-Type: application/json
 
 ###
 ### Delete a user role
-DELETE http://localhost:8000/api/user-roles/superadmin
+DELETE {{api}}/user-roles/superadmin
 
 ###
 ### USERS ENDPOINTS ###
-### Get all users
-GET http://localhost:8000/api/users/
+### Get all users (requires authentication)
+GET {{api}}/users/
+Authorization: Bearer {{{{user_token}}}}
 
 ### Post a new user
-POST http://localhost:8000/api/users/
+POST {{api}}/users/
 Content-Type: application/json
 
 {
@@ -58,15 +61,15 @@ Content-Type: application/json
   "lastname": "Smith",
   "second_lastname": "Johnson",
   "email": "jane.smith@example.com",
-  "password": "hashedpass",
+  "password": "securepassword123",
   "role_id": 1
 }
 
 ### Get a specific user
-GET http://localhost:8000/api/users/jane.smith@example.com
+GET {{api}}/users/jane.smith@example.com
 
 ### Update an existing user (PATCH)
-PATCH http://localhost:8000/api/users/
+PATCH {{api}}/users/
 Content-Type: application/json
 
 {
@@ -75,6 +78,18 @@ Content-Type: application/json
   "lastname": "Smith",
   "second_lastname": "Johnson",
   "email": "jane.smith@example.com",
-  "password": "newhashedpass",
   "role_id": 3
+}
+
+###
+### AUTHENTICATION ENDPOINTS ###
+### Initialize token variable
+
+### Login user
+POST {{api}}/users/login
+Content-Type: application/json
+
+{
+  "email": "jane.smith@example.com",
+  "password": "hashedpass"
 }
