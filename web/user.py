@@ -1,16 +1,19 @@
 import logging
 from fastapi import APIRouter, HTTPException
 from schemas.user_role import UserRole
+from schemas.auth import Token
+from schemas.user import UserResponse, UserCreate, UserLogin
 import services.user as service
-from schemas.user import User, UserCreate
-from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError
+import services.auth as auth_service
+from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError, UnauthorizedError
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/users")
 
+
 @router.get("/")
-def get_all() -> list[User]:
+def get_all() -> list[UserResponse]:
     """Get all users"""
     try:
         users = service.get_all()
@@ -19,9 +22,10 @@ def get_all() -> list[User]:
     except DatabaseError as e:
         logger.error(f"Database error in get_all: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
-    
+
+
 @router.get("/{email}")
-def get_one(email: str) -> User:
+def get_one(email: str) -> UserResponse:
     """Get one user by email"""
     try:
         user = service.get_one(email)
@@ -34,8 +38,9 @@ def get_one(email: str) -> User:
         logger.error(f"Database error in get_one: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
 @router.post("/")
-def create(user: UserCreate) -> User:
+def create(user: UserCreate) -> UserResponse:
     """Create a new user"""
     try:
         new_user = service.create(user)
@@ -47,9 +52,10 @@ def create(user: UserCreate) -> User:
     except DatabaseError as e:
         logger.error(f"Database error in create: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
-    
+
+
 @router.patch("/")
-def modify(user: User) -> User:
+def modify(user: UserResponse) -> UserResponse:
     """Modify an existing user"""
     try:
         updated_user = service.modify(user)
@@ -60,4 +66,22 @@ def modify(user: User) -> User:
         raise HTTPException(status_code=404, detail="User not found")
     except DatabaseError as e:
         logger.error(f"Database error in modify: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/login", response_model=Token)
+def login(login_data: UserLogin) -> Token:
+    """Authenticate user and return access token"""
+    try:
+        token = auth_service.authenticate_user(login_data)
+        logger.info(f"API request: User {login_data.email} logged in successfully")
+        return token
+    except NotFoundError:
+        logger.warning(f"Login failed: User with email {login_data.email} not found")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    except UnauthorizedError:
+        logger.warning(f"Login failed: Invalid password for user {login_data.email}")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

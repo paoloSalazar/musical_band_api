@@ -1,19 +1,27 @@
 from pydantic import BaseModel, ConfigDict
 
+
 class UserBase(BaseModel):
     name: str
     lastname: str
     second_lastname: str | None = None
     email: str
-    password: str
     role_id: int
 
 
 class UserCreate(UserBase):
-    pass
+    """Schema for creating a user (includes password)"""
+    password: str
 
 
-class User(UserBase):
+class UserResponse(UserBase):
+    """Schema for user responses (excludes password, created_at, updated_at)"""
     id: int
 
-    model_config = ConfigDict(from_attributes=True)  # Allows conversion from SQLAlchemy models
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserLogin(BaseModel):
+    """Schema for user login"""
+    email: str
+    password: str

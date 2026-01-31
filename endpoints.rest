@@ -59,7 +59,7 @@ Content-Type: application/json
   "second_lastname": "Johnson",
   "email": "jane.smith@example.com",
   "password": "hashedpass",
-  "role_id": 3
+  "role_id": 1
 }
 
 ### Get a specific user
