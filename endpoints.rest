@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc2NzUyNDg3OSwianRpIjoiNDU3ZDZlNzItOTQwZi00NDY2LTgwYTYtZDBiZmU4ODg2MTZkIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjEiLCJuYmYiOjE3Njc1MjQ4NzksImNzcmYiOiIzN2RhMTBmZS1jMzBiLTRkYmMtYjczNS1hNjRkNDA2OTFhZjQiLCJleHAiOjE3Njc1MjU3Nzl9.LP2Na6x8tBgsGMqCz6-Fq92NDqLlymtf9l5B6g-zYIY
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqYW5lLnNtaXRoQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6NSwicm9sZV9pZCI6MSwiZXhwIjoxNzY5ODM5Njc0fQ.YGwiNM4hnMRIwRR6S2maIgDWE3liW-3iGUz6E26WjDM
 ### Get all user roles
 GET {{api}}/user-roles/
 
@@ -50,7 +50,7 @@ DELETE {{api}}/user-roles/superadmin
 ### USERS ENDPOINTS ###
 ### Get all users (requires authentication)
 GET {{api}}/users/
-Authorization: Bearer {{{{user_token}}}}
+Authorization: Bearer {{user_token}}
 
 ### Post a new user
 POST {{api}}/users/
@@ -67,6 +67,7 @@ Content-Type: application/json
 
 ### Get a specific user
 GET {{api}}/users/jane.smith@example.com
+Authorization: Bearer {{user_token}}
 
 ### Update an existing user (PATCH)
 PATCH {{api}}/users/
