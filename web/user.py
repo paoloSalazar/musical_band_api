@@ -72,11 +72,11 @@ def create(user: UserCreate) -> UserResponse:
 
 
 @router.patch("/")
-def modify(user: UserResponse) -> UserResponse:
+def modify(current_user: Annotated[dict, Depends(get_current_user)], user: UserResponse) -> UserResponse:
     """Modify an existing user"""
     try:
         updated_user = service.modify(user)
-        logger.info(f"API request: Modified user with email {user.email}")
+        logger.info(f"API request: Modified user with email {user.email} by {current_user.get('sub')}")
         return updated_user
     except NotFoundError:
         logger.warning(f"User with email {user.email} not found for modification")

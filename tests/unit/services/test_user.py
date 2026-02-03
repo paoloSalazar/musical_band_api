@@ -1,6 +1,6 @@
 import pytest
 from exceptions.exceptions import ConflictError
-from schemas.user import User, UserCreate
+from schemas.user import UserBase, UserCreate, UserResponse
 from models.user import User as DBUser
 import services.user as service
 from exceptions import NotFoundError
@@ -95,7 +95,6 @@ def test_create_user(mocker):
     assert call_args.name == "Jane"
     assert call_args.lastname == "Smith"
     assert call_args.email == "jane.smith@example.com"
-    assert call_args.password == "hashedpass"
     assert call_args.role_id == 2
 
 def test_create_user_conflict(mocker):
@@ -116,7 +115,7 @@ def test_create_user_conflict(mocker):
 def test_modify_user_existing(mocker):
     """Test modify() function"""
     # Arrange - Mock data.get_one to return existing user and data.modify to return the modified DB user
-    user = User(id=1, name="Updated John", lastname="Doe", email="john.doe@example.com", password="newpass", role_id=1)
+    user = UserResponse(id=1, name="Updated John", lastname="Doe", email="john.doe@example.com", role_id=1)
     existing_db_user = DBUser(id=1, name="John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1)
     modified_db_user = DBUser(id=1, name="Updated John", lastname="Doe", email="john.doe@example.com", password="newpass", role_id=1)
     mock_get_one = mocker.patch('services.user.data.get_one')
@@ -130,7 +129,6 @@ def test_modify_user_existing(mocker):
     # Assert - Check result contains the expected User object
     assert result.id == 1
     assert result.name == "Updated John"
-    assert result.password == "newpass"
     mock_modify.assert_called_once()
     mock_get_one.assert_called_once_with("john.doe@example.com")
     # Verify the DBUser was created with correct data
@@ -146,7 +144,7 @@ def test_modify_user_not_found(mocker):
     mock_get_one.return_value = None
 
     # Act & Assert - Call service function and expect NotFoundError
-    user = User(id=99, name="Nonexistent", lastname="User", email="nonexistent@example.com", password="pass", role_id=1)
+    user = UserResponse(id=99, name="Nonexistent", lastname="User", email="nonexistent@example.com", password="pass", role_id=1)
     with pytest.raises(NotFoundError) as exc_info:
         service.modify(user)
     assert str(exc_info.value.args[0]) == "User with email nonexistent@example.com not found"

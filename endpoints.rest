@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqYW5lLnNtaXRoQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6NSwicm9sZV9pZCI6MSwiZXhwIjoxNzY5ODM5Njc0fQ.YGwiNM4hnMRIwRR6S2maIgDWE3liW-3iGUz6E26WjDM
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqYW5lLnNtaXRoQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Mywicm9sZV9pZCI6MywiZXhwIjoxNzcwMTE2NjAxfQ.lIdRh2msBzfK_jvHyrBlPOeL9zPuVx_6xfnkoM94UEY
 ### Get all user roles
 GET {{api}}/user-roles/
 
@@ -62,7 +62,7 @@ Content-Type: application/json
   "second_lastname": "Johnson",
   "email": "jane.smith@example.com",
   "password": "securepassword123",
-  "role_id": 1
+  "role_id": 3
 }
 
 ### Get a specific user
@@ -92,5 +92,5 @@ Content-Type: application/json
 
 {
   "email": "jane.smith@example.com",
-  "password": "hashedpass"
+  "password": "securepassword123"
 }
