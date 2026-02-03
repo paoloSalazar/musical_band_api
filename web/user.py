@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, Request
 from schemas.user_role import UserRole
 from schemas.auth import Token
-from schemas.user import UserResponse, UserCreate, UserLogin
+from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate
 import services.user as service
 import services.auth as auth_service
 from auth.auth import decode_access_token
@@ -72,17 +72,36 @@ def create(user: UserCreate) -> UserResponse:
 
 
 @router.patch("/")
-def modify(current_user: Annotated[dict, Depends(get_current_user)], user: UserResponse) -> UserResponse:
+def modify(current_user: Annotated[dict, Depends(get_current_user)], user_update: UserUpdate) -> UserResponse:
     """Modify an existing user"""
     try:
-        updated_user = service.modify(user)
-        logger.info(f"API request: Modified user with email {user.email} by {current_user.get('sub')}")
+        updated_user = service.modify(user_update)
+        logger.info(f"API request: Modified user with email {user_update.email} by {current_user.get('sub')}")
         return updated_user
     except NotFoundError:
-        logger.warning(f"User with email {user.email} not found for modification")
+        logger.warning(f"User with email {user_update.email} not found for modification")
         raise HTTPException(status_code=404, detail="User not found")
     except DatabaseError as e:
         logger.error(f"Database error in modify: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/{email}/password")
+def modify_password(current_user: Annotated[dict, Depends(get_current_user)], email: str, password_update: UserPasswordUpdate) -> dict:
+    """Modify user password (requires current password)"""
+    try:
+        success = service.modify_password(email, password_update.current_password, password_update.new_password)
+        if success:
+            logger.info(f"API request: Modified password for user {email} by {current_user.get('sub')}")
+            return {"message": "Password updated successfully"}
+    except NotFoundError:
+        logger.warning(f"User with email {email} not found for password modification")
+        raise HTTPException(status_code=404, detail="User not found")
+    except UnauthorizedError:
+        logger.warning(f"Invalid current password for user {email}")
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    except DatabaseError as e:
+        logger.error(f"Database error in modify_password: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

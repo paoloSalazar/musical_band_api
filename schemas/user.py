@@ -25,3 +25,18 @@ class UserLogin(BaseModel):
     """Schema for user login"""
     email: str
     password: str
+
+
+class UserUpdate(BaseModel):
+    """Schema for updating a user (all fields optional for PATCH)"""
+    name: str | None = None
+    lastname: str | None = None
+    second_lastname: str | None = None
+    email: str | None = None
+    role_id: int | None = None
+
+
+class UserPasswordUpdate(BaseModel):
+    """Schema for updating user password (requires current password)"""
+    current_password: str
+    new_password: str

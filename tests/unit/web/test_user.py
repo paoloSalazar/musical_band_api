@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
-from schemas.user import UserResponse, UserCreate
-from web.user import get_all, get_one, create, modify
+from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate
+from web.user import get_all, get_one, create, modify, modify_password
 from exceptions import NotFoundError, ConflictError, DatabaseError
 
 def test_get_users_empty_list(mocker):
@@ -98,24 +98,24 @@ def test_create_user(mocker):
 def test_modify_user(mocker):
     """Test modify() updates and returns modified user"""
     # Arrange - Mock service to return modified user
-    input_data = UserResponse(id=1, name="Updated John", lastname="Doe", email="john.doe@example.com", role_id=1)
+    input_data = UserUpdate(name="Updated John", lastname="Doe", email="john.doe@example.com", role_id=1)
     expected_modified_user = UserResponse(id=1, name="Updated John", lastname="Doe", email="john.doe@example.com", role_id=1)
     mock_service = mocker.patch('web.user.service.modify')
     mock_service.return_value = expected_modified_user
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
 
     # Act - Call function directly
-    result = modify(current_user=mock_current_user, user=input_data)
+    result = modify(current_user=mock_current_user, user_update=input_data)
 
     # Assert - Check result contains modified user
     assert result.id == 1
     assert result.name == "Updated John"
     mock_service.assert_called_once()
-    # Verify service was called with User object
+    # Verify service was called with UserUpdate object
     call_args = mock_service.call_args[0][0]
-    assert isinstance(call_args, UserResponse)
-    assert call_args.id == 1
+    assert isinstance(call_args, UserUpdate)
     assert call_args.name == "Updated John"
+    assert call_args.email == "john.doe@example.com"
 
 def test_create_user_conflict(mocker):
     """Test create() handles conflict when user already exists"""
@@ -139,14 +139,14 @@ def test_create_user_conflict(mocker):
 def test_modify_user_not_found(mocker):
     """Test modify() when user doesn't exist"""
     # Arrange - Mock service to raise NotFoundError
-    input_data = UserResponse(id=1, name="Nonexistent", lastname="User", email="nonexistent@example.com", role_id=1)
+    input_data = UserUpdate(name="Nonexistent", lastname="User", email="nonexistent@example.com", role_id=1)
     mock_service = mocker.patch('web.user.service.modify')
     mock_service.side_effect = NotFoundError("User with email nonexistent@example.com not found")
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
 
     # Act & Assert - Call function and expect HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        modify(current_user=mock_current_user, user=input_data)
+        modify(current_user=mock_current_user, user_update=input_data)
 
     assert exc_info.value.status_code == 404
     assert "User not found" in exc_info.value.detail
@@ -166,4 +166,55 @@ def test_get_all_database_error(mocker):
 
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Internal server error"
+    mock_service.assert_called_once()
+
+
+def test_modify_password_success(mocker):
+    """Test modify_password() successfully updates password"""
+    # Arrange - Mock service to return True
+    mock_service = mocker.patch('web.user.service.modify_password')
+    mock_service.return_value = True
+    mock_current_user = {"sub": "test@example.com", "role": "admin"}
+    password_update = UserPasswordUpdate(current_password="oldpassword", new_password="newpassword")
+
+    # Act - Call function directly
+    result = modify_password(current_user=mock_current_user, email="john.doe@example.com", password_update=password_update)
+
+    # Assert - Check result contains success message
+    assert result == {"message": "Password updated successfully"}
+    mock_service.assert_called_once_with("john.doe@example.com", "oldpassword", "newpassword")
+
+
+def test_modify_password_user_not_found(mocker):
+    """Test modify_password() when user doesn't exist"""
+    # Arrange - Mock service to raise NotFoundError
+    mock_service = mocker.patch('web.user.service.modify_password')
+    mock_service.side_effect = NotFoundError("User with email nonexistent@example.com not found")
+    mock_current_user = {"sub": "test@example.com", "role": "admin"}
+    password_update = UserPasswordUpdate(current_password="oldpassword", new_password="newpassword")
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        modify_password(current_user=mock_current_user, email="nonexistent@example.com", password_update=password_update)
+
+    assert exc_info.value.status_code == 404
+    assert "User not found" in exc_info.value.detail
+    mock_service.assert_called_once()
+
+
+def test_modify_password_invalid_current(mocker):
+    """Test modify_password() when current password is incorrect"""
+    # Arrange - Mock service to raise UnauthorizedError
+    from exceptions import UnauthorizedError
+    mock_service = mocker.patch('web.user.service.modify_password')
+    mock_service.side_effect = UnauthorizedError("Current password is incorrect")
+    mock_current_user = {"sub": "test@example.com", "role": "admin"}
+    password_update = UserPasswordUpdate(current_password="wrongpassword", new_password="newpassword")
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        modify_password(current_user=mock_current_user, email="john.doe@example.com", password_update=password_update)
+
+    assert exc_info.value.status_code == 401
+    assert "Current password is incorrect" in exc_info.value.detail
     mock_service.assert_called_once()
