@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqYW5lLnNtaXRoQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Mywicm9sZV9pZCI6MywiZXhwIjoxNzcwMTE2NjAxfQ.lIdRh2msBzfK_jvHyrBlPOeL9zPuVx_6xfnkoM94UEY
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqYW5lLnNtaXRoQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Mywicm9sZV9pZCI6MywiZXhwIjoxNzcwMTE5NjU1fQ.7fmsV7If1Ue-fpAlzJ0Mr_G73fhviUrf4D4cFNpQ_TM
 ### Get all user roles
 GET {{api}}/user-roles/
 
@@ -71,15 +71,27 @@ Authorization: Bearer {{user_token}}
 
 ### Update an existing user (PATCH)
 PATCH {{api}}/users/
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "id": 1,
   "name": "Janet",
   "lastname": "Smith",
   "second_lastname": "Johnson",
   "email": "jane.smith@example.com",
   "role_id": 3
+}
+
+###
+
+### Update user password (PATCH)
+PATCH {{api}}/users/jane.smith@example.com/password
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "current_password": "securepassword123",
+  "new_password": "newsecurepassword456"
 }
 
 ###
@@ -92,5 +104,5 @@ Content-Type: application/json
 
 {
   "email": "jane.smith@example.com",
-  "password": "securepassword123"
+  "password": "newsecurepassword456"
 }
