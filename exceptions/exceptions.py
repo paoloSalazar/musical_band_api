@@ -17,3 +17,8 @@ class ValidationError(Exception):
 class ConflictError(Exception):
     """Raised when there's a conflict, like duplicate entry"""
     pass
+
+
+class UnauthorizedError(Exception):
+    """Raised when authentication fails"""
+    pass

@@ -1,5 +1,5 @@
 import pytest
-from schemas.user import User, UserCreate, UserBase
+from schemas.user import UserCreate, UserBase, UserResponse
 
 
 def test_user_base_creation():
@@ -8,13 +8,11 @@ def test_user_base_creation():
         name="John",
         lastname="Doe",
         email="john.doe@example.com",
-        password="hashedpass",
         role_id=1
     )
     assert user.name == "John"
     assert user.lastname == "Doe"
     assert user.email == "john.doe@example.com"
-    assert user.password == "hashedpass"
     assert user.role_id == 1
 
 
@@ -24,7 +22,6 @@ def test_user_base_optional_second_lastname():
         name="Jane",
         lastname="Smith",
         email="jane.smith@example.com",
-        password="hashedpass",
         role_id=2
     )
     assert user.name == "Jane"
@@ -53,19 +50,17 @@ def test_user_create():
 
 def test_user_full():
     """Test User with id"""
-    user = User(
+    user = UserResponse(
         id=1,
         name="John",
         lastname="Doe",
         email="john.doe@example.com",
-        password="hashedpass",
         role_id=1
     )
     assert user.id == 1
     assert user.name == "John"
     assert user.lastname == "Doe"
     assert user.email == "john.doe@example.com"
-    assert user.password == "hashedpass"
     assert user.role_id == 1
 
 
@@ -76,26 +71,23 @@ def test_user_from_dict():
         "name": "Jane",
         "lastname": "Smith",
         "email": "jane.smith@example.com",
-        "password": "hashedpass",
         "role_id": 2
     }
-    user = User(**data)
+    user = UserResponse(**data)
     assert user.id == 2
     assert user.name == "Jane"
     assert user.lastname == "Smith"
     assert user.email == "jane.smith@example.com"
-    assert user.password == "hashedpass"
     assert user.role_id == 2
 
 
 def test_user_to_dict():
     """Test converting User to dictionary"""
-    user = User(
+    user = UserResponse(
         id=3,
         name="Bob",
         lastname="Wilson",
         email="bob.wilson@example.com",
-        password="pass123",
         role_id=1
     )
     data = user.model_dump()
@@ -105,7 +97,6 @@ def test_user_to_dict():
         "lastname": "Wilson",
         "second_lastname": None,
         "email": "bob.wilson@example.com",
-        "password": "pass123",
         "role_id": 1
     }
     assert data == expected

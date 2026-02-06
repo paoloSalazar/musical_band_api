@@ -1,9 +1,9 @@
 import pytest
 from exceptions.exceptions import ConflictError
-from schemas.user import User, UserCreate
+from schemas.user import UserBase, UserCreate, UserResponse, UserUpdate
 from models.user import User as DBUser
 import services.user as service
-from exceptions import NotFoundError
+from exceptions import NotFoundError, UnauthorizedError
 
 def test_get_all_users_empty(mocker):
     """Test get_all() returns empty list when no users"""
@@ -95,7 +95,6 @@ def test_create_user(mocker):
     assert call_args.name == "Jane"
     assert call_args.lastname == "Smith"
     assert call_args.email == "jane.smith@example.com"
-    assert call_args.password == "hashedpass"
     assert call_args.role_id == 2
 
 def test_create_user_conflict(mocker):
@@ -116,21 +115,20 @@ def test_create_user_conflict(mocker):
 def test_modify_user_existing(mocker):
     """Test modify() function"""
     # Arrange - Mock data.get_one to return existing user and data.modify to return the modified DB user
-    user = User(id=1, name="Updated John", lastname="Doe", email="john.doe@example.com", password="newpass", role_id=1)
+    user_update = UserUpdate(name="Updated John", lastname="Doe", email="john.doe@example.com", role_id=1)
     existing_db_user = DBUser(id=1, name="John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1)
-    modified_db_user = DBUser(id=1, name="Updated John", lastname="Doe", email="john.doe@example.com", password="newpass", role_id=1)
+    modified_db_user = DBUser(id=1, name="Updated John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1)
     mock_get_one = mocker.patch('services.user.data.get_one')
     mock_get_one.return_value = existing_db_user
     mock_modify = mocker.patch('services.user.data.modify')
     mock_modify.return_value = modified_db_user
 
     # Act - Call service function
-    result = service.modify(user)
+    result = service.modify(user_update)
 
     # Assert - Check result contains the expected User object
     assert result.id == 1
     assert result.name == "Updated John"
-    assert result.password == "newpass"
     mock_modify.assert_called_once()
     mock_get_one.assert_called_once_with("john.doe@example.com")
     # Verify the DBUser was created with correct data
@@ -138,6 +136,35 @@ def test_modify_user_existing(mocker):
     assert isinstance(call_args, DBUser)
     assert call_args.id == 1
     assert call_args.name == "Updated John"
+    assert call_args.password == "hashedpass"  # Password should not change
+
+
+def test_modify_user_partial_update(mocker):
+    """Test modify() function with partial update (only name)"""
+    # Arrange - Mock data.get_one to return existing user and data.modify to return the modified DB user
+    user_update = UserUpdate(name="Updated John")  # Only name is updated
+    existing_db_user = DBUser(id=1, name="John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1)
+    modified_db_user = DBUser(id=1, name="Updated John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1)
+    mock_get_one = mocker.patch('services.user.data.get_one')
+    mock_get_one.return_value = existing_db_user
+    mock_modify = mocker.patch('services.user.data.modify')
+    mock_modify.return_value = modified_db_user
+
+    # Act - Call service function
+    result = service.modify(user_update)
+
+    # Assert - Check result contains the expected User object
+    assert result.id == 1
+    assert result.name == "Updated John"
+    assert result.lastname == "Doe"  # Should remain unchanged
+    mock_modify.assert_called_once()
+    mock_get_one.assert_called_once()  # Called with None (user_update.email), but returns existing user
+    # Verify the DBUser was created with correct data
+    call_args = mock_modify.call_args[0][0]
+    assert isinstance(call_args, DBUser)
+    assert call_args.id == 1
+    assert call_args.name == "Updated John"
+    assert call_args.email == "john.doe@example.com"  # Should use existing user's email
 
 def test_modify_user_not_found(mocker):
     """Test modify() function when user does not exist"""
@@ -146,8 +173,66 @@ def test_modify_user_not_found(mocker):
     mock_get_one.return_value = None
 
     # Act & Assert - Call service function and expect NotFoundError
-    user = User(id=99, name="Nonexistent", lastname="User", email="nonexistent@example.com", password="pass", role_id=1)
+    user = UserUpdate(name="Nonexistent", lastname="User", email="nonexistent@example.com", role_id=1)
     with pytest.raises(NotFoundError) as exc_info:
         service.modify(user)
     assert str(exc_info.value.args[0]) == "User with email nonexistent@example.com not found"
     mock_get_one.assert_called_once_with("nonexistent@example.com")
+
+
+def test_modify_password_success(mocker):
+    """Test modify_password() function successfully updates password"""
+    # Arrange - Mock data.get_one to return existing user and data.modify to return the modified DB user
+    existing_db_user = DBUser(id=1, name="John", lastname="Doe", email="john.doe@example.com", password="$hashedpass$", role_id=1)
+    modified_db_user = DBUser(id=1, name="John", lastname="Doe", email="john.doe@example.com", password="$newhashedpass$", role_id=1)
+    mock_get_one = mocker.patch('services.user.data.get_one')
+    mock_get_one.return_value = existing_db_user
+    mock_modify = mocker.patch('services.user.data.modify')
+    mock_modify.return_value = modified_db_user
+    mock_verify = mocker.patch('services.user.verify_password')
+    mock_verify.return_value = True
+    mock_hash = mocker.patch('services.user.get_password_hash')
+    mock_hash.return_value = "$newhashedpass$"
+
+    # Act - Call service function
+    result = service.modify_password("john.doe@example.com", "oldpassword", "newpassword")
+
+    # Assert - Check result is True
+    assert result == True
+    mock_modify.assert_called_once()
+    mock_get_one.assert_called_once_with("john.doe@example.com")
+    # Verify the DBUser was created with new hashed password
+    call_args = mock_modify.call_args[0][0]
+    assert isinstance(call_args, DBUser)
+    assert call_args.id == 1
+    assert call_args.name == "John"
+    assert call_args.password == "$newhashedpass$"
+
+
+def test_modify_password_user_not_found(mocker):
+    """Test modify_password() function when user does not exist"""
+    # Arrange - Mock data.get_one to return None
+    mock_get_one = mocker.patch('services.user.data.get_one')
+    mock_get_one.return_value = None
+
+    # Act & Assert - Call service function and expect NotFoundError
+    with pytest.raises(NotFoundError) as exc_info:
+        service.modify_password("nonexistent@example.com", "oldpassword", "newpassword")
+    assert str(exc_info.value.args[0]) == "User with email nonexistent@example.com not found"
+    mock_get_one.assert_called_once_with("nonexistent@example.com")
+
+
+def test_modify_password_invalid_current(mocker):
+    """Test modify_password() function when current password is incorrect"""
+    # Arrange - Mock data.get_one to return existing user
+    existing_db_user = DBUser(id=1, name="John", lastname="Doe", email="john.doe@example.com", password="$hashedpass$", role_id=1)
+    mock_get_one = mocker.patch('services.user.data.get_one')
+    mock_get_one.return_value = existing_db_user
+    mock_verify = mocker.patch('services.user.verify_password')
+    mock_verify.return_value = False
+
+    # Act & Assert - Call service function and expect UnauthorizedError
+    with pytest.raises(UnauthorizedError) as exc_info:
+        service.modify_password("john.doe@example.com", "wrongpassword", "newpassword")
+    assert str(exc_info.value.args[0]) == "Current password is incorrect"
+    mock_get_one.assert_called_once_with("john.doe@example.com")
