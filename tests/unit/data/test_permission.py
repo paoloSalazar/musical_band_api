@@ -1,5 +1,6 @@
 import pytest
 from models.permission import Permission
+from models.user_role import UserRole
 import data.permission as data
 from sqlalchemy.exc import SQLAlchemyError
 from exceptions import DatabaseError
@@ -410,3 +411,385 @@ def test_delete_permission_database_error(mocker):
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
     mock_session.rollback.assert_called_once()  # Rollback should be called on error
+
+
+# ============================================
+# Role-Permission Assignment Tests
+# ============================================
+
+def test_assign_permission_to_role_success(mocker):
+    """Test assign_permission_to_role() when both exist and not already assigned"""
+    # Arrange - Mock SessionLocal and queries
+    permission = Permission(id=1, name="read:users", description="Permission to read users")
+    role = UserRole(id=1, name="admin", description="Administrator")
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    # First call: get permission by id
+    # Second call: get role by id
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = [permission, role]
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.assign_permission_to_role(1, 1)
+
+    # Assert - Check result and that permission was added to role
+    assert result is True
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.commit.assert_called_once()
+
+
+def test_assign_permission_to_role_permission_not_found(mocker):
+    """Test assign_permission_to_role() when permission does not exist"""
+    # Arrange - Mock SessionLocal and queries
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    # First call: get permission by id returns None
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = [None, None]
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.assign_permission_to_role(99, 1)
+
+    assert "Failed to assign permission" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    # Note: rollback not called because no DB transaction was started
+
+
+def test_assign_permission_to_role_role_not_found(mocker):
+    """Test assign_permission_to_role() when role does not exist"""
+    # Arrange - Mock SessionLocal and queries
+    permission = Permission(id=1, name="read:users", description="Permission to read users")
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    # First call: get permission by id
+    # Second call: get role by id returns None
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = [permission, None]
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.assign_permission_to_role(1, 99)
+
+    assert "Failed to assign permission" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    # Note: rollback not called because no DB transaction was started
+
+
+def test_assign_permission_to_role_already_assigned(mocker):
+    """Test assign_permission_to_role() when permission is already assigned to role"""
+    # Arrange - Mock SessionLocal and queries
+    permission = Permission(id=1, name="read:users", description="Permission to read users")
+    role = UserRole(id=1, name="admin", description="Administrator")
+    role.permissions.append(permission)  # Permission already assigned
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = [permission, role]
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.assign_permission_to_role(1, 1)
+
+    # Assert - Check result is True but no commit should happen
+    assert result is True
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.commit.assert_not_called()
+
+
+def test_assign_permission_to_role_database_error(mocker):
+    """Test assign_permission_to_role() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and queries
+    permission = Permission(id=1, name="read:users", description="Permission to read users")
+    role = UserRole(id=1, name="admin", description="Administrator")
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = [permission, role]
+    mock_session.commit.side_effect = SQLAlchemyError("Database connection failed")
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.assign_permission_to_role(1, 1)
+
+    assert "Failed to assign permission" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.rollback.assert_called_once()
+
+
+def test_remove_permission_from_role_success(mocker):
+    """Test remove_permission_from_role() when both exist and permission is assigned"""
+    # Arrange - Mock SessionLocal and queries
+    permission = Permission(id=1, name="read:users", description="Permission to read users")
+    role = UserRole(id=1, name="admin", description="Administrator")
+    role.permissions.append(permission)  # Permission assigned
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = [permission, role]
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.remove_permission_from_role(1, 1)
+
+    # Assert - Check result and that permission was removed from role
+    assert result is True
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.commit.assert_called_once()
+
+
+def test_remove_permission_from_role_permission_not_found(mocker):
+    """Test remove_permission_from_role() when permission does not exist"""
+    # Arrange - Mock SessionLocal and queries
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = [None, None]
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.remove_permission_from_role(99, 1)
+
+    assert "Failed to remove permission" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    # Note: rollback not called because no DB transaction was started
+
+
+def test_remove_permission_from_role_not_assigned(mocker):
+    """Test remove_permission_from_role() when permission is not assigned to role"""
+    # Arrange - Mock SessionLocal and queries
+    permission = Permission(id=1, name="read:users", description="Permission to read users")
+    role = UserRole(id=1, name="admin", description="Administrator")
+    # Permission NOT assigned (no append)
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = [permission, role]
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.remove_permission_from_role(1, 1)
+
+    # Assert - Check result is True but no commit should happen
+    assert result is True
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.commit.assert_not_called()
+
+
+def test_remove_permission_from_role_database_error(mocker):
+    """Test remove_permission_from_role() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and queries
+    permission = Permission(id=1, name="read:users", description="Permission to read users")
+    role = UserRole(id=1, name="admin", description="Administrator")
+    role.permissions.append(permission)
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = [permission, role]
+    mock_session.commit.side_effect = SQLAlchemyError("Database connection failed")
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.remove_permission_from_role(1, 1)
+
+    assert "Failed to remove permission" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    mock_session.rollback.assert_called_once()
+
+
+def test_get_role_permissions_success(mocker):
+    """Test get_role_permissions() returns list of permissions for a role"""
+    # Arrange - Mock SessionLocal and queries
+    role = UserRole(id=1, name="admin", description="Administrator")
+    permissions = [
+        Permission(id=1, name="read:users", description="Permission to read users"),
+        Permission(id=2, name="write:users", description="Permission to write users")
+    ]
+    role.permissions.extend(permissions)
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = role
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.get_role_permissions(1)
+
+    # Assert - Check result contains the expected permissions
+    assert len(result) == 2
+    assert result[0].id == 1
+    assert result[0].name == "read:users"
+    assert result[1].id == 2
+    assert result[1].name == "write:users"
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+def test_get_role_permissions_role_not_found(mocker):
+    """Test get_role_permissions() when role does not exist"""
+    # Arrange - Mock SessionLocal and queries
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = None
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.get_role_permissions(99)
+
+    assert "Failed to get role permissions" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+def test_get_role_permissions_database_error(mocker):
+    """Test get_role_permissions() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and queries
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = SQLAlchemyError("Database connection failed")
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.get_role_permissions(1)
+
+    assert "Failed to get role permissions" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+def test_get_permission_roles_success(mocker):
+    """Test get_permission_roles() returns list of roles for a permission"""
+    # Arrange - Mock SessionLocal and queries
+    permission = Permission(id=1, name="read:users", description="Permission to read users")
+    roles = [
+        UserRole(id=1, name="admin", description="Administrator"),
+        UserRole(id=2, name="moderator", description="Moderator")
+    ]
+    # Set up the many-to-many relationship
+    permission.roles = roles
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = permission
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.get_permission_roles(1)
+
+    # Assert - Check result contains the expected roles
+    assert len(result) == 2
+    assert result[0].id == 1
+    assert result[0].name == "admin"
+    assert result[1].id == 2
+    assert result[1].name == "moderator"
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+def test_get_permission_roles_permission_not_found(mocker):
+    """Test get_permission_roles() when permission does not exist"""
+    # Arrange - Mock SessionLocal and queries
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = None
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.get_permission_roles(99)
+
+    assert "Failed to get permission roles" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+def test_get_permission_roles_database_error(mocker):
+    """Test get_permission_roles() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and queries
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = SQLAlchemyError("Database connection failed")
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.get_permission_roles(1)
+
+    assert "Failed to get permission roles" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()

@@ -1,6 +1,7 @@
 import logging
 from config.database import SessionLocal
 from models.permission import Permission
+from models.user_role import UserRole
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from exceptions import DatabaseError, DatabaseConnectionError
 
@@ -114,5 +115,118 @@ def delete(permission_id: int) -> bool:
         logger.error(f"Database error while deleting permission '{permission_id}'")
         db.rollback()
         raise DatabaseError("Failed to delete permission")
+    finally:
+        db.close()
+
+
+# ============================================
+# Role-Permission Assignment Functions
+# ============================================
+
+
+def assign_permission_to_role(permission_id: int, role_id: int) -> bool:
+    """Assign a permission to a role."""
+    db = SessionLocal()
+    try:
+        permission = db.query(Permission).filter(Permission.id == permission_id).first()
+        role = db.query(UserRole).filter(UserRole.id == role_id).first()
+        
+        if not permission:
+            logger.error(f"Permission with ID {permission_id} not found")
+            raise DatabaseError("Failed to assign permission: permission not found")
+        
+        if not role:
+            logger.error(f"Role with ID {role_id} not found")
+            raise DatabaseError("Failed to assign permission: role not found")
+        
+        if permission not in role.permissions:
+            role.permissions.append(permission)
+            db.commit()
+            logger.info(f"Permission '{permission.name}' assigned to role '{role.name}'")
+        
+        return True
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while assigning permission '{permission_id}' to role '{role_id}'")
+        db.rollback()
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while assigning permission '{permission_id}' to role '{role_id}'")
+        db.rollback()
+        raise DatabaseError("Failed to assign permission")
+    finally:
+        db.close()
+
+
+def remove_permission_from_role(permission_id: int, role_id: int) -> bool:
+    """Remove a permission from a role."""
+    db = SessionLocal()
+    try:
+        permission = db.query(Permission).filter(Permission.id == permission_id).first()
+        role = db.query(UserRole).filter(UserRole.id == role_id).first()
+        
+        if not permission:
+            logger.error(f"Permission with ID {permission_id} not found")
+            raise DatabaseError("Failed to remove permission: permission not found")
+        
+        if not role:
+            logger.error(f"Role with ID {role_id} not found")
+            raise DatabaseError("Failed to remove permission: role not found")
+        
+        if permission in role.permissions:
+            role.permissions.remove(permission)
+            db.commit()
+            logger.info(f"Permission '{permission.name}' removed from role '{role.name}'")
+        
+        return True
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while removing permission '{permission_id}' from role '{role_id}'")
+        db.rollback()
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while removing permission '{permission_id}' from role '{role_id}'")
+        db.rollback()
+        raise DatabaseError("Failed to remove permission")
+    finally:
+        db.close()
+
+
+def get_role_permissions(role_id: int) -> list[Permission]:
+    """Get all permissions for a role."""
+    db = SessionLocal()
+    try:
+        role = db.query(UserRole).filter(UserRole.id == role_id).first()
+        
+        if not role:
+            logger.error(f"Role with ID {role_id} not found")
+            raise DatabaseError("Failed to get role permissions: role not found")
+        
+        return role.permissions
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting permissions for role '{role_id}'")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting permissions for role '{role_id}'")
+        raise DatabaseError("Failed to get role permissions")
+    finally:
+        db.close()
+
+
+def get_permission_roles(permission_id: int) -> list[UserRole]:
+    """Get all roles for a permission."""
+    db = SessionLocal()
+    try:
+        permission = db.query(Permission).filter(Permission.id == permission_id).first()
+        
+        if not permission:
+            logger.error(f"Permission with ID {permission_id} not found")
+            raise DatabaseError("Failed to get permission roles: permission not found")
+        
+        return permission.roles
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting roles for permission '{permission_id}'")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting roles for permission '{permission_id}'")
+        raise DatabaseError("Failed to get permission roles")
     finally:
         db.close()
