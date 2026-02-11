@@ -1,5 +1,7 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqYW5lLnNtaXRoQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Mywicm9sZV9pZCI6MywiZXhwIjoxNzcwMTE5NjU1fQ.7fmsV7If1Ue-fpAlzJ0Mr_G73fhviUrf4D4cFNpQ_TM
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Nywicm9sZV9pZCI6MSwiZXhwIjoxNzcwODEyOTc3fQ.SfaKhdy9yDEs7ScTPCIq72JtM7-23zsxmoeDqRfnk-g
+
+###
 ### Get all user roles
 GET {{api}}/user-roles/
 
@@ -47,6 +49,63 @@ Content-Type: application/json
 DELETE {{api}}/user-roles/superadmin
 
 ###
+### PERMISSIONS ENDPOINTS ###
+### Get all permissions
+GET {{api}}/permissions/
+
+###
+
+### Get a specific permission
+GET {{api}}/permissions/1
+
+###
+
+### Create a new permission
+POST {{api}}/permissions/
+Content-Type: application/json
+
+{
+  "name": "read:users",
+  "description": "Permission to read users"
+}
+
+###
+
+### Update an existing permission (PATCH)
+PATCH {{api}}/permissions/1
+Content-Type: application/json
+
+{
+  "name": "read:all_users",
+  "description": "Permission to read all users"
+}
+
+###
+
+### Delete a permission
+DELETE {{api}}/permissions/1
+
+###
+### ROLE-PERMISSION ASSIGNMENT ENDPOINTS ###
+### Get permissions for a role
+GET {{api}}/permissions/1/permissions
+
+###
+
+### Get roles for a permission
+GET {{api}}/permissions/role/1/roles
+
+###
+
+### Assign a permission to a role
+POST {{api}}/permissions/roles/assign?permission_id=1&role_id=1
+
+###
+
+### Remove a permission from a role
+POST {{api}}/permissions/roles/remove?permission_id=1&role_id=1
+
+###
 ### USERS ENDPOINTS ###
 ### Get all users (requires authentication)
 GET {{api}}/users/
@@ -57,12 +116,12 @@ POST {{api}}/users/
 Content-Type: application/json
 
 {
-  "name": "Jane",
-  "lastname": "Smith",
-  "second_lastname": "Johnson",
-  "email": "jane.smith@example.com",
-  "password": "securepassword123",
-  "role_id": 3
+  "name": "Paolo",
+  "lastname": "Salazar",
+  "second_lastname": "Villarroel",
+  "email": "paolo.salazar@example.com",
+  "password": "salazar",
+  "role_id": 1
 }
 
 ### Get a specific user
@@ -103,6 +162,6 @@ POST {{api}}/users/login
 Content-Type: application/json
 
 {
-  "email": "jane.smith@example.com",
-  "password": "newsecurepassword456"
+  "email": "paolo.salazar@example.com",
+  "password": "salazar"
 }
