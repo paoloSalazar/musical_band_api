@@ -32,3 +32,17 @@ class PermissionWithRoles(BaseModel):
     roles: List[int]  # Role IDs
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RolePermissionCreate(BaseModel):
+    """Schema for creating a role-permission association."""
+    role_id: int
+    permission_id: int
+
+
+class RolePermissionResponse(BaseModel):
+    """Schema for role-permission association response."""
+    role_id: int
+    permission_id: int
+
+    model_config = ConfigDict(from_attributes=True)
