@@ -33,7 +33,21 @@ class RoleChecker:
         return self._check_role(user)
 
 
-# Pre-defined role checkers for common use cases
+# ============================================
+# Role Checker Factory Function
+# ============================================
+
+
+def create_role_checker(allowed_roles: list[str]) -> RoleChecker:
+    """Factory function to create a RoleChecker with dynamic roles.
+    
+    Usage:
+        Depends(create_role_checker(["admin", "moderator"]))
+    """
+    return RoleChecker(allowed_roles)
+
+
+# Pre-defined role checkers for common use cases (kept for convenience)
 require_admin = RoleChecker(allowed_roles=["admin"])
 require_admin_or_moderator = RoleChecker(allowed_roles=["admin", "moderator"])
 require_any_role = RoleChecker(allowed_roles=["admin", "moderator", "user"])

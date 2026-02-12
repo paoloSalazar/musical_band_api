@@ -4,7 +4,7 @@ import services.permission as service
 from schemas.permission import PermissionResponse, PermissionCreate, PermissionUpdate, RolePermissionCreate
 from exceptions import DatabaseError, NotFoundError, ConflictError
 from auth.auth import get_current_user
-from auth.roles import require_admin
+from auth.roles import create_role_checker
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/permissions")
 # ============================================
 
 
-@router.get("/", dependencies=[Depends(require_admin)])
+@router.get("/", dependencies=[Depends(create_role_checker(["admin"]))])
 def get_all() -> list[PermissionResponse]:
     """Get all permissions (Admin only)"""
     try:
@@ -28,7 +28,7 @@ def get_all() -> list[PermissionResponse]:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/{permission_id}", dependencies=[Depends(require_admin)])
+@router.get("/{permission_id}", dependencies=[Depends(create_role_checker(["admin"]))])
 def get_one(permission_id: int) -> PermissionResponse:
     """Get a permission by ID (Admin only)"""
     try:
@@ -45,7 +45,7 @@ def get_one(permission_id: int) -> PermissionResponse:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/", dependencies=[Depends(require_admin)])
+@router.post("/", dependencies=[Depends(create_role_checker(["admin"]))])
 def create(permission: PermissionCreate) -> PermissionResponse:
     """Create a new permission (Admin only)"""
     try:
@@ -60,7 +60,7 @@ def create(permission: PermissionCreate) -> PermissionResponse:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.patch("/{permission_id}", dependencies=[Depends(require_admin)])
+@router.patch("/{permission_id}", dependencies=[Depends(create_role_checker(["admin"]))])
 def update(permission_id: int, permission_update: PermissionUpdate) -> PermissionResponse:
     """Update a permission (Admin only)"""
     try:
@@ -77,7 +77,7 @@ def update(permission_id: int, permission_update: PermissionUpdate) -> Permissio
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.delete("/{permission_id}", dependencies=[Depends(require_admin)])
+@router.delete("/{permission_id}", dependencies=[Depends(create_role_checker(["admin"]))])
 def delete(permission_id: int) -> bool:
     """Delete a permission (Admin only)"""
     try:
@@ -99,7 +99,7 @@ def delete(permission_id: int) -> bool:
 # ============================================
 
 
-@router.get("/{role_id}/permissions", dependencies=[Depends(require_admin)])
+@router.get("/{role_id}/permissions", dependencies=[Depends(create_role_checker(["admin"]))])
 def get_role_permissions(role_id: int) -> list[PermissionResponse]:
     """Get all permissions for a role (Admin only)"""
     try:
@@ -111,7 +111,7 @@ def get_role_permissions(role_id: int) -> list[PermissionResponse]:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/role/{permission_id}/roles", dependencies=[Depends(require_admin)])
+@router.get("/role/{permission_id}/roles", dependencies=[Depends(create_role_checker(["admin"]))])
 def get_permission_roles(permission_id: int):
     """Get all roles for a permission (Admin only)"""
     try:
@@ -123,7 +123,7 @@ def get_permission_roles(permission_id: int):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/roles/assign", dependencies=[Depends(require_admin)])
+@router.post("/roles/assign", dependencies=[Depends(create_role_checker(["admin"]))])
 def assign_permission_to_role(permission_id: int, role_id: int) -> dict:
     """Assign a permission to a role (Admin only)"""
     try:
@@ -135,7 +135,7 @@ def assign_permission_to_role(permission_id: int, role_id: int) -> dict:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/roles/remove", dependencies=[Depends(require_admin)])
+@router.post("/roles/remove", dependencies=[Depends(create_role_checker(["admin"]))])
 def remove_permission_from_role(permission_id: int, role_id: int) -> dict:
     """Remove a permission from a role (Admin only)"""
     try:

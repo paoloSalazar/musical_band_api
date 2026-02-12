@@ -1,9 +1,9 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Nywicm9sZV9pZCI6MSwiZXhwIjoxNzcwODEyOTc3fQ.SfaKhdy9yDEs7ScTPCIq72JtM7-23zsxmoeDqRfnk-g
-
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Nywicm9sZV9pZCI6MSwiZXhwIjoxNzcwODkwMDU3fQ.IfrZjvMUJifn2jo2zXIXyBNm_DXpOV40y5poj3Ga5a8
 ###
 ### Get all user roles
 GET {{api}}/user-roles/
+Authorization: Bearer {{user_token}}
 
 ###
 
@@ -14,11 +14,12 @@ GET {{api}}/user-roles/admin
 
 ### Create a new user role
 POST {{api}}/user-roles/
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "admin",
-  "description": "Administrator role"
+  "name": "client",
+  "description": "Client role"
 }
 
 ###
@@ -52,6 +53,7 @@ DELETE {{api}}/user-roles/superadmin
 ### PERMISSIONS ENDPOINTS ###
 ### Get all permissions
 GET {{api}}/permissions/
+Authorization: Bearer {{user_token}}
 
 ###
 
@@ -62,6 +64,7 @@ GET {{api}}/permissions/1
 
 ### Create a new permission
 POST {{api}}/permissions/
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
@@ -89,7 +92,7 @@ DELETE {{api}}/permissions/1
 ### ROLE-PERMISSION ASSIGNMENT ENDPOINTS ###
 ### Get permissions for a role
 GET {{api}}/permissions/1/permissions
-
+Authorization: Bearer {{user_token}}
 ###
 
 ### Get roles for a permission
@@ -99,7 +102,7 @@ GET {{api}}/permissions/role/1/roles
 
 ### Assign a permission to a role
 POST {{api}}/permissions/roles/assign?permission_id=1&role_id=1
-
+Authorization: Bearer {{user_token}}
 ###
 
 ### Remove a permission from a role
@@ -122,6 +125,19 @@ Content-Type: application/json
   "email": "paolo.salazar@example.com",
   "password": "salazar",
   "role_id": 1
+}
+###
+
+POST {{api}}/users/
+Content-Type: application/json
+
+{
+  "name": "Juan",
+  "lastname": "Perez",
+  "second_lastname": "Villarroel",
+  "email": "juan.perez@example.com",
+  "password": "perez",
+  "role_id": 2
 }
 
 ### Get a specific user
@@ -164,4 +180,13 @@ Content-Type: application/json
 {
   "email": "paolo.salazar@example.com",
   "password": "salazar"
+}
+
+###
+POST {{api}}/users/login
+Content-Type: application/json
+
+{
+  "email": "juan.perez@example.com",
+  "password": "perez"
 }
