@@ -13,6 +13,7 @@ class UserRole(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     users = relationship("User", back_populates="role")
+    permissions = relationship("Permission", secondary="role_permissions", back_populates="roles")
 
     def __repr__(self):
         return f"<UserRole(name={self.name}, description={self.description})>"

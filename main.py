@@ -19,12 +19,13 @@ for name in ['sqlalchemy.engine', 'sqlalchemy.pool', 'sqlalchemy.orm', 'sqlalche
     logging.getLogger(name).setLevel(logging.CRITICAL)
 
 from fastapi import FastAPI
-from web import user_role, user
+from web import user_role, user, permission
 
 app = FastAPI()
 
 app.include_router(user_role.router)
 app.include_router(user.router)
+app.include_router(permission.router)
 
 if __name__ == "__main__":
     import uvicorn

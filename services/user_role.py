@@ -73,6 +73,7 @@ def replace(user_role: UserRole) -> UserRole:
         db_role = DBUserRole(id=user_role.id, name=user_role.name, description=user_role.description)
         replaced = data.replace(db_role)
         if replaced:
+            logger.info(f"Replaced user role with id {user_role.id}")   
             return UserRole.model_validate(replaced)
         else:
             raise NotFoundError(f"User role with id {user_role.id} not found")
@@ -86,6 +87,7 @@ def delete(name: str) -> bool:
         existing = data.get_one(name)
         if not existing:
             raise NotFoundError(f"User role '{name}' not found")
+        logger.info(f"Deleted user role '{name}'")  
         return data.delete(name)
     except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in delete")

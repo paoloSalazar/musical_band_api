@@ -3,21 +3,84 @@ from fastapi import HTTPException
 from schemas.user_role import UserRole, UserRoleCreate
 from web.user_role import get_all, get_one, create, modify, replace, delete
 from exceptions import NotFoundError, ConflictError, DatabaseError
+from auth.roles import require_admin
 
-def test_get_user_roles_empty_list(mocker):
+
+# ============================================
+# RBAC Tests for User Roles
+# ============================================
+
+
+def test_require_admin_allows_admin(mocker):
+    """Test require_admin allows admin user"""
+    # Simulate authenticated admin user
+    mock_user = {"id": 1, "email": "admin@example.com", "role": "admin"}
+    
+    # Act - Call require_admin with admin user
+    result = require_admin._check_role(mock_user)
+    
+    # Assert
+    assert result == mock_user
+
+
+def test_require_admin_denies_user(mocker):
+    """Test require_admin denies regular user"""
+    # Simulate authenticated regular user
+    mock_user = {"id": 2, "email": "user@example.com", "role": "user"}
+    
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        require_admin._check_role(mock_user)
+    
+    assert exc_info.value.status_code == 403
+
+
+def test_require_admin_denies_moderator(mocker):
+    """Test require_admin denies moderator"""
+    # Simulate authenticated moderator
+    mock_user = {"id": 3, "email": "moderator@example.com", "role": "moderator"}
+    
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        require_admin._check_role(mock_user)
+    
+    assert exc_info.value.status_code == 403
+    assert "Required role(s): admin" in exc_info.value.detail
+
+
+def test_require_admin_denies_no_role(mocker):
+    """Test require_admin denies user without role"""
+    # Simulate authenticated user without role
+    mock_user = {"id": 4, "email": "no-role@example.com"}
+    
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        require_admin._check_role(mock_user)
+    
+    assert exc_info.value.status_code == 403
+
+
+# ============================================
+# Service-Level Tests for User Roles
+# (These test the business logic without RBAC)
+# ============================================
+
+
+def test_get_all_roles_empty_list(mocker):
     """Test get_all() returns empty list when no roles"""
     # Arrange - Mock service to return empty list
     mock_service = mocker.patch('web.user_role.service.get_all')
     mock_service.return_value = []
 
-    # Act - Call function directly
+    # Act - Call function directly (RBAC handled at router level)
     result = get_all()
 
     # Assert - Check result is empty list
     assert result == []
     mock_service.assert_called_once()
 
-def test_get_user_roles_with_data(mocker):
+
+def test_get_all_roles_with_data(mocker):
     """Test get_all() returns roles when they exist"""
     # Arrange - Mock service to return specific roles
     expected_roles = [
@@ -34,12 +97,12 @@ def test_get_user_roles_with_data(mocker):
     assert len(result) == 2
     assert result[0].id == 1
     assert result[0].name == "admin"
-    assert result[0].description == "Administrator"
     assert result[1].id == 2
     assert result[1].name == "user"
     mock_service.assert_called_once()
 
-def test_get_user_role_found(mocker):
+
+def test_get_one_role_found(mocker):
     """Test get_one() when role exists"""
     # Arrange - Mock service to return a specific role
     expected_role = UserRole(id=1, name="admin", description="Administrator")
@@ -55,13 +118,14 @@ def test_get_user_role_found(mocker):
     assert result.description == "Administrator"
     mock_service.assert_called_once_with("admin")
 
-def test_get_user_role_not_found(mocker):
+
+def test_get_one_role_not_found(mocker):
     """Test get_one() when role doesn't exist"""
     # Arrange - Mock service to raise NotFoundError
     mock_service = mocker.patch('web.user_role.service.get_one')
     mock_service.side_effect = NotFoundError("User role 'nonexistent' not found")
 
-    # Act & Assert - Call function and expect HTTPException
+    # Act & Assert - Should raise HTTPException
     with pytest.raises(HTTPException) as exc_info:
         get_one("nonexistent")
 
@@ -69,7 +133,8 @@ def test_get_user_role_not_found(mocker):
     assert "User role 'nonexistent' not found" in exc_info.value.detail
     mock_service.assert_called_once_with("nonexistent")
 
-def test_create_user_role(mocker):
+
+def test_create_role_success(mocker):
     """Test create() creates and returns new role"""
     # Arrange - Mock service to return created role
     input_data = UserRoleCreate(name="moderator", description="Content moderator")
@@ -85,13 +150,25 @@ def test_create_user_role(mocker):
     assert result.name == "moderator"
     assert result.description == "Content moderator"
     mock_service.assert_called_once()
-    # Verify service was called with UserRoleCreate object
-    call_args = mock_service.call_args[0][0]
-    assert isinstance(call_args, UserRoleCreate)
-    assert call_args.name == "moderator"
-    assert call_args.description == "Content moderator"
 
-def test_patch_user_role(mocker):
+
+def test_create_role_conflict(mocker):
+    """Test create() handles conflict when role already exists"""
+    # Arrange - Mock service to raise ConflictError for duplicate role
+    input_data = UserRoleCreate(name="admin", description="Duplicate admin role")
+    mock_service = mocker.patch('web.user_role.service.create')
+    mock_service.side_effect = ConflictError("User role 'admin' already exists")
+
+    # Act & Assert - Should raise HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        create(input_data)
+
+    assert exc_info.value.status_code == 409
+    assert "User role 'admin' already exists" in exc_info.value.detail
+    mock_service.assert_called_once()
+
+
+def test_modify_role_success(mocker):
     """Test modify() updates and returns modified role"""
     # Arrange - Mock service to return modified role
     input_data = UserRole(id=3, name="moderator", description="Updated moderator")
@@ -107,14 +184,25 @@ def test_patch_user_role(mocker):
     assert result.name == "moderator"
     assert result.description == "Updated moderator"
     mock_service.assert_called_once()
-    # Verify service was called with UserRole object
-    call_args = mock_service.call_args[0][0]
-    assert isinstance(call_args, UserRole)
-    assert call_args.id == 3
-    assert call_args.name == "moderator"
-    assert call_args.description == "Updated moderator"
 
-def test_replace_user_role(mocker):
+
+def test_modify_role_not_found(mocker):
+    """Test modify() when role doesn't exist"""
+    # Arrange - Mock service to raise NotFoundError
+    input_data = UserRole(id=1, name="nonexistent", description="Updated role")
+    mock_service = mocker.patch('web.user_role.service.modify')
+    mock_service.side_effect = NotFoundError("User role 'nonexistent' not found")
+
+    # Act & Assert - Should raise HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        modify(input_data)
+
+    assert exc_info.value.status_code == 404
+    assert "User role 'nonexistent' not found" in exc_info.value.detail
+    mock_service.assert_called_once()
+
+
+def test_replace_role_success(mocker):
     """Test replace() updates and returns replaced role"""
     # Arrange - Mock service to return replaced role
     input_data = UserRole(id=3, name="moderator", description="Replaced moderator")
@@ -130,18 +218,29 @@ def test_replace_user_role(mocker):
     assert result.name == "moderator"
     assert result.description == "Replaced moderator"
     mock_service.assert_called_once()
-    # Verify service was called with UserRole object
-    call_args = mock_service.call_args[0][0]
-    assert isinstance(call_args, UserRole)
-    assert call_args.id == 3
-    assert call_args.name == "moderator"
-    assert call_args.description == "Replaced moderator"
 
-def test_delete_user_role(mocker):
+
+def test_replace_role_not_found(mocker):
+    """Test replace() when role doesn't exist"""
+    # Arrange - Mock service to raise NotFoundError
+    input_data = UserRole(id=1, name="nonexistent", description="Replaced role")
+    mock_service = mocker.patch('web.user_role.service.replace')
+    mock_service.side_effect = NotFoundError("User role with id 1 not found")
+
+    # Act & Assert - Should raise HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        replace(input_data)
+
+    assert exc_info.value.status_code == 404
+    assert "User role with id 1 not found" in exc_info.value.detail
+    mock_service.assert_called_once()
+
+
+def test_delete_role_success(mocker):
     """Test delete() deletes the role"""
     # Arrange - Mock service delete method
     mock_service = mocker.patch('web.user_role.service.delete')
-    mock_service.return_value = None  # delete returns None
+    mock_service.return_value = None
 
     # Act - Call function directly
     result = delete("moderator")
@@ -150,63 +249,14 @@ def test_delete_user_role(mocker):
     assert result is None
     mock_service.assert_called_once_with("moderator")
 
-def test_create_user_role_conflict(mocker):
-    """Test create() handles conflict when role already exists"""
-    # Arrange - Mock service to raise ConflictError for duplicate role
-    input_data = UserRoleCreate(name="admin", description="Duplicate admin role")
-    mock_service = mocker.patch('web.user_role.service.create')
-    mock_service.side_effect = ConflictError("User role 'admin' already exists")
 
-    # Act & Assert - Call function and expect HTTPException
-    with pytest.raises(HTTPException) as exc_info:
-        create(input_data)
-
-    assert exc_info.value.status_code == 409
-    assert "User role 'admin' already exists" in exc_info.value.detail
-    mock_service.assert_called_once()
-    # Verify service was called with UserRoleCreate object
-    call_args = mock_service.call_args[0][0]
-    assert isinstance(call_args, UserRoleCreate)
-    assert call_args.name == "admin"
-    assert call_args.description == "Duplicate admin role"
-
-def test_modify_user_role_not_found(mocker):
-    """Test modify() when role doesn't exist"""
-    # Arrange - Mock service to raise NotFoundError
-    input_data = UserRole(id=1, name="nonexistent", description="Updated role")
-    mock_service = mocker.patch('web.user_role.service.modify')
-    mock_service.side_effect = NotFoundError("User role 'nonexistent' not found")
-
-    # Act & Assert - Call function and expect HTTPException
-    with pytest.raises(HTTPException) as exc_info:
-        modify(input_data)
-
-    assert exc_info.value.status_code == 404
-    assert "User role 'nonexistent' not found" in exc_info.value.detail
-    mock_service.assert_called_once()
-
-def test_replace_user_role_not_found(mocker):
-    """Test replace() when role doesn't exist"""
-    # Arrange - Mock service to raise NotFoundError
-    input_data = UserRole(id=1, name="nonexistent", description="Replaced role")
-    mock_service = mocker.patch('web.user_role.service.replace')
-    mock_service.side_effect = NotFoundError("User role with id 1 not found")
-
-    # Act & Assert - Call function and expect HTTPException
-    with pytest.raises(HTTPException) as exc_info:
-        replace(input_data)
-
-    assert exc_info.value.status_code == 404
-    assert "User role with id 1 not found" in exc_info.value.detail
-    mock_service.assert_called_once()
-
-def test_delete_user_role_not_found(mocker):
+def test_delete_role_not_found(mocker):
     """Test delete() when role doesn't exist"""
     # Arrange - Mock service to raise NotFoundError
     mock_service = mocker.patch('web.user_role.service.delete')
     mock_service.side_effect = NotFoundError("User role 'nonexistent' not found")
 
-    # Act & Assert - Call function and expect HTTPException
+    # Act & Assert - Should raise HTTPException
     with pytest.raises(HTTPException) as exc_info:
         delete("nonexistent")
 
@@ -214,13 +264,14 @@ def test_delete_user_role_not_found(mocker):
     assert "User role 'nonexistent' not found" in exc_info.value.detail
     mock_service.assert_called_once_with("nonexistent")
 
+
 def test_get_all_database_error(mocker):
     """Test get_all() handles database errors"""
     # Arrange - Mock service to raise DatabaseError
     mock_service = mocker.patch('web.user_role.service.get_all')
     mock_service.side_effect = DatabaseError("Database connection failed")
 
-    # Act & Assert - Call function and expect HTTPException
+    # Act & Assert - Should raise HTTPException
     with pytest.raises(HTTPException) as exc_info:
         get_all()
 

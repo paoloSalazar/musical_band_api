@@ -1,50 +1,116 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqYW5lLnNtaXRoQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Mywicm9sZV9pZCI6MywiZXhwIjoxNzcwMTE5NjU1fQ.7fmsV7If1Ue-fpAlzJ0Mr_G73fhviUrf4D4cFNpQ_TM
-### Get all user roles
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Nywicm9sZV9pZCI6MSwiZXhwIjoxNzcwODk1MDQ0fQ.h09rdz5HjUSUxRTJBy5tXAVI61flPkBpxNTzaiH_3aA
 GET {{api}}/user-roles/
+Authorization: Bearer {{user_token}}
 
 ###
 
 ### Get a specific user role
-GET {{api}}/user-roles/admin
+GET {{api}}/user-roles/musician
+Authorization: Bearer {{user_token}}
 
 ###
 
 ### Create a new user role
 POST {{api}}/user-roles/
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "admin",
-  "description": "Administrator role"
+  "name": "musician",
+  "description": "Musician role"
 }
 
 ###
 
 ### Update an existing user role (PATCH)
 PATCH {{api}}/user-roles/
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "moderator",
-  "description": "Content moderator role changed"
+  "id": 9,
+  "name": "musician",
+  "description": "Musician role changed"
 }
 
 ###
 
 ### Replace an existing user role (PUT)
 PUT {{api}}/user-roles/
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "id": 2,
-  "name": "superadmin",
-  "description": "Super administrator role"
+  "id": 9,
+  "name": "musician",
+  "description": "Musician role put changed"
 }
 
 ###
 ### Delete a user role
-DELETE {{api}}/user-roles/superadmin
+DELETE {{api}}/user-roles/musician
+Authorization: Bearer {{user_token}}
+
+###
+### PERMISSIONS ENDPOINTS ###
+### Get all permissions
+GET {{api}}/permissions/
+Authorization: Bearer {{user_token}}
+
+###
+
+### Get a specific permission
+GET {{api}}/permissions/1
+
+###
+
+### Create a new permission
+POST {{api}}/permissions/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "read:users",
+  "description": "Permission to read users"
+}
+
+###
+
+### Update an existing permission (PATCH)
+PATCH {{api}}/permissions/1
+Content-Type: application/json
+
+{
+  "name": "read:all_users",
+  "description": "Permission to read all users"
+}
+
+###
+
+### Delete a permission
+DELETE {{api}}/permissions/1
+
+###
+### ROLE-PERMISSION ASSIGNMENT ENDPOINTS ###
+### Get permissions for a role by role name
+GET {{api}}/permissions/admin/permissions
+Authorization: Bearer {{user_token}}
+###
+
+### Get roles for a permission by permission name
+GET {{api}}/permissions/role/read:users/roles
+
+###
+
+### Assign a permission to a role
+POST {{api}}/permissions/roles/assign?permission_name=delete:user_roles&role_name=admin
+Authorization: Bearer {{user_token}}
+###
+
+### Remove a permission from a role
+POST {{api}}/permissions/roles/remove?permission_name=delete:user_roles&role_name=admin
+Authorization: Bearer {{user_token}}
 
 ###
 ### USERS ENDPOINTS ###
@@ -57,12 +123,25 @@ POST {{api}}/users/
 Content-Type: application/json
 
 {
-  "name": "Jane",
-  "lastname": "Smith",
-  "second_lastname": "Johnson",
-  "email": "jane.smith@example.com",
-  "password": "securepassword123",
-  "role_id": 3
+  "name": "Paolo",
+  "lastname": "Salazar",
+  "second_lastname": "Villarroel",
+  "email": "paolo.salazar@example.com",
+  "password": "salazar",
+  "role_id": 1
+}
+###
+
+POST {{api}}/users/
+Content-Type: application/json
+
+{
+  "name": "Juan",
+  "lastname": "Perez",
+  "second_lastname": "Villarroel",
+  "email": "juan.perez@example.com",
+  "password": "perez",
+  "role_id": 2
 }
 
 ### Get a specific user
@@ -103,6 +182,15 @@ POST {{api}}/users/login
 Content-Type: application/json
 
 {
-  "email": "jane.smith@example.com",
-  "password": "newsecurepassword456"
+  "email": "paolo.salazar@example.com",
+  "password": "salazar"
+}
+
+###
+POST {{api}}/users/login
+Content-Type: application/json
+
+{
+  "email": "juan.perez@example.com",
+  "password": "perez"
 }

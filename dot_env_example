@@ -1,1 +1,6 @@
 DATABASE_URL=postgresql+pg8000://admin:password123@localhost:5432/my_database
+
+# JWT Configuration
+JWT_SECRET_KEY=your-super-secret-key-change-in-production
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
