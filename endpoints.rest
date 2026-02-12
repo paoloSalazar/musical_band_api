@@ -1,14 +1,13 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Nywicm9sZV9pZCI6MSwiZXhwIjoxNzcwODkwMDU3fQ.IfrZjvMUJifn2jo2zXIXyBNm_DXpOV40y5poj3Ga5a8
-###
-### Get all user roles
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Nywicm9sZV9pZCI6MSwiZXhwIjoxNzcwODk1MDQ0fQ.h09rdz5HjUSUxRTJBy5tXAVI61flPkBpxNTzaiH_3aA
 GET {{api}}/user-roles/
 Authorization: Bearer {{user_token}}
 
 ###
 
 ### Get a specific user role
-GET {{api}}/user-roles/admin
+GET {{api}}/user-roles/musician
+Authorization: Bearer {{user_token}}
 
 ###
 
@@ -18,36 +17,40 @@ Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "client",
-  "description": "Client role"
+  "name": "musician",
+  "description": "Musician role"
 }
 
 ###
 
 ### Update an existing user role (PATCH)
 PATCH {{api}}/user-roles/
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "moderator",
-  "description": "Content moderator role changed"
+  "id": 9,
+  "name": "musician",
+  "description": "Musician role changed"
 }
 
 ###
 
 ### Replace an existing user role (PUT)
 PUT {{api}}/user-roles/
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "id": 2,
-  "name": "superadmin",
-  "description": "Super administrator role"
+  "id": 9,
+  "name": "musician",
+  "description": "Musician role put changed"
 }
 
 ###
 ### Delete a user role
-DELETE {{api}}/user-roles/superadmin
+DELETE {{api}}/user-roles/musician
+Authorization: Bearer {{user_token}}
 
 ###
 ### PERMISSIONS ENDPOINTS ###
@@ -90,23 +93,24 @@ DELETE {{api}}/permissions/1
 
 ###
 ### ROLE-PERMISSION ASSIGNMENT ENDPOINTS ###
-### Get permissions for a role
-GET {{api}}/permissions/1/permissions
+### Get permissions for a role by role name
+GET {{api}}/permissions/admin/permissions
 Authorization: Bearer {{user_token}}
 ###
 
-### Get roles for a permission
-GET {{api}}/permissions/role/1/roles
+### Get roles for a permission by permission name
+GET {{api}}/permissions/role/read:users/roles
 
 ###
 
 ### Assign a permission to a role
-POST {{api}}/permissions/roles/assign?permission_id=1&role_id=1
+POST {{api}}/permissions/roles/assign?permission_name=delete:user_roles&role_name=admin
 Authorization: Bearer {{user_token}}
 ###
 
 ### Remove a permission from a role
-POST {{api}}/permissions/roles/remove?permission_id=1&role_id=1
+POST {{api}}/permissions/roles/remove?permission_name=delete:user_roles&role_name=admin
+Authorization: Bearer {{user_token}}
 
 ###
 ### USERS ENDPOINTS ###

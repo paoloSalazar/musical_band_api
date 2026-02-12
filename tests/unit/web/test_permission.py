@@ -23,7 +23,7 @@ from exceptions import NotFoundError, ConflictError, DatabaseError
 def test_get_role_permissions_empty_list(mocker):
     """Test get_role_permissions() returns empty list when role has no permissions"""
     # Arrange - Mock data.user_role.get_one to return a role
-    mock_get_role = mocker.patch('web.permission.get_one')
+    mock_get_role = mocker.patch('data.user_role.get_one')
     mock_get_role.return_value = mocker.MagicMock(id=1, name="admin")
     
     # Mock service to return empty list
@@ -42,7 +42,7 @@ def test_get_role_permissions_empty_list(mocker):
 def test_get_role_permissions_with_data(mocker):
     """Test get_role_permissions() returns permissions when they exist"""
     # Arrange - Mock data.user_role.get_one to return a role
-    mock_get_role = mocker.patch('web.permission.get_role_by_name')
+    mock_get_role = mocker.patch('data.user_role.get_one')
     mock_get_role.return_value = mocker.MagicMock(id=1, name="admin")
     
     # Mock service to return specific permissions
@@ -69,7 +69,7 @@ def test_get_role_permissions_with_data(mocker):
 def test_get_role_permissions_role_not_found(mocker):
     """Test get_role_permissions() returns 404 when role doesn't exist"""
     # Arrange - Mock data.user_role.get_one to return None
-    mock_get_role = mocker.patch('web.permission.get_role_by_name')
+    mock_get_role = mocker.patch('data.user_role.get_one')
     mock_get_role.return_value = None
 
     # Act & Assert - Call function and expect HTTPException
@@ -83,7 +83,7 @@ def test_get_role_permissions_role_not_found(mocker):
 def test_get_role_permissions_database_error(mocker):
     """Test get_role_permissions() handles database errors"""
     # Arrange - Mock data.user_role.get_one to return a role
-    mock_get_role = mocker.patch('web.permission.get_role_by_name')
+    mock_get_role = mocker.patch('data.user_role.get_one')
     mock_get_role.return_value = mocker.MagicMock(id=1, name="admin")
     
     # Mock service to raise DatabaseError
@@ -188,8 +188,8 @@ def test_assign_permission_to_role_success(mocker):
     mock_get_permission.return_value = mocker.MagicMock(id=1, name="users:read")
     
     # Mock data.user_role.get_one to return a role
-    mock_get_role = mocker.patch('web.permission.get_role_by_name')
-    mock_get_role.return_value = mocker.MagicMock(id=1, name="admin")
+    mock_get_role = mocker.patch('data.user_role.get_one')
+    mock_get_role.return_value = mocker.MagicMock(id=2, name="admin")
     
     # Mock service to return True
     mock_service = mocker.patch('web.permission.service.assign_permission_to_role')
@@ -203,7 +203,7 @@ def test_assign_permission_to_role_success(mocker):
     assert result["message"] == "Permission 'users:read' assigned to role 'admin'"
     mock_get_permission.assert_called_once_with("users:read")
     mock_get_role.assert_called_once_with("admin")
-    mock_service.assert_called_once_with(1, 1)
+    mock_service.assert_called_once_with(1, 2)
 
 
 def test_assign_permission_to_role_permission_not_found(mocker):
@@ -227,7 +227,7 @@ def test_assign_permission_to_role_role_not_found(mocker):
     mock_get_permission.return_value = mocker.MagicMock(id=1, name="users:read")
     
     # Mock data.user_role.get_one to return None
-    mock_get_role = mocker.patch('web.permission.get_role_by_name')
+    mock_get_role = mocker.patch('data.user_role.get_one')
     mock_get_role.return_value = None
 
     # Act & Assert - Call function and expect HTTPException
@@ -245,8 +245,8 @@ def test_assign_permission_to_role_database_error(mocker):
     mock_get_permission.return_value = mocker.MagicMock(id=1, name="users:read")
     
     # Mock data.user_role.get_one to return a role
-    mock_get_role = mocker.patch('web.permission.get_role_by_name')
-    mock_get_role.return_value = mocker.MagicMock(id=1, name="admin")
+    mock_get_role = mocker.patch('data.user_role.get_one')
+    mock_get_role.return_value = mocker.MagicMock(id=2, name="admin")
     
     # Mock service to raise DatabaseError
     mock_service = mocker.patch('web.permission.service.assign_permission_to_role')
@@ -267,8 +267,8 @@ def test_remove_permission_from_role_success(mocker):
     mock_get_permission.return_value = mocker.MagicMock(id=1, name="users:read")
     
     # Mock data.user_role.get_one to return a role
-    mock_get_role = mocker.patch('web.permission.get_role_by_name')
-    mock_get_role.return_value = mocker.MagicMock(id=1, name="admin")
+    mock_get_role = mocker.patch('data.user_role.get_one')
+    mock_get_role.return_value = mocker.MagicMock(id=2, name="admin")
     
     # Mock service to return True
     mock_service = mocker.patch('web.permission.service.remove_permission_from_role')
@@ -282,7 +282,7 @@ def test_remove_permission_from_role_success(mocker):
     assert result["message"] == "Permission 'users:read' removed from role 'admin'"
     mock_get_permission.assert_called_once_with("users:read")
     mock_get_role.assert_called_once_with("admin")
-    mock_service.assert_called_once_with(1, 1)
+    mock_service.assert_called_once_with(1, 2)
 
 
 def test_remove_permission_from_role_permission_not_found(mocker):
@@ -306,7 +306,7 @@ def test_remove_permission_from_role_role_not_found(mocker):
     mock_get_permission.return_value = mocker.MagicMock(id=1, name="users:read")
     
     # Mock data.user_role.get_one to return None
-    mock_get_role = mocker.patch('web.permission.get_role_by_name')
+    mock_get_role = mocker.patch('data.user_role.get_one')
     mock_get_role.return_value = None
 
     # Act & Assert - Call function and expect HTTPException
@@ -324,8 +324,8 @@ def test_remove_permission_from_role_database_error(mocker):
     mock_get_permission.return_value = mocker.MagicMock(id=1, name="users:read")
     
     # Mock data.user_role.get_one to return a role
-    mock_get_role = mocker.patch('web.permission.get_role_by_name')
-    mock_get_role.return_value = mocker.MagicMock(id=1, name="admin")
+    mock_get_role = mocker.patch('data.user_role.get_one')
+    mock_get_role.return_value = mocker.MagicMock(id=2, name="admin")
     
     # Mock service to raise DatabaseError
     mock_service = mocker.patch('web.permission.service.remove_permission_from_role')
