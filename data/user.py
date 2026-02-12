@@ -1,3 +1,15 @@
+"""
+Data access layer for User entities.
+
+Provides CRUD operations for user management in the Musical Band API.
+
+Functions:
+    - get_one: Get user by email
+    - get_all: Get all users
+    - create: Create a new user
+    - modify: Update an existing user
+"""
+
 import logging
 from config.database import SessionLocal
 from models.user import User
@@ -6,8 +18,26 @@ from exceptions import DatabaseError, DatabaseConnectionError
 
 logger = logging.getLogger(__name__)
 
+
 def get_one(email: str) -> User | None:
-    """return one user by email"""
+    """
+    Retrieve a user by their email address.
+
+    Args:
+        email: The email address of the user to retrieve.
+
+    Returns:
+        The User object if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+
+    Example:
+        >>> user = get_one("john@example.com")
+        >>> if user:
+        ...     print(f"Found user: {user.name}")
+    """
     db = SessionLocal()
     try:
         return db.query(User).filter(User.email == email).first()
@@ -20,8 +50,18 @@ def get_one(email: str) -> User | None:
     finally:
         db.close()
 
+
 def get_all() -> list[User]:
-    """return all users"""
+    """
+    Retrieve all users from the database.
+
+    Returns:
+        List of all User objects.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         return db.query(User).all()
@@ -34,7 +74,21 @@ def get_all() -> list[User]:
     finally:
         db.close()
 
+
 def create(user: User) -> User:
+    """
+    Create a new user in the database.
+
+    Args:
+        user: The User object to create.
+
+    Returns:
+        The created User object.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails (e.g., duplicate email).
+    """
     db = SessionLocal()
     try:
         db.add(user)
@@ -52,7 +106,21 @@ def create(user: User) -> User:
     finally:
         db.close()
 
+
 def modify(user: User) -> User:
+    """
+    Update an existing user in the database.
+
+    Args:
+        user: The User object with updated fields.
+
+    Returns:
+        The updated User object, or None if not found.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         db_user = db.query(User).filter(User.id == user.id).first()

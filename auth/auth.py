@@ -1,14 +1,28 @@
+"""
+Authentication and JWT token management for the Musical Band API.
+
+This module provides:
+- Password hashing and verification using bcrypt
+- JWT access token creation and decoding
+- User authentication dependency for FastAPI endpoints
+
+Example:
+    >>> from auth.auth import get_password_hash, verify_password, create_access_token
+    >>> hashed = get_password_hash("secure_password")
+    >>> verify_password("secure_password", hashed)
+    True
+"""
+
 from datetime import datetime, timedelta, timezone
 import hashlib
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-
 import base64
 
 # Import JWT configuration from config module
 from config.jwt_config import (
-    JWT_SECRET_KEY, 
-    JWT_ALGORITHM, 
+    JWT_SECRET_KEY,
+    JWT_ALGORITHM,
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 )
 
@@ -22,21 +36,64 @@ ACCESS_TOKEN_EXPIRE_MINUTES = JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against a hash (truncated to 72 bytes for bcrypt)"""
-    # Truncate password to 72 bytes (bcrypt limit)
+    """
+    Verify a password against its bcrypt hash.
+
+    Truncates password to 72 bytes (bcrypt limit) before verification.
+
+    Args:
+        plain_password: The plain text password to verify.
+        hashed_password: The bcrypt hash to verify against.
+
+    Returns:
+        True if the password matches, False otherwise.
+
+    Example:
+        >>> verify_password("my_password", get_password_hash("my_password"))
+        True
+    """
     truncated_password = plain_password[:72]
     return pwd_context.verify(truncated_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password (truncated to 72 bytes for bcrypt)"""
-    # Truncate password to 72 bytes (bcrypt limit)
+    """
+    Hash a password using bcrypt.
+
+    Truncates password to 72 bytes (bcrypt limit) for security.
+
+    Args:
+        password: The plain text password to hash.
+
+    Returns:
+        The bcrypt hashed password.
+
+    Example:
+        >>> hash = get_password_hash("my_secure_password")
+        >>> hash.startswith("$2b$")
+        True
+    """
     safe_password = password.encode('utf-8')[:72]
     return pwd_context.hash(safe_password)
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-    """Create a JWT access token"""
+    """
+    Create a JWT access token with the given payload.
+
+    Args:
+        data: Dictionary containing the token payload (e.g., user_id, role_id).
+        expires_delta: Optional custom expiration time delta.
+                       If not provided, uses default from config.
+
+    Returns:
+        Encoded JWT token string.
+
+    Example:
+        >>> token = create_access_token({"user_id": 1, "role_id": 2})
+        >>> len(token) > 0
+        True
+    """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -48,7 +105,22 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
 
 def decode_access_token(token: str) -> dict:
-    """Decode a JWT access token"""
+    """
+    Decode and validate a JWT access token.
+
+    Args:
+        token: The JWT token string to decode.
+
+    Returns:
+        Dictionary containing the token payload if valid.
+        Empty dictionary if token is invalid or expired.
+
+    Example:
+        >>> token = create_access_token({"user_id": 1})
+        >>> payload = decode_access_token(token)
+        >>> payload.get("user_id")
+        1
+    """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
@@ -70,17 +142,44 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> dict:
-    """Get current user from JWT token."""
+    """
+    Get the current authenticated user from the JWT token.
+
+    This is a FastAPI dependency that extracts and validates the JWT token
+    from the Authorization header, then retrieves the user's role and
+    permissions from the database.
+
+    Args:
+        credentials: HTTP Bearer token credentials from the request header.
+        db: Database session dependency.
+
+    Returns:
+        Dictionary containing user information:
+        - id: User's ID
+        - email: User's email address
+        - role: User's role name (e.g., "admin", "user")
+        - permissions: List of permission names (e.g., ["users:read", "users:write"])
+        - role_id: User's role ID
+
+    Raises:
+        HTTPException: 401 if token is invalid or expired.
+
+    Example:
+        >>> # Used as a dependency in FastAPI endpoints
+        >>> @router.get("/me")
+        >>> async def get_me(user: dict = Depends(get_current_user)):
+        >>>     return user
+    """
     token = credentials.credentials
     payload = decode_access_token(token)
-    
+
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Get user role name and permissions from database
     role_id = payload.get("role_id")
     role_name = None
@@ -90,7 +189,7 @@ async def get_current_user(
         if role:
             role_name = role.name
             user_permissions = [p.name for p in role.permissions]
-    
+
     return {
         "id": payload.get("user_id"),
         "email": payload.get("sub"),

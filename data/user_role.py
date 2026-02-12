@@ -1,3 +1,17 @@
+"""
+Data access layer for UserRole entities.
+
+Provides CRUD operations for role management in the Musical Band API.
+
+Functions:
+    - get_one: Get role by name
+    - get_all: Get all roles
+    - create: Create a new role
+    - modify: Update role description
+    - replace: Replace role data
+    - delete: Delete a role by name
+"""
+
 import logging
 from config.database import SessionLocal
 from models.user_role import UserRole
@@ -6,8 +20,26 @@ from exceptions import DatabaseError, DatabaseConnectionError
 
 logger = logging.getLogger(__name__)
 
+
 def get_one(name: str) -> UserRole | None:
-    """return one user role by name"""
+    """
+    Retrieve a user role by its name.
+
+    Args:
+        name: The unique name of the role (e.g., "admin", "user").
+
+    Returns:
+        The UserRole object if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+
+    Example:
+        >>> role = get_one("admin")
+        >>> if role:
+        ...     print(f"Found role: {role.description}")
+    """
     db = SessionLocal()
     try:
         return db.query(UserRole).filter(UserRole.name == name).first()
@@ -20,8 +52,18 @@ def get_one(name: str) -> UserRole | None:
     finally:
         db.close()
 
+
 def get_all() -> list[UserRole]:
-    """return all user roles"""
+    """
+    Retrieve all user roles from the database.
+
+    Returns:
+        List of all UserRole objects.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         return db.query(UserRole).all()
@@ -34,7 +76,21 @@ def get_all() -> list[UserRole]:
     finally:
         db.close()
 
+
 def create(user_role: UserRole) -> UserRole:
+    """
+    Create a new user role in the database.
+
+    Args:
+        user_role: The UserRole object to create.
+
+    Returns:
+        The created UserRole object.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails (e.g., duplicate name).
+    """
     db = SessionLocal()
     try:
         db.add(user_role)
@@ -52,7 +108,21 @@ def create(user_role: UserRole) -> UserRole:
     finally:
         db.close()
 
+
 def modify(user_role: UserRole) -> UserRole:
+    """
+    Update a user role's description.
+
+    Args:
+        user_role: The UserRole object with updated description.
+
+    Returns:
+        The updated UserRole object, or None if not found.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         db_user = db.query(UserRole).filter(UserRole.name == user_role.name).first()
@@ -72,7 +142,21 @@ def modify(user_role: UserRole) -> UserRole:
     finally:
         db.close()
 
+
 def replace(user_role: UserRole) -> UserRole:
+    """
+    Replace an existing user role's data.
+
+    Args:
+        user_role: The UserRole object with replacement data.
+
+    Returns:
+        The replaced UserRole object, or None if not found.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         db_user = db.query(UserRole).filter(UserRole.id == user_role.id).first()
@@ -93,7 +177,21 @@ def replace(user_role: UserRole) -> UserRole:
     finally:
         db.close()
 
+
 def delete(name: str) -> bool:
+    """
+    Delete a user role by name.
+
+    Args:
+        name: The name of the role to delete.
+
+    Returns:
+        True if deleted, False if not found.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         db_user = db.query(UserRole).filter(UserRole.name == name).first()

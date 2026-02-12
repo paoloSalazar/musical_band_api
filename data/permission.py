@@ -1,3 +1,25 @@
+"""
+Data access layer for Permission entities.
+
+Provides CRUD operations and role-permission relationship management
+for the Musical Band API.
+
+Functions:
+    - get_one: Get permission by ID
+    - get_by_name: Get permission by name
+    - get_all: Get all permissions
+    - create: Create a new permission
+    - update: Update an existing permission
+    - delete: Delete a permission
+    - assign_permission_to_role: Assign permission to role
+    - remove_permission_from_role: Remove permission from role
+    - get_role_permissions: Get all permissions for a role
+    - get_permission_roles: Get all roles for a permission
+    - user_has_permission: Check if user has specific permission
+    - user_has_any_permission: Check if user has any permission
+    - get_user_permissions: Get all permissions for a user
+"""
+
 import logging
 from config.database import SessionLocal
 from models.permission import Permission
@@ -9,7 +31,19 @@ logger = logging.getLogger(__name__)
 
 
 def get_one(permission_id: int) -> Permission | None:
-    """Get a permission by ID."""
+    """
+    Retrieve a permission by its ID.
+
+    Args:
+        permission_id: The unique identifier of the permission.
+
+    Returns:
+        The Permission object if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         return db.query(Permission).filter(Permission.id == permission_id).first()
@@ -24,7 +58,19 @@ def get_one(permission_id: int) -> Permission | None:
 
 
 def get_by_name(name: str) -> Permission | None:
-    """Get a permission by name."""
+    """
+    Retrieve a permission by its name.
+
+    Args:
+        name: The unique name of the permission (e.g., "users:read").
+
+    Returns:
+        The Permission object if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         return db.query(Permission).filter(Permission.name == name).first()
@@ -39,7 +85,16 @@ def get_by_name(name: str) -> Permission | None:
 
 
 def get_all() -> list[Permission]:
-    """Get all permissions."""
+    """
+    Retrieve all permissions from the database.
+
+    Returns:
+        List of all Permission objects.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         return db.query(Permission).all()
@@ -54,7 +109,19 @@ def get_all() -> list[Permission]:
 
 
 def create(permission: Permission) -> Permission:
-    """Create a new permission."""
+    """
+    Create a new permission in the database.
+
+    Args:
+        permission: The Permission object to create.
+
+    Returns:
+        The created Permission object.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         db.add(permission)
@@ -74,7 +141,20 @@ def create(permission: Permission) -> Permission:
 
 
 def update(permission_id: int, permission) -> Permission:
-    """Update a permission."""
+    """
+    Update an existing permission.
+
+    Args:
+        permission_id: The ID of the permission to update.
+        permission: The PermissionUpdate schema with updated fields.
+
+    Returns:
+        The updated Permission object, or None if not found.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         db_permission = db.query(Permission).filter(Permission.id == permission_id).first()
@@ -98,7 +178,19 @@ def update(permission_id: int, permission) -> Permission:
 
 
 def delete(permission_id: int) -> bool:
-    """Delete a permission."""
+    """
+    Delete a permission from the database.
+
+    Args:
+        permission_id: The ID of the permission to delete.
+
+    Returns:
+        True if deleted, False if not found.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
     db = SessionLocal()
     try:
         db_permission = db.query(Permission).filter(Permission.id == permission_id).first()
@@ -125,25 +217,40 @@ def delete(permission_id: int) -> bool:
 
 
 def assign_permission_to_role(permission_id: int, role_id: int) -> bool:
-    """Assign a permission to a role."""
+    """
+    Assign a permission to a role.
+
+    Creates a many-to-many relationship between the permission and role.
+
+    Args:
+        permission_id: The ID of the permission to assign.
+        role_id: The ID of the role to assign the permission to.
+
+    Returns:
+        True if successful.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If operation fails or permission/role not found.
+    """
     db = SessionLocal()
     try:
         permission = db.query(Permission).filter(Permission.id == permission_id).first()
         role = db.query(UserRole).filter(UserRole.id == role_id).first()
-        
+
         if not permission:
             logger.error(f"Permission with ID {permission_id} not found")
             raise DatabaseError("Failed to assign permission: permission not found")
-        
+
         if not role:
             logger.error(f"Role with ID {role_id} not found")
             raise DatabaseError("Failed to assign permission: role not found")
-        
+
         if permission not in role.permissions:
             role.permissions.append(permission)
             db.commit()
             logger.info(f"Permission '{permission.name}' assigned to role '{role.name}'")
-        
+
         return True
     except (OperationalError, InterfaceError) as e:
         logger.error(f"Database connection error while assigning permission '{permission_id}' to role '{role_id}'")
@@ -158,25 +265,40 @@ def assign_permission_to_role(permission_id: int, role_id: int) -> bool:
 
 
 def remove_permission_from_role(permission_id: int, role_id: int) -> bool:
-    """Remove a permission from a role."""
+    """
+    Remove a permission from a role.
+
+    Removes the many-to-many relationship between the permission and role.
+
+    Args:
+        permission_id: The ID of the permission to remove.
+        role_id: The ID of the role to remove the permission from.
+
+    Returns:
+        True if successful.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If operation fails or permission/role not found.
+    """
     db = SessionLocal()
     try:
         permission = db.query(Permission).filter(Permission.id == permission_id).first()
         role = db.query(UserRole).filter(UserRole.id == role_id).first()
-        
+
         if not permission:
             logger.error(f"Permission with ID {permission_id} not found")
             raise DatabaseError("Failed to remove permission: permission not found")
-        
+
         if not role:
             logger.error(f"Role with ID {role_id} not found")
             raise DatabaseError("Failed to remove permission: role not found")
-        
+
         if permission in role.permissions:
             role.permissions.remove(permission)
             db.commit()
             logger.info(f"Permission '{permission.name}' removed from role '{role.name}'")
-        
+
         return True
     except (OperationalError, InterfaceError) as e:
         logger.error(f"Database connection error while removing permission '{permission_id}' from role '{role_id}'")
@@ -191,15 +313,27 @@ def remove_permission_from_role(permission_id: int, role_id: int) -> bool:
 
 
 def get_role_permissions(role_id: int) -> list[Permission]:
-    """Get all permissions for a role."""
+    """
+    Get all permissions assigned to a role.
+
+    Args:
+        role_id: The ID of the role.
+
+    Returns:
+        List of Permission objects assigned to the role.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If operation fails or role not found.
+    """
     db = SessionLocal()
     try:
         role = db.query(UserRole).filter(UserRole.id == role_id).first()
-        
+
         if not role:
             logger.error(f"Role with ID {role_id} not found")
             raise DatabaseError("Failed to get role permissions: role not found")
-        
+
         return role.permissions
     except (OperationalError, InterfaceError) as e:
         logger.error(f"Database connection error while getting permissions for role '{role_id}'")
@@ -212,15 +346,27 @@ def get_role_permissions(role_id: int) -> list[Permission]:
 
 
 def get_permission_roles(permission_id: int) -> list[UserRole]:
-    """Get all roles for a permission."""
+    """
+    Get all roles that have a specific permission.
+
+    Args:
+        permission_id: The ID of the permission.
+
+    Returns:
+        List of UserRole objects that have the permission.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If operation fails or permission not found.
+    """
     db = SessionLocal()
     try:
         permission = db.query(Permission).filter(Permission.id == permission_id).first()
-        
+
         if not permission:
             logger.error(f"Permission with ID {permission_id} not found")
             raise DatabaseError("Failed to get permission roles: permission not found")
-        
+
         return permission.roles
     except (OperationalError, InterfaceError) as e:
         logger.error(f"Database connection error while getting roles for permission '{permission_id}'")
@@ -238,7 +384,16 @@ def get_permission_roles(permission_id: int) -> list[UserRole]:
 
 
 def user_has_permission(user_id: int, permission_name: str) -> bool:
-    """Check if a user has a specific permission via their role."""
+    """
+    Check if a user has a specific permission via their role.
+
+    Args:
+        user_id: The ID of the user to check.
+        permission_name: The name of the permission (e.g., "users:read").
+
+    Returns:
+        True if user has the permission, False otherwise.
+    """
     db = SessionLocal()
     try:
         from models.user import User
@@ -257,7 +412,16 @@ def user_has_permission(user_id: int, permission_name: str) -> bool:
 
 
 def user_has_any_permission(user_id: int, permission_names: list[str]) -> bool:
-    """Check if a user has any of the specified permissions via their role."""
+    """
+    Check if a user has any of the specified permissions via their role.
+
+    Args:
+        user_id: The ID of the user to check.
+        permission_names: List of permission names to check.
+
+    Returns:
+        True if user has any of the permissions, False otherwise.
+    """
     db = SessionLocal()
     try:
         from models.user import User
@@ -277,7 +441,15 @@ def user_has_any_permission(user_id: int, permission_names: list[str]) -> bool:
 
 
 def get_user_permissions(user_id: int) -> list[str]:
-    """Get all permission names for a user via their role."""
+    """
+    Get all permission names for a user via their role.
+
+    Args:
+        user_id: The ID of the user.
+
+    Returns:
+        List of permission name strings.
+    """
     db = SessionLocal()
     try:
         from models.user import User

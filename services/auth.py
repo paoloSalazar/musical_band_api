@@ -1,3 +1,14 @@
+"""
+Authentication service.
+
+Provides business logic for user authentication including
+password verification and JWT token generation.
+
+Functions:
+    - authenticate_user: Verify credentials and return access token
+    - hash_password_for_user: Hash password for a user model
+"""
+
 import logging
 from datetime import timedelta
 from schemas.auth import Token
@@ -11,7 +22,19 @@ logger = logging.getLogger(__name__)
 
 
 def authenticate_user(login: UserLogin) -> Token:
-    """Authenticate user and return access token"""
+    """
+    Authenticate a user with email and password.
+
+    Args:
+        login: UserLogin schema containing email and password.
+
+    Returns:
+        Token response with JWT access token.
+
+    Raises:
+        NotFoundError: If user with email is not found.
+        UnauthorizedError: If password is incorrect.
+    """
     try:
         # Find user by email
         db_user = data.get_one(login.email)
@@ -42,5 +65,13 @@ def authenticate_user(login: UserLogin) -> Token:
 
 
 def hash_password_for_user(user: DBUser) -> str:
-    """Hash password for a user model"""
+    """
+    Hash a password for a user model.
+
+    Args:
+        user: The User model containing the password to hash.
+
+    Returns:
+        Hashed password string.
+    """
     return get_password_hash(user.password)

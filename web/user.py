@@ -1,3 +1,18 @@
+"""
+User API endpoints.
+
+Provides REST endpoints for user management including authentication,
+profile management, and user CRUD operations.
+
+Endpoints:
+    - GET /api/users/ - List all users
+    - GET /api/users/{email} - Get user by email
+    - POST /api/users/ - Create new user
+    - PATCH /api/users/ - Update user profile
+    - PATCH /api/users/{email}/password - Change password
+    - POST /api/users/login - User login
+"""
+
 import logging
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, Request
@@ -15,7 +30,21 @@ router = APIRouter(prefix="/api/users")
 
 
 async def get_current_user(request: Request) -> dict:
-    """Dependency to verify JWT token and return current user"""
+    """
+    Verify JWT token and return current user information.
+
+    This is a FastAPI dependency that extracts the Bearer token
+    from the Authorization header and decodes it.
+
+    Args:
+        request: The incoming HTTP request.
+
+    Returns:
+        Dictionary containing user information from JWT payload.
+
+    Raises:
+        HTTPException: 401 if token is missing or invalid.
+    """
     authorization = request.headers.get("Authorization")
     if authorization is None:
         raise HTTPException(status_code=401, detail="Authorization header missing")
@@ -31,7 +60,17 @@ async def get_current_user(request: Request) -> dict:
 
 @router.get("/")
 def get_all(current_user: Annotated[dict, Depends(get_current_user)]) -> list[UserResponse]:
-    """Get all users (requires authentication)"""
+    """
+    Retrieve all users from the database.
+
+    Requires authentication.
+
+    Returns:
+        List of UserResponse objects.
+
+    Raises:
+        HTTPException: 500 if database error occurs.
+    """
     try:
         users = service.get_all()
         logger.info(f"API request: Retrieved {len(users)} users by {current_user.get('sub')}")
@@ -43,7 +82,21 @@ def get_all(current_user: Annotated[dict, Depends(get_current_user)]) -> list[Us
 
 @router.get("/{email}")
 def get_one(current_user: Annotated[dict, Depends(get_current_user)], email: str) -> UserResponse:
-    """Get one user by email"""
+    """
+    Retrieve a user by their email address.
+
+    Requires authentication.
+
+    Args:
+        email: The email address of the user.
+
+    Returns:
+        UserResponse object.
+
+    Raises:
+        HTTPException: 404 if user not found.
+        HTTPException: 500 if database error occurs.
+    """
     try:
         user = service.get_one(email)
         logger.info(f"API request: Retrieved user with email {email}")
@@ -58,7 +111,19 @@ def get_one(current_user: Annotated[dict, Depends(get_current_user)], email: str
 
 @router.post("/")
 def create(user: UserCreate) -> UserResponse:
-    """Create a new user"""
+    """
+    Create a new user account.
+
+    Args:
+        user: UserCreate schema with user data.
+
+    Returns:
+        Created UserResponse object.
+
+    Raises:
+        HTTPException: 409 if email already exists.
+        HTTPException: 500 if database error occurs.
+    """
     try:
         new_user = service.create(user)
         logger.info(f"API request: Created user with email {user.email}")
@@ -73,7 +138,21 @@ def create(user: UserCreate) -> UserResponse:
 
 @router.patch("/")
 def modify(current_user: Annotated[dict, Depends(get_current_user)], user_update: UserUpdate) -> UserResponse:
-    """Modify an existing user"""
+    """
+    Update an existing user's profile.
+
+    Requires authentication.
+
+    Args:
+        user_update: UserUpdate schema with fields to update.
+
+    Returns:
+        Updated UserResponse object.
+
+    Raises:
+        HTTPException: 404 if user not found.
+        HTTPException: 500 if database error occurs.
+    """
     try:
         updated_user = service.modify(user_update)
         logger.info(f"API request: Modified user with email {user_update.email} by {current_user.get('sub')}")
@@ -88,7 +167,23 @@ def modify(current_user: Annotated[dict, Depends(get_current_user)], user_update
 
 @router.patch("/{email}/password")
 def modify_password(current_user: Annotated[dict, Depends(get_current_user)], email: str, password_update: UserPasswordUpdate) -> dict:
-    """Modify user password (requires current password)"""
+    """
+    Change a user's password.
+
+    Requires authentication. Verifies current password before setting new one.
+
+    Args:
+        email: The email of the user.
+        password_update: Current and new password.
+
+    Returns:
+        Success message.
+
+    Raises:
+        HTTPException: 404 if user not found.
+        HTTPException: 401 if current password is incorrect.
+        HTTPException: 500 if database error occurs.
+    """
     try:
         success = service.modify_password(email, password_update.current_password, password_update.new_password)
         if success:
@@ -107,7 +202,19 @@ def modify_password(current_user: Annotated[dict, Depends(get_current_user)], em
 
 @router.post("/login", response_model=Token)
 def login(login_data: UserLogin) -> Token:
-    """Authenticate user and return access token"""
+    """
+    Authenticate a user and return a JWT access token.
+
+    Args:
+        login_data: UserLogin schema with email and password.
+
+    Returns:
+        Token response with access token.
+
+    Raises:
+        HTTPException: 401 if credentials are invalid.
+        HTTPException: 500 if server error occurs.
+    """
     try:
         token = auth_service.authenticate_user(login_data)
         logger.info(f"API request: User {login_data.email} logged in successfully")

@@ -1,3 +1,17 @@
+"""
+Service layer for User business logic.
+
+Provides business logic operations for user management,
+including validation, password handling, and data transformation.
+
+Functions:
+    - get_all: Get all users
+    - get_one: Get user by email
+    - create: Create a new user
+    - modify: Update user profile
+    - modify_password: Change user password
+"""
+
 import logging
 from schemas.user import UserResponse, UserCreate, UserUpdate
 import data.user as data
@@ -9,7 +23,15 @@ logger = logging.getLogger(__name__)
 
 
 def get_all() -> list[UserResponse]:
-    """return all users"""
+    """
+    Retrieve all users from the database.
+
+    Returns:
+        List of UserResponse objects.
+
+    Raises:
+        DatabaseError: If database operation fails.
+    """
     try:
         db_users = data.get_all()
         users = [UserResponse.model_validate(user) for user in db_users]
@@ -21,7 +43,19 @@ def get_all() -> list[UserResponse]:
 
 
 def get_one(email: str) -> UserResponse:
-    """return one user by email"""
+    """
+    Retrieve a user by their email address.
+
+    Args:
+        email: The email address of the user.
+
+    Returns:
+        UserResponse object.
+
+    Raises:
+        NotFoundError: If user with email is not found.
+        DatabaseError: If database operation fails.
+    """
     try:
         db_user = data.get_one(email)
         if db_user is None:
@@ -36,7 +70,19 @@ def get_one(email: str) -> UserResponse:
 
 
 def create(user_create: UserCreate) -> UserResponse:
-    """create a new user"""
+    """
+    Create a new user in the database.
+
+    Args:
+        user_create: UserCreate schema with user data.
+
+    Returns:
+        Created UserResponse object.
+
+    Raises:
+        ConflictError: If user with email already exists.
+        DatabaseError: If database operation fails.
+    """
     try:
         existing_user = data.get_one(user_create.email)
         if existing_user is not None:
@@ -61,7 +107,19 @@ def create(user_create: UserCreate) -> UserResponse:
 
 
 def modify(user_update: UserUpdate) -> UserResponse:
-    """modify an existing user"""
+    """
+    Update an existing user's profile.
+
+    Args:
+        user_update: UserUpdate schema with fields to update.
+
+    Returns:
+        Updated UserResponse object.
+
+    Raises:
+        NotFoundError: If user to update is not found.
+        DatabaseError: If database operation fails.
+    """
     try:
         existing_user = data.get_one(user_update.email)
         if existing_user is None:
@@ -90,7 +148,22 @@ def modify(user_update: UserUpdate) -> UserResponse:
 
 
 def modify_password(email: str, current_password: str, new_password: str) -> bool:
-    """modify user password (requires current password verification)"""
+    """
+    Change a user's password.
+
+    Args:
+        email: User's email address.
+        current_password: Current password for verification.
+        new_password: New password to set.
+
+    Returns:
+        True if password was changed successfully.
+
+    Raises:
+        NotFoundError: If user is not found.
+        UnauthorizedError: If current password is incorrect.
+        DatabaseError: If database operation fails.
+    """
     try:
         existing_user = data.get_one(email)
         if existing_user is None:
