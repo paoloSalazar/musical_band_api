@@ -5,13 +5,20 @@ from passlib.context import CryptContext
 
 import base64
 
+# Import JWT configuration from config module
+from config.jwt_config import (
+    JWT_SECRET_KEY, 
+    JWT_ALGORITHM, 
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+)
+
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT Configuration
-SECRET_KEY = "your-secret-key-change-in-production"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# JWT Configuration (loaded from environment variables)
+SECRET_KEY = JWT_SECRET_KEY
+ALGORITHM = JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
