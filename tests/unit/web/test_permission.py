@@ -23,7 +23,7 @@ from exceptions import NotFoundError, ConflictError, DatabaseError
 def test_get_role_permissions_empty_list(mocker):
     """Test get_role_permissions() returns empty list when role has no permissions"""
     # Arrange - Mock data.user_role.get_one to return a role
-    mock_get_role = mocker.patch('web.permission.get_role_by_name')
+    mock_get_role = mocker.patch('web.permission.get_one')
     mock_get_role.return_value = mocker.MagicMock(id=1, name="admin")
     
     # Mock service to return empty list

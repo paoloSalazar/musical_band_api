@@ -83,10 +83,10 @@ def replace(user_role: UserRole) -> UserRole | None:
 
 
 @router.delete("/{name}", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["delete:user_roles"]))])
-def delete(name: str) -> None:
+def delete(name: str) -> bool | None:
     """Delete a user role (Admin + roles:write permission required)"""
     try:
-        service.delete(name)
+        return service.delete(name)
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except DatabaseError:
