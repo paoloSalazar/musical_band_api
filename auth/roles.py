@@ -103,13 +103,78 @@ class RoleOrPermissionChecker:
         return self._check_role_or_permission(user)
 
 
-# Pre-defined permission checkers
-require_users_read = PermissionChecker(required_permissions=["users:read"])
-require_users_write = PermissionChecker(required_permissions=["users:write"])
-require_users_delete = PermissionChecker(required_permissions=["users:delete"])
+class RoleAndPermissionChecker:
+    """Dependency class that checks if user has required role AND ALL permissions."""
 
-require_roles_read = PermissionChecker(required_permissions=["roles:read"])
-require_roles_write = PermissionChecker(required_permissions=["roles:write"])
+    def __init__(self, required_roles: list[str], required_permissions: list[str]):
+        self.required_roles = required_roles
+        self.required_permissions = required_permissions
 
-require_permissions_read = PermissionChecker(required_permissions=["permissions:read"])
-require_permissions_write = PermissionChecker(required_permissions=["permissions:write"])
+    def _check_role_and_permission(self, user: dict) -> dict:
+        """Check if user has required role AND all required permissions (for testing)."""
+        user_role = user.get("role")
+        user_permissions = user.get("permissions", [])
+        
+        has_required_role = user_role in self.required_roles
+        missing_permissions = [
+            perm for perm in self.required_permissions 
+            if perm not in user_permissions
+        ]
+        
+        if not has_required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Required role(s): {', '.join(self.required_roles)}"
+            )
+        
+        if missing_permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing required permission(s): {', '.join(missing_permissions)}"
+            )
+        
+        return user
+
+    async def __call__(self, user: dict = Depends(get_current_user)) -> dict:
+        """Check if user has required role AND all required permissions."""
+        return self._check_role_and_permission(user)
+
+
+# ============================================
+# Permission Checker Factory Functions
+# ============================================
+
+
+def create_permission_checker(required_permissions: list[str]) -> PermissionChecker:
+    """Factory function to create a PermissionChecker with dynamic permissions.
+    
+    Usage:
+        Depends(create_permission_checker(["users:read", "users:write"]))
+    """
+    return PermissionChecker(required_permissions)
+
+
+def create_role_or_permission_checker(
+    allowed_roles: list[str], 
+    required_permissions: list[str]
+) -> RoleOrPermissionChecker:
+    """Factory function to create a RoleOrPermissionChecker with dynamic parameters.
+    
+    Usage:
+        Depends(create_role_or_permission_checker(["admin"], ["users:delete"]))
+    """
+    return RoleOrPermissionChecker(allowed_roles, required_permissions)
+
+
+def create_role_and_permission_checker(
+    required_roles: list[str], 
+    required_permissions: list[str]
+) -> RoleAndPermissionChecker:
+    """Factory function to create a RoleAndPermissionChecker with dynamic parameters.
+    
+    Requires user to have BOTH the required role AND all permissions.
+    
+    Usage:
+        Depends(create_role_and_permission_checker(["admin"], ["roles:read"]))
+    """
+    return RoleAndPermissionChecker(required_roles, required_permissions)

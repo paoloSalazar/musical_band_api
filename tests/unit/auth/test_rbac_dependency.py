@@ -245,8 +245,10 @@ def test_permission_checker_denies_missing_one_permission():
 
 
 def test_require_users_read_allows_user_with_permission():
-    """Test require_users_read allows user with users:read permission"""
-    from auth.roles import require_users_read
+    """Test require_users_read (via factory) allows user with users:read permission"""
+    from auth.roles import create_permission_checker
+    
+    require_users_read = create_permission_checker(["users:read"])
     
     # Simulate authenticated user with users:read permission
     mock_user = {
@@ -264,8 +266,10 @@ def test_require_users_read_allows_user_with_permission():
 
 
 def test_require_users_read_denies_user_without_permission():
-    """Test require_users_read denies user without users:read permission"""
-    from auth.roles import require_users_read
+    """Test require_users_read (via factory) denies user without users:read permission"""
+    from auth.roles import create_permission_checker
+    
+    require_users_read = create_permission_checker(["users:read"])
     
     # Simulate authenticated user without users:read permission
     mock_user = {
@@ -399,6 +403,194 @@ def test_role_or_permission_checker_allows_with_multiple_permissions():
     
     # Act - Call the checker
     result = checker._check_role_or_permission(mock_user)
+    
+    # Assert - Should return the user
+    assert result == mock_user
+
+
+# ============================================
+# RoleAndPermissionChecker Tests
+# ============================================
+
+
+def test_role_and_permission_checker_allows_with_role_and_permission():
+    """Test RoleAndPermissionChecker allows user with required role AND permission"""
+    from auth.roles import RoleAndPermissionChecker
+    
+    # Arrange - Create checker requiring admin role AND roles:read permission
+    checker = RoleAndPermissionChecker(
+        required_roles=["admin"], 
+        required_permissions=["roles:read"]
+    )
+    
+    # Simulate authenticated admin with roles:read permission
+    mock_user = {
+        "id": 1, 
+        "email": "admin@example.com", 
+        "role": "admin",
+        "permissions": ["roles:read"]
+    }
+    
+    # Act - Call the checker directly with mock user
+    result = checker._check_role_and_permission(mock_user)
+    
+    # Assert - Should return the user
+    assert result == mock_user
+
+
+def test_role_and_permission_checker_denies_without_role():
+    """Test RoleAndPermissionChecker denies user without required role"""
+    from auth.roles import RoleAndPermissionChecker
+    
+    # Arrange - Create checker requiring admin role AND roles:read permission
+    checker = RoleAndPermissionChecker(
+        required_roles=["admin"], 
+        required_permissions=["roles:read"]
+    )
+    
+    # Simulate authenticated moderator (has permission but not admin role)
+    mock_user = {
+        "id": 2, 
+        "email": "moderator@example.com", 
+        "role": "moderator",
+        "permissions": ["roles:read"]
+    }
+    
+    # Act & Assert - Should raise HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        checker._check_role_and_permission(mock_user)
+    
+    assert exc_info.value.status_code == 403
+    assert "admin" in exc_info.value.detail
+
+
+def test_role_and_permission_checker_denies_without_permission():
+    """Test RoleAndPermissionChecker denies user without required permission"""
+    from auth.roles import RoleAndPermissionChecker
+    
+    # Arrange - Create checker requiring admin role AND roles:read permission
+    checker = RoleAndPermissionChecker(
+        required_roles=["admin"], 
+        required_permissions=["roles:read"]
+    )
+    
+    # Simulate authenticated admin (has role but not roles:read permission)
+    mock_user = {
+        "id": 3, 
+        "email": "admin@example.com", 
+        "role": "admin",
+        "permissions": ["users:read"]
+    }
+    
+    # Act & Assert - Should raise HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        checker._check_role_and_permission(mock_user)
+    
+    assert exc_info.value.status_code == 403
+    assert "roles:read" in exc_info.value.detail
+
+
+def test_role_and_permission_checker_denies_without_role_or_permission():
+    """Test RoleAndPermissionChecker denies user without role or permission"""
+    from auth.roles import RoleAndPermissionChecker
+    
+    # Arrange - Create checker requiring admin role AND roles:read permission
+    checker = RoleAndPermissionChecker(
+        required_roles=["admin"], 
+        required_permissions=["roles:read"]
+    )
+    
+    # Simulate authenticated regular user (no role, no permission)
+    mock_user = {
+        "id": 4, 
+        "email": "user@example.com", 
+        "role": "user",
+        "permissions": []
+    }
+    
+    # Act & Assert - Should raise HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        checker._check_role_and_permission(mock_user)
+    
+    assert exc_info.value.status_code == 403
+    assert "admin" in exc_info.value.detail
+
+
+def test_role_and_permission_checker_allows_with_multiple_permissions():
+    """Test RoleAndPermissionChecker allows user with all required permissions"""
+    from auth.roles import RoleAndPermissionChecker
+    
+    # Arrange - Create checker requiring admin role AND multiple permissions
+    checker = RoleAndPermissionChecker(
+        required_roles=["admin"], 
+        required_permissions=["roles:read", "roles:write"]
+    )
+    
+    # Simulate authenticated admin with all permissions
+    mock_user = {
+        "id": 5, 
+        "email": "admin@example.com", 
+        "role": "admin",
+        "permissions": ["roles:read", "roles:write", "users:read"]
+    }
+    
+    # Act - Call the checker
+    result = checker._check_role_and_permission(mock_user)
+    
+    # Assert - Should return the user
+    assert result == mock_user
+
+
+def test_role_and_permission_checker_denies_missing_one_permission():
+    """Test RoleAndPermissionChecker denies user missing one of multiple permissions"""
+    from auth.roles import RoleAndPermissionChecker
+    
+    # Arrange - Create checker requiring admin role AND multiple permissions
+    checker = RoleAndPermissionChecker(
+        required_roles=["admin"], 
+        required_permissions=["roles:read", "roles:write", "roles:delete"]
+    )
+    
+    # Simulate authenticated admin missing one permission
+    mock_user = {
+        "id": 6, 
+        "email": "admin@example.com", 
+        "role": "admin",
+        "permissions": ["roles:read", "roles:write"]
+    }
+    
+    # Act & Assert - Should raise HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        checker._check_role_and_permission(mock_user)
+    
+    assert exc_info.value.status_code == 403
+    assert "roles:delete" in exc_info.value.detail
+
+
+def test_create_role_and_permission_checker_factory():
+    """Test factory function creates RoleAndPermissionChecker correctly"""
+    from auth.roles import create_role_and_permission_checker
+    
+    # Arrange & Act - Create checker via factory
+    checker = create_role_and_permission_checker(
+        required_roles=["admin"], 
+        required_permissions=["roles:read"]
+    )
+    
+    # Assert - Should be RoleAndPermissionChecker instance
+    from auth.roles import RoleAndPermissionChecker
+    assert isinstance(checker, RoleAndPermissionChecker)
+    
+    # Simulate authenticated user with required role and permission
+    mock_user = {
+        "id": 1, 
+        "email": "admin@example.com", 
+        "role": "admin",
+        "permissions": ["roles:read"]
+    }
+    
+    # Act - Call the checker
+    result = checker._check_role_and_permission(mock_user)
     
     # Assert - Should return the user
     assert result == mock_user

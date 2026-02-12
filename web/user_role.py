@@ -4,7 +4,10 @@ import services.user_role as service
 from schemas.user_role import UserRole, UserRoleCreate
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError
 from auth.auth import get_current_user
-from auth.roles import require_admin
+from auth.roles import (
+    create_permission_checker,
+    create_role_and_permission_checker,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -12,13 +15,13 @@ router = APIRouter(prefix="/api/user-roles")
 
 
 # ============================================
-# User Role Endpoints (Admin Only)
+# User Role Endpoints
 # ============================================
 
 
-@router.get("/", dependencies=[Depends(require_admin)])
+@router.get("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:read"]))])
 def get_all() -> list[UserRole]:
-    """Get all user roles (Admin only)"""
+    """Get all user roles (Admin + roles:read permission required)"""
     try:
         roles = service.get_all()
         logger.info(f"API request: Retrieved {len(roles)} user roles")
@@ -28,9 +31,9 @@ def get_all() -> list[UserRole]:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/{name}", dependencies=[Depends(require_admin)])
+@router.get("/{name}", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:read"]))])
 def get_one(name: str) -> UserRole | None:
-    """Get one user role by name (Admin only)"""
+    """Get one user role by name (Admin + roles:read permission required)"""
     try:
         role = service.get_one(name)
         logger.info(f"API request: Retrieved user role '{name}'")
@@ -43,9 +46,9 @@ def get_one(name: str) -> UserRole | None:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/", dependencies=[Depends(require_admin)])
+@router.post("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:write"]))])
 def create(user_role: UserRoleCreate) -> UserRole | None:
-    """Create a new user role (Admin only)"""
+    """Create a new user role (Admin + roles:write permission required)"""
     try:
         return service.create(user_role)
     except ConflictError as e:
@@ -56,9 +59,9 @@ def create(user_role: UserRoleCreate) -> UserRole | None:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.patch("/", dependencies=[Depends(require_admin)])
+@router.patch("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:write"]))])
 def modify(user_role: UserRole) -> UserRole | None:
-    """Modify fields of an existing user role (Admin only)"""
+    """Modify fields of an existing user role (Admin + roles:write permission required)"""
     try:
         return service.modify(user_role)
     except NotFoundError as e:
@@ -68,9 +71,9 @@ def modify(user_role: UserRole) -> UserRole | None:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.put("/", dependencies=[Depends(require_admin)])
+@router.put("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:write"]))])
 def replace(user_role: UserRole) -> UserRole | None:
-    """Replace an existing user role (Admin only)"""
+    """Replace an existing user role (Admin + roles:write permission required)"""
     try:
         return service.replace(user_role)
     except NotFoundError as e:
@@ -79,9 +82,9 @@ def replace(user_role: UserRole) -> UserRole | None:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.delete("/{name}", dependencies=[Depends(require_admin)])
+@router.delete("/{name}", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:write"]))])
 def delete(name: str) -> None:
-    """Delete a user role (Admin only)"""
+    """Delete a user role (Admin + roles:write permission required)"""
     try:
         service.delete(name)
     except NotFoundError as e:
