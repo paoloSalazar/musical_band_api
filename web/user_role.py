@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/user-roles")
 # ============================================
 
 
-@router.get("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:read"]))])
+@router.get("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["read:user_roles"]))])
 def get_all() -> list[UserRole]:
     """Get all user roles (Admin + roles:read permission required)"""
     try:
@@ -31,7 +31,7 @@ def get_all() -> list[UserRole]:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/{name}", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:read"]))])
+@router.get("/{name}", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["read:user_roles"]))])
 def get_one(name: str) -> UserRole | None:
     """Get one user role by name (Admin + roles:read permission required)"""
     try:
@@ -46,7 +46,7 @@ def get_one(name: str) -> UserRole | None:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:write"]))])
+@router.post("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["write:user_roles"]))])
 def create(user_role: UserRoleCreate) -> UserRole | None:
     """Create a new user role (Admin + roles:write permission required)"""
     try:
@@ -59,7 +59,7 @@ def create(user_role: UserRoleCreate) -> UserRole | None:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.patch("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:write"]))])
+@router.patch("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["read:user_roles", "write:user_roles"]))])
 def modify(user_role: UserRole) -> UserRole | None:
     """Modify fields of an existing user role (Admin + roles:write permission required)"""
     try:
@@ -71,7 +71,7 @@ def modify(user_role: UserRole) -> UserRole | None:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.put("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:write"]))])
+@router.put("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["read:user_roles", "write:user_roles"]))])
 def replace(user_role: UserRole) -> UserRole | None:
     """Replace an existing user role (Admin + roles:write permission required)"""
     try:
@@ -82,7 +82,7 @@ def replace(user_role: UserRole) -> UserRole | None:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.delete("/{name}", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["roles:write"]))])
+@router.delete("/{name}", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["delete:user_roles"]))])
 def delete(name: str) -> None:
     """Delete a user role (Admin + roles:write permission required)"""
     try:
