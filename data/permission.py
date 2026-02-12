@@ -230,3 +230,66 @@ def get_permission_roles(permission_id: int) -> list[UserRole]:
         raise DatabaseError("Failed to get permission roles")
     finally:
         db.close()
+
+
+# ============================================
+# User Permission Helper Functions
+# ============================================
+
+
+def user_has_permission(user_id: int, permission_name: str) -> bool:
+    """Check if a user has a specific permission via their role."""
+    db = SessionLocal()
+    try:
+        from models.user import User
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not user.role:
+            return False
+        return any(p.name == permission_name for p in user.role.permissions)
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while checking permission for user '{user_id}'")
+        return False
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while checking permission for user '{user_id}'")
+        return False
+    finally:
+        db.close()
+
+
+def user_has_any_permission(user_id: int, permission_names: list[str]) -> bool:
+    """Check if a user has any of the specified permissions via their role."""
+    db = SessionLocal()
+    try:
+        from models.user import User
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not user.role:
+            return False
+        user_permission_names = [p.name for p in user.role.permissions]
+        return any(perm in user_permission_names for perm in permission_names)
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while checking permissions for user '{user_id}'")
+        return False
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while checking permissions for user '{user_id}'")
+        return False
+    finally:
+        db.close()
+
+
+def get_user_permissions(user_id: int) -> list[str]:
+    """Get all permission names for a user via their role."""
+    db = SessionLocal()
+    try:
+        from models.user import User
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not user.role:
+            return []
+        return [p.name for p in user.role.permissions]
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting permissions for user '{user_id}'")
+        return []
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting permissions for user '{user_id}'")
+        return []
+    finally:
+        db.close()

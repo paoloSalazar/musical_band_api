@@ -74,16 +74,20 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Get user role name from database
+    # Get user role name and permissions from database
     role_id = payload.get("role_id")
     role_name = None
+    user_permissions = []
     if role_id:
         role = db.query(UserRole).filter(UserRole.id == role_id).first()
         if role:
             role_name = role.name
+            user_permissions = [p.name for p in role.permissions]
     
     return {
         "id": payload.get("user_id"),
         "email": payload.get("sub"),
         "role": role_name or payload.get("role_id"),
+        "permissions": user_permissions,
+        "role_id": role_id,
     }

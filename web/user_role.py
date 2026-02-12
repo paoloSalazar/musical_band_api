@@ -1,16 +1,24 @@
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 import services.user_role as service
 from schemas.user_role import UserRole, UserRoleCreate
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError
+from auth.auth import get_current_user
+from auth.roles import require_admin
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/user-roles")
 
-@router.get("/")
+
+# ============================================
+# User Role Endpoints (Admin Only)
+# ============================================
+
+
+@router.get("/", dependencies=[Depends(require_admin)])
 def get_all() -> list[UserRole]:
-    """Get all user roles"""
+    """Get all user roles (Admin only)"""
     try:
         roles = service.get_all()
         logger.info(f"API request: Retrieved {len(roles)} user roles")
@@ -19,9 +27,10 @@ def get_all() -> list[UserRole]:
         logger.error(f"Database error in get_all: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/{name}")
+
+@router.get("/{name}", dependencies=[Depends(require_admin)])
 def get_one(name: str) -> UserRole | None:
-    """Get one user role by name"""
+    """Get one user role by name (Admin only)"""
     try:
         role = service.get_one(name)
         logger.info(f"API request: Retrieved user role '{name}'")
@@ -33,9 +42,10 @@ def get_one(name: str) -> UserRole | None:
         logger.error("Database error in get_one")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.post("/")
+
+@router.post("/", dependencies=[Depends(require_admin)])
 def create(user_role: UserRoleCreate) -> UserRole | None:
-    """Create a new user role"""
+    """Create a new user role (Admin only)"""
     try:
         return service.create(user_role)
     except ConflictError as e:
@@ -45,9 +55,10 @@ def create(user_role: UserRoleCreate) -> UserRole | None:
         logger.error("Database error in create")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.patch("/")
+
+@router.patch("/", dependencies=[Depends(require_admin)])
 def modify(user_role: UserRole) -> UserRole | None:
-    """Modify fields of an existing user role"""
+    """Modify fields of an existing user role (Admin only)"""
     try:
         return service.modify(user_role)
     except NotFoundError as e:
@@ -56,9 +67,10 @@ def modify(user_role: UserRole) -> UserRole | None:
         logger.error("Database error in get_all")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.put("/")
+
+@router.put("/", dependencies=[Depends(require_admin)])
 def replace(user_role: UserRole) -> UserRole | None:
-    """Replace an existing user role"""
+    """Replace an existing user role (Admin only)"""
     try:
         return service.replace(user_role)
     except NotFoundError as e:
@@ -66,9 +78,10 @@ def replace(user_role: UserRole) -> UserRole | None:
     except DatabaseError:
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.delete("/{name}")
+
+@router.delete("/{name}", dependencies=[Depends(require_admin)])
 def delete(name: str) -> None:
-    """Delete a user role"""
+    """Delete a user role (Admin only)"""
     try:
         service.delete(name)
     except NotFoundError as e:
