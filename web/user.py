@@ -16,6 +16,8 @@ Endpoints:
 import logging
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, Request
+from auth.auth import decode_access_token
+from auth.auth import get_current_user as get_auth_current_user
 from schemas.user_role import UserRole
 from schemas.auth import Token
 from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate
@@ -56,6 +58,57 @@ async def get_current_user(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
     return payload
+
+
+@router.get("/me")
+def get_current_user_info(current_user: Annotated[dict, Depends(get_auth_current_user)]) -> dict:
+    """
+    Get current user information including roles and permissions.
+
+    Requires authentication. Returns the authenticated user's profile
+    along with their role and permissions for UI rendering.
+
+    Args:
+        current_user: Current user from JWT token (injected by dependency).
+
+    Returns:
+        Dictionary containing:
+        - id: User's ID
+        - name: User's first name
+        - lastname: User's last name
+        - second_lastname: User's second last name (optional)
+        - email: User's email address
+        - role: User's role name (e.g., "admin", "user")
+        - role_id: User's role ID
+        - permissions: List of permission names (e.g., ["users:read", "users:write"])
+
+    Raises:
+        HTTPException: 401 if not authenticated.
+        HTTPException: 404 if user not found.
+    """
+    # Get full user profile from database
+    try:
+        user = service.get_one(current_user.get("email"))
+        if not user:
+            logger.warning(f"User not found: {current_user.get('email')}")
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        logger.info(f"API request: Retrieved current user info for {current_user.get('email')}")
+        return {
+            "id": user.id,
+            "name": user.name,
+            "lastname": user.lastname,
+            "second_lastname": user.second_lastname,
+            "email": user.email,
+            "role": current_user.get("role"),
+            "role_id": current_user.get("role_id"),
+            "permissions": current_user.get("permissions", []),
+        }
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="User not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in get_current_user_info: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/")

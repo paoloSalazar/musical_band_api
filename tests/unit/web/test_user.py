@@ -1,8 +1,9 @@
 import pytest
 from fastapi import HTTPException
 from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate
-from web.user import get_all, get_one, create, modify, modify_password
+from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info
 from exceptions import NotFoundError, ConflictError, DatabaseError
+
 
 def test_get_users_empty_list(mocker):
     """Test get_all() returns empty list when no users"""
@@ -17,6 +18,7 @@ def test_get_users_empty_list(mocker):
     # Assert - Check result is empty list
     assert result == []
     mock_service.assert_called_once()
+
 
 def test_get_users_with_data(mocker):
     """Test get_all() returns users when they exist"""
@@ -41,6 +43,7 @@ def test_get_users_with_data(mocker):
     assert result[1].name == "Jane"
     mock_service.assert_called_once()
 
+
 def test_get_user_found(mocker):
     """Test get_one() when user exists"""
     # Arrange - Mock service to return a specific user
@@ -58,6 +61,7 @@ def test_get_user_found(mocker):
     assert result.email == "john.doe@example.com"
     mock_service.assert_called_once_with("john.doe@example.com")
 
+
 def test_get_user_not_found(mocker):
     """Test get_one() when user doesn't exist"""
     # Arrange - Mock service to raise NotFoundError
@@ -72,6 +76,7 @@ def test_get_user_not_found(mocker):
     assert exc_info.value.status_code == 404
     assert "User not found" in exc_info.value.detail
     mock_service.assert_called_once_with("nonexistent@example.com")
+
 
 def test_create_user(mocker):
     """Test create() creates and returns new user"""
@@ -95,6 +100,7 @@ def test_create_user(mocker):
     assert call_args.name == "Jane"
     assert call_args.email == "jane.smith@example.com"
 
+
 def test_modify_user(mocker):
     """Test modify() updates and returns modified user"""
     # Arrange - Mock service to return modified user
@@ -117,6 +123,7 @@ def test_modify_user(mocker):
     assert call_args.name == "Updated John"
     assert call_args.email == "john.doe@example.com"
 
+
 def test_create_user_conflict(mocker):
     """Test create() handles conflict when user already exists"""
     # Arrange - Mock service to raise ConflictError for duplicate user
@@ -136,6 +143,7 @@ def test_create_user_conflict(mocker):
     assert isinstance(call_args, UserCreate)
     assert call_args.email == "john.doe@example.com"
 
+
 def test_modify_user_not_found(mocker):
     """Test modify() when user doesn't exist"""
     # Arrange - Mock service to raise NotFoundError
@@ -151,6 +159,7 @@ def test_modify_user_not_found(mocker):
     assert exc_info.value.status_code == 404
     assert "User not found" in exc_info.value.detail
     mock_service.assert_called_once()
+
 
 def test_get_all_database_error(mocker):
     """Test get_all() handles database errors"""
@@ -218,3 +227,75 @@ def test_modify_password_invalid_current(mocker):
     assert exc_info.value.status_code == 401
     assert "Current password is incorrect" in exc_info.value.detail
     mock_service.assert_called_once()
+
+
+# ============================================
+# Tests for GET /api/users/me endpoint
+# ============================================
+
+
+def test_get_current_user_info_success(mocker):
+    """Test get_current_user_info() returns user info with roles and permissions"""
+    # Arrange - Mock current_user from JWT token (format returned by auth.auth.get_current_user)
+    mock_current_user = {
+        "email": "john.doe@example.com",
+        "id": 1,
+        "role": "admin",
+        "role_id": 1,
+        "permissions": ["users:read", "users:write", "users:delete"]
+    }
+    # Mock the user service to return full user profile
+    mock_user = mocker.MagicMock()
+    mock_user.id = 1
+    mock_user.name = "John"
+    mock_user.lastname = "Doe"
+    mock_user.second_lastname = "Smith"
+    mock_user.email = "john.doe@example.com"
+    mock_service = mocker.patch('web.user.service.get_one')
+    mock_service.return_value = mock_user
+
+    # Act - Call function directly
+    result = get_current_user_info(current_user=mock_current_user)
+
+    # Assert - Check result contains user info
+    assert result["email"] == "john.doe@example.com"
+    assert result["id"] == 1
+    assert result["name"] == "John"
+    assert result["lastname"] == "Doe"
+    assert result["second_lastname"] == "Smith"
+    assert result["role"] == "admin"
+    assert result["role_id"] == 1
+    assert result["permissions"] == ["users:read", "users:write", "users:delete"]
+
+
+def test_get_current_user_info_with_empty_permissions(mocker):
+    """Test get_current_user_info() returns user with empty permissions list"""
+    # Arrange - Mock current_user with no permissions (format returned by auth.auth.get_current_user)
+    mock_current_user = {
+        "email": "jane.smith@example.com",
+        "id": 2,
+        "role": "user",
+        "role_id": 2,
+        "permissions": []
+    }
+    # Mock the user service to return full user profile
+    mock_user = mocker.MagicMock()
+    mock_user.id = 2
+    mock_user.name = "Jane"
+    mock_user.lastname = "Smith"
+    mock_user.second_lastname = None
+    mock_user.email = "jane.smith@example.com"
+    mock_service = mocker.patch('web.user.service.get_one')
+    mock_service.return_value = mock_user
+
+    # Act - Call function directly
+    result = get_current_user_info(current_user=mock_current_user)
+
+    # Assert - Check result contains user info with empty permissions
+    assert result["email"] == "jane.smith@example.com"
+    assert result["id"] == 2
+    assert result["name"] == "Jane"
+    assert result["lastname"] == "Smith"
+    assert result["second_lastname"] is None
+    assert result["role"] == "user"
+    assert result["permissions"] == []

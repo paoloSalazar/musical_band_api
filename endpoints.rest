@@ -1,6 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzcxNTg3MTU1fQ._rZffoTVQQrt8aWJ1GOktIwAsRHe7VNO8AcpD-U5Pvw
-
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzcyMTkxNzc3fQ.HC-m7MtDh3K6D7E1Y2b-0XXR6IE6DDOGrB-mVY9r3M4
 ### Permissions Endpoints ###
 GET {{api}}/permissions
 Authorization: Bearer {{user_token}}
@@ -11,8 +10,8 @@ Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "delete:users",
-  "description": "Permission to read user information"
+  "name": "read:events",
+  "description": "Permission to read event information"
 }
 
 ###
@@ -21,7 +20,7 @@ Authorization: Bearer {{user_token}}
 
 ###
 ### Assign permission to role
-POST {{api}}/permissions/roles/assign?permission_name=delete:users&role_name=admin
+POST {{api}}/permissions/roles/assign?permission_name=read:events&role_name=admin
 Authorization: Bearer {{user_token}}
 
 ###
@@ -110,7 +109,7 @@ Content-Type: application/json
 }
 
 ### Get a specific user
-GET {{api}}/users/jane.smith@example.com
+GET {{api}}/users/paolo.salazar@example.com
 Authorization: Bearer {{user_token}}
 
 ### Update an existing user (PATCH)
@@ -150,3 +149,7 @@ Content-Type: application/json
   "email": "paolo.salazar@example.com",
   "password": "salazar"
 }
+
+### Get Current User Info
+GET {{api}}/users/me
+Authorization: Bearer {{user_token}}
