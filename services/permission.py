@@ -176,6 +176,30 @@ def delete(permission_id: int) -> bool:
         raise
 
 
+def delete_by_name(name: str) -> bool:
+    """
+    Delete a permission from the database by its name.
+
+    Args:
+        name: The name of the permission to delete.
+
+    Returns:
+        True if deleted successfully.
+
+    Raises:
+        NotFoundError: If permission is not found.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        db_permission = data.get_by_name(name)
+        if not db_permission:
+            raise NotFoundError(f"Permission with name '{name}' not found")
+        return data.delete_by_name(name)
+    except DatabaseError as e:
+        logger.error(f"Error deleting permission '{name}': {e}")
+        raise
+
+
 # ============================================
 # Role-Permission Assignment Functions
 # ============================================

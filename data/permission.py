@@ -211,6 +211,40 @@ def delete(permission_id: int) -> bool:
         db.close()
 
 
+def delete_by_name(name: str) -> bool:
+    """
+    Delete a permission from the database by its name.
+
+    Args:
+        name: The name of the permission to delete.
+
+    Returns:
+        True if deleted, False if not found.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        db_permission = db.query(Permission).filter(Permission.name == name).first()
+        if db_permission:
+            db.delete(db_permission)
+            db.commit()
+            return True
+        return False
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while deleting permission '{name}'")
+        db.rollback()
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while deleting permission '{name}'")
+        db.rollback()
+        raise DatabaseError("Failed to delete permission")
+    finally:
+        db.close()
+
+
 # ============================================
 # Role-Permission Assignment Functions
 # ============================================

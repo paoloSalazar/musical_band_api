@@ -151,15 +151,15 @@ def update(permission_id: int, permission_update: PermissionUpdate) -> Permissio
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.delete("/{permission_id}", dependencies=[Depends(create_role_checker(["admin"]))])
-def delete(permission_id: int) -> bool:
+@router.delete("/{permission_name}", dependencies=[Depends(create_role_checker(["admin"]))])
+def delete(permission_name: str) -> bool:
     """
     Delete a permission from the database.
 
     Requires: Admin role.
 
     Args:
-        permission_id: The ID of the permission to delete.
+        permission_name: The name of the permission to delete (e.g., "read:user_roles").
 
     Returns:
         True if deleted successfully.
@@ -169,13 +169,13 @@ def delete(permission_id: int) -> bool:
         HTTPException: 500 if database error occurs.
     """
     try:
-        result = service.delete(permission_id)
+        result = service.delete_by_name(permission_name)
         if not result:
-            raise NotFoundError(f"Permission with ID {permission_id} not found")
-        logger.info(f"API request: Deleted permission {permission_id}")
+            raise NotFoundError(f"Permission with name '{permission_name}' not found")
+        logger.info(f"API request: Deleted permission '{permission_name}'")
         return result
     except NotFoundError as e:
-        logger.warning(f"Permission {permission_id} not found: {str(e)}")
+        logger.warning(f"Permission '{permission_name}' not found: {str(e)}")
         raise HTTPException(status_code=404, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error in delete: {str(e)}")

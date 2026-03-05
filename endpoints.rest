@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzcyMTkxNzc3fQ.HC-m7MtDh3K6D7E1Y2b-0XXR6IE6DDOGrB-mVY9r3M4
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzcyNzE0OTUwfQ.FAcLFOfgRIKzKAla2nyukTrz3P2pEpLhYdjuRscUzGg
 ### Permissions Endpoints ###
 GET {{api}}/permissions
 Authorization: Bearer {{user_token}}
@@ -40,6 +40,11 @@ Authorization: Bearer {{user_token}}
 
 ###
 
+DELETE {{api}}/permissions/1
+Authorization : Bearer {{user_token}}
+
+###
+
 
 
 ### Get all user roles
@@ -58,8 +63,8 @@ Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "editor",
-  "description": "Content editor role"
+  "name": "admin",
+  "description": "Administrator role"
 }
 
 ###
