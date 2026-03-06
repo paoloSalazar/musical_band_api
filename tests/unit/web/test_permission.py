@@ -544,43 +544,43 @@ def test_update_permission_database_error(mocker):
 
 def test_delete_permission_success(mocker):
     """Test delete() deletes the permission"""
-    # Arrange - Mock service delete method
-    mock_service = mocker.patch('web.permission.service.delete')
+    # Arrange - Mock service delete_by_name method
+    mock_service = mocker.patch('web.permission.service.delete_by_name')
     mock_service.return_value = True
 
     # Act - Call function directly
-    result = delete(permission_id=1)
+    result = delete(permission_name="read:users")
 
     # Assert - Check result is True
     assert result is True
-    mock_service.assert_called_once_with(1)
+    mock_service.assert_called_once_with("read:users")
 
 
 def test_delete_permission_not_found(mocker):
     """Test delete() when permission doesn't exist"""
     # Arrange - Mock service to raise NotFoundError
-    mock_service = mocker.patch('web.permission.service.delete')
-    mock_service.side_effect = NotFoundError("Permission with ID 99 not found")
+    mock_service = mocker.patch('web.permission.service.delete_by_name')
+    mock_service.side_effect = NotFoundError("Permission with name 'nonexistent' not found")
 
     # Act & Assert - Call function and expect HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        delete(permission_id=99)
+        delete(permission_name="nonexistent")
 
     assert exc_info.value.status_code == 404
-    assert "Permission with ID 99 not found" in exc_info.value.detail
-    mock_service.assert_called_once_with(99)
+    assert "Permission with name 'nonexistent' not found" in exc_info.value.detail
+    mock_service.assert_called_once_with("nonexistent")
 
 
 def test_delete_permission_database_error(mocker):
     """Test delete() handles database errors"""
     # Arrange - Mock service to raise DatabaseError
-    mock_service = mocker.patch('web.permission.service.delete')
+    mock_service = mocker.patch('web.permission.service.delete_by_name')
     mock_service.side_effect = DatabaseError("Database connection failed")
 
     # Act & Assert - Call function and expect HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        delete(permission_id=1)
+        delete(permission_name="read:users")
 
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Internal server error"
-    mock_service.assert_called_once_with(1)
+    mock_service.assert_called_once_with("read:users")
