@@ -177,6 +177,9 @@ def delete(permission_name: str) -> bool:
     except NotFoundError as e:
         logger.warning(f"Permission '{permission_name}' not found: {str(e)}")
         raise HTTPException(status_code=404, detail=str(e))
+    except ConflictError as e:
+        logger.warning(f"Permission '{permission_name}' conflict: {str(e)}")
+        raise HTTPException(status_code=409, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error in delete: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

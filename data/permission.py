@@ -24,8 +24,8 @@ import logging
 from config.database import SessionLocal
 from models.permission import Permission
 from models.user_role import UserRole
-from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
-from exceptions import DatabaseError, DatabaseConnectionError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError, IntegrityError
+from exceptions import DatabaseError, DatabaseConnectionError, ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -224,6 +224,7 @@ def delete_by_name(name: str) -> bool:
     Raises:
         DatabaseConnectionError: If database connection fails.
         DatabaseError: If database operation fails.
+        ConflictError: If permission is assigned to roles.
     """
     db = SessionLocal()
     try:
@@ -237,6 +238,31 @@ def delete_by_name(name: str) -> bool:
         logger.error(f"Database connection error while deleting permission '{name}'")
         db.rollback()
         raise DatabaseConnectionError("Database connection failed")
+    except IntegrityError as e:
+        db.rollback()
+        # Check if this is a foreign key constraint violation
+        error_msg = str(e).lower()
+        if 'foreign key constraint' in error_msg or 'restrict' in error_msg:
+            # Get the roles that have this permission assigned
+            assigned_roles = []
+            try:
+                db2 = SessionLocal()
+                permission = db2.query(Permission).filter(Permission.name == name).first()
+                if permission:
+                    assigned_roles = [role.name for role in permission.roles]
+                db2.close()
+            except Exception:
+                pass
+            
+            if assigned_roles:
+                roles_str = "', '".join(assigned_roles)
+                raise ConflictError(
+                    f"Permission '{name}' is already assigned to role(s): '{roles_str}'. "
+                    f"Remove the permission from these roles before deleting."
+                )
+            raise ConflictError(f"Permission '{name}' cannot be deleted because it is in use")
+        logger.error(f"Integrity error while deleting permission '{name}': {e}")
+        raise DatabaseError("Failed to delete permission due to data integrity issue")
     except SQLAlchemyError as e:
         logger.error(f"Database error while deleting permission '{name}'")
         db.rollback()
