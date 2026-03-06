@@ -229,11 +229,22 @@ def delete_by_name(name: str) -> bool:
     db = SessionLocal()
     try:
         db_permission = db.query(Permission).filter(Permission.name == name).first()
-        if db_permission:
-            db.delete(db_permission)
-            db.commit()
-            return True
-        return False
+        if not db_permission:
+            return False
+        
+        # Check if permission is assigned to any roles BEFORE attempting delete
+        # This prevents cascade delete and gives a friendly error message
+        if db_permission.roles:
+            assigned_roles = [role.name for role in db_permission.roles]
+            roles_str = "', '".join(assigned_roles)
+            raise ConflictError(
+                f"Permission '{name}' is already assigned to role(s): '{roles_str}'. "
+                f"Remove the permission from these roles before deleting."
+            )
+        
+        db.delete(db_permission)
+        db.commit()
+        return True
     except (OperationalError, InterfaceError) as e:
         logger.error(f"Database connection error while deleting permission '{name}'")
         db.rollback()
@@ -263,6 +274,9 @@ def delete_by_name(name: str) -> bool:
             raise ConflictError(f"Permission '{name}' cannot be deleted because it is in use")
         logger.error(f"Integrity error while deleting permission '{name}': {e}")
         raise DatabaseError("Failed to delete permission due to data integrity issue")
+    except ConflictError:
+        # Re-raise ConflictError as-is
+        raise
     except SQLAlchemyError as e:
         logger.error(f"Database error while deleting permission '{name}'")
         db.rollback()

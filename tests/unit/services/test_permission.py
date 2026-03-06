@@ -5,8 +5,9 @@ from services.permission import (
     remove_permission_from_role,
     get_role_permissions,
     get_permission_roles,
+    delete_by_name,
 )
-from exceptions import NotFoundError, DatabaseError
+from exceptions import NotFoundError, DatabaseError, ConflictError
 from models.permission import Permission
 from models.user_role import UserRole
 from schemas.permission import PermissionResponse
@@ -163,3 +164,61 @@ def test_get_permission_roles_database_error(mocker):
         get_permission_roles(permission_id=1)
 
     assert "Failed to get permission roles" in str(exc_info.value)
+
+
+def test_delete_by_name_success(mocker):
+    """Test delete_by_name() deletes permission successfully when not assigned to roles"""
+    # Arrange - Mock the permission object that would be returned by get_by_name
+    mock_permission = MagicMock()
+    mock_permission.name = "read:users"
+    mock_permission.roles = []  # No roles assigned
+    
+    # Mock get_by_name to return a permission with no roles
+    mock_data_get = mocker.patch('services.permission.data.get_by_name')
+    mock_data_get.return_value = mock_permission
+
+    # Mock delete_by_name to return True
+    mock_data_delete = mocker.patch('services.permission.data.delete_by_name')
+    mock_data_delete.return_value = True
+
+    # Act
+    result = delete_by_name("read:users")
+
+    # Assert
+    assert result is True
+    mock_data_get.assert_called_once_with("read:users")
+
+
+def test_delete_by_name_permission_not_found(mocker):
+    """Test delete_by_name() raises NotFoundError when permission doesn't exist"""
+    # Arrange
+    mock_data_delete = mocker.patch('services.permission.data.delete_by_name')
+    mock_data_delete.return_value = False
+
+    # Mock get_by_name to return None (permission not found)
+    mock_data_get = mocker.patch('services.permission.data.get_by_name')
+    mock_data_get.return_value = None
+
+    # Act & Assert
+    with pytest.raises(NotFoundError) as exc_info:
+        delete_by_name("nonexistent:permission")
+
+    assert "nonexistent:permission" in str(exc_info.value)
+
+
+def test_delete_by_name_conflict_error(mocker):
+    """Test delete_by_name() raises ConflictError when permission is assigned to roles"""
+    # Arrange
+    mock_data_delete = mocker.patch('services.permission.data.delete_by_name')
+    mock_data_delete.side_effect = ConflictError(
+        "Permission 'read:user_roles' is already assigned to role(s): 'admin', 'moderator'. "
+        "Remove the permission from these roles before deleting."
+    )
+
+    # Act & Assert
+    with pytest.raises(ConflictError) as exc_info:
+        delete_by_name("read:user_roles")
+
+    assert "read:user_roles" in str(exc_info.value)
+    assert "admin" in str(exc_info.value)
+    assert "moderator" in str(exc_info.value)

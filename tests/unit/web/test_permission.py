@@ -584,3 +584,23 @@ def test_delete_permission_database_error(mocker):
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Internal server error"
     mock_service.assert_called_once_with("read:users")
+
+
+def test_delete_permission_assigned_to_roles(mocker):
+    """Test delete() when permission is assigned to roles - should return 409 Conflict"""
+    # Arrange - Mock service to raise ConflictError (permission assigned to roles)
+    mock_service = mocker.patch('web.permission.service.delete_by_name')
+    mock_service.side_effect = ConflictError(
+        "Permission 'read:user_roles' is already assigned to role(s): 'admin', 'moderator'. "
+        "Remove the permission from these roles before deleting."
+    )
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        delete(permission_name="read:user_roles")
+
+    assert exc_info.value.status_code == 409
+    assert "read:user_roles" in exc_info.value.detail
+    assert "admin" in exc_info.value.detail
+    assert "moderator" in exc_info.value.detail
+    mock_service.assert_called_once_with("read:user_roles")
