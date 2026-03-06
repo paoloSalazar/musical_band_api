@@ -96,24 +96,25 @@ def test_create_user_role(mocker):
 
 def test_modify_user_role(mocker):
     """Test modify() function"""
-    # Arrange - Mock data.get_one to return existing role and data.modify to return the modified DB role
-    user_role = UserRole(id=1, name="admin", description="Updated Administrator")
+    # Arrange - Mock data.get_by_id to return existing role and data.modify to return the modified DB role
+    from schemas.user_role import UserRoleUpdate
+    role_update = UserRoleUpdate(name="admin", description="Updated Administrator")
     existing_db_role = DBUserRole(id=1, name="admin", description="Administrator")
     modified_db_role = DBUserRole(id=1, name="admin", description="Updated Administrator")
-    mock_get_one = mocker.patch('services.user_role.data.get_one')
-    mock_get_one.return_value = existing_db_role
+    mock_get_by_id = mocker.patch('services.user_role.data.get_by_id')
+    mock_get_by_id.return_value = existing_db_role
     mock_modify = mocker.patch('services.user_role.data.modify')
     mock_modify.return_value = modified_db_role
 
     # Act - Call service function
-    result = service.modify(user_role)
+    result = service.modify(role_id=1, role_update=role_update)
 
     # Assert - Check result contains the expected UserRole object
     assert result.id == 1
     assert result.name == "admin"
     assert result.description == "Updated Administrator"
     mock_modify.assert_called_once()
-    mock_get_one.assert_called_once_with("admin")
+    mock_get_by_id.assert_called_once_with(1)
     # Verify the DBUserRole was created with correct data
     call_args = mock_modify.call_args[0][0]
     assert isinstance(call_args, DBUserRole)

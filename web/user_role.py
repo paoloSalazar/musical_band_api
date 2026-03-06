@@ -18,7 +18,7 @@ Endpoints:
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 import services.user_role as service
-from schemas.user_role import UserRole, UserRoleCreate
+from schemas.user_role import UserRole, UserRoleCreate, UserRoleUpdate
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError
 from auth.auth import get_current_user
 from auth.roles import (
@@ -114,15 +114,16 @@ def create(user_role: UserRoleCreate) -> UserRole | None:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.patch("/", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["read:user_roles", "write:user_roles"]))])
-def modify(user_role: UserRole) -> UserRole | None:
+@router.patch("/{role_id}", dependencies=[Depends(create_role_and_permission_checker(["admin"], ["read:user_roles", "write:user_roles"]))])
+def modify(role_id: int, role_update: UserRoleUpdate) -> UserRole | None:
     """
     Update a user role's description.
 
     Requires: Admin role AND write:user_roles permission.
 
     Args:
-        user_role: UserRole schema with updated description.
+        role_id: The ID of the role to update.
+        role_update: UserRoleUpdate schema with updated fields.
 
     Returns:
         Updated UserRole object.
@@ -132,11 +133,11 @@ def modify(user_role: UserRole) -> UserRole | None:
         HTTPException: 500 if database error occurs.
     """
     try:
-        return service.modify(user_role)
+        return service.modify(role_id, role_update)
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except DatabaseError as e:
-        logger.error("Database error in get_all")
+        logger.error("Database error in modify")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

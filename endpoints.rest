@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzcyNzE0OTUwfQ.FAcLFOfgRIKzKAla2nyukTrz3P2pEpLhYdjuRscUzGg
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzcyNzk3NTU5fQ.nuwdAzUbFYf4Cz0kSj2QQ0OjH03HC2c8uYp0lnKvqAY
 ### Permissions Endpoints ###
 GET {{api}}/permissions
 Authorization: Bearer {{user_token}}
@@ -40,7 +40,17 @@ Authorization: Bearer {{user_token}}
 
 ###
 
-DELETE {{api}}/permissions/1
+PATCH {{api}}/permissions/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "description": "Updated description for the permission"
+}
+
+###
+
+DELETE {{api}}/permissions/read:user_roles
 Authorization : Bearer {{user_token}}
 
 ###
@@ -70,12 +80,13 @@ Content-Type: application/json
 ###
 
 ### Update an existing user role (PATCH)
-PATCH {{api}}/user-roles/
+PATCH {{api}}/user-roles/1
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "moderator",
-  "description": "Content moderator role changed"
+  "name": "admin",
+  "description": "Administrator role updated"
 }
 
 ###

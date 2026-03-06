@@ -14,7 +14,7 @@ Functions:
 """
 
 import logging
-from schemas.user_role import UserRole, UserRoleCreate
+from schemas.user_role import UserRole, UserRoleCreate, UserRoleUpdate
 import data.user_role as data
 from models.user_role import UserRole as DBUserRole
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError
@@ -99,12 +99,13 @@ def create(user_role: UserRoleCreate) -> UserRole:
         raise DatabaseError("Service error")
 
 
-def modify(user_role: UserRole) -> UserRole:
+def modify(role_id: int, role_update: UserRoleUpdate) -> UserRole:
     """
     Update a user role's description.
 
     Args:
-        user_role: UserRole schema with updated description.
+        role_id: The ID of the role to update.
+        role_update: UserRoleUpdate schema with updated fields.
 
     Returns:
         Updated UserRole object.
@@ -114,20 +115,37 @@ def modify(user_role: UserRole) -> UserRole:
         DatabaseError: If database operation fails.
     """
     try:
-        # Check if exists
-        existing = data.get_one(user_role.name)
+        # Check if exists by ID
+        existing = data.get_by_id(role_id)
         if not existing:
-            logger.warning(f"Attempted to modify non-existent user role '{user_role.name}'")
-            raise NotFoundError(f"User role '{user_role.name}' not found")
-        # Assuming user_role has id, convert to DB model
-        db_role = DBUserRole(id=user_role.id, name=user_role.name, description=user_role.description)
+            logger.warning(f"Attempted to modify non-existent user role with id '{role_id}'")
+            raise NotFoundError(f"User role with id '{role_id}' not found")
+        
+        # Build update data - only include fields that are provided
+        update_data = role_update.model_dump(exclude_unset=True)
+        
+        # If name is being updated, create new DBUserRole with new name
+        if 'name' in update_data and update_data['name']:
+            db_role = DBUserRole(
+                id=role_id,
+                name=update_data['name'],
+                description=update_data.get('description', existing.description)
+            )
+        else:
+            # Just update description
+            db_role = DBUserRole(
+                id=role_id,
+                name=existing.name,
+                description=update_data.get('description', existing.description)
+            )
+        
         modified = data.modify(db_role)
         if modified:
-            logger.info(f"Modified user role '{user_role.name}'")
+            logger.info(f"Modified user role with id '{role_id}'")
             return UserRole.model_validate(modified)
         else:
-            logger.warning(f"User role '{user_role.name}' not found during modification")
-            raise NotFoundError(f"User role '{user_role.name}' not found")
+            logger.warning(f"User role with id '{role_id}' not found during modification")
+            raise NotFoundError(f"User role with id '{role_id}' not found")
     except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in modify")
         raise DatabaseError("Service error")

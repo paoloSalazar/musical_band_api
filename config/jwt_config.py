@@ -50,7 +50,7 @@ def get_env_var(key: str, default: Optional[str] = None) -> str:
 # JWT Configuration
 JWT_SECRET_KEY: str = get_env_var("JWT_SECRET_KEY", "your-secret-key-change-in-production")
 JWT_ALGORITHM: str = get_env_var("JWT_ALGORITHM", "HS256")
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(get_env_var("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(get_env_var("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
 
 @lru_cache()

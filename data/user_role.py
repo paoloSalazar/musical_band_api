@@ -53,6 +53,33 @@ def get_one(name: str) -> UserRole | None:
         db.close()
 
 
+def get_by_id(role_id: int) -> UserRole | None:
+    """
+    Retrieve a user role by its ID.
+
+    Args:
+        role_id: The unique ID of the role.
+
+    Returns:
+        The UserRole object if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        return db.query(UserRole).filter(UserRole.id == role_id).first()
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting user role by id '{role_id}'")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting user role by id '{role_id}'")
+        raise DatabaseError("Failed to get user role")
+    finally:
+        db.close()
+
+
 def get_all() -> list[UserRole]:
     """
     Retrieve all user roles from the database.
