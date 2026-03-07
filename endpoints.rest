@@ -1,7 +1,14 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzcyNzk3NTU5fQ.nuwdAzUbFYf4Cz0kSj2QQ0OjH03HC2c8uYp0lnKvqAY
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzcyODgwMTQ5fQ.eDLhWX02X6Tx_iMGvoa_sPCKD9d6aL8XR0Kb3ICb74c
 ### Permissions Endpoints ###
 GET {{api}}/permissions
+Authorization: Bearer {{user_token}}
+
+###
+GET {{api}}/permissions?skip=0&limit=8
+Authorization: Bearer {{user_token}}
+###
+GET {{api}}/permissions?skip=8&limit=8
 Authorization: Bearer {{user_token}}
 
 ###
@@ -10,8 +17,8 @@ Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "read:events",
-  "description": "Permission to read event information"
+  "name": "write:events",
+  "description": "Permission to write event information"
 }
 
 ###
@@ -20,7 +27,7 @@ Authorization: Bearer {{user_token}}
 
 ###
 ### Assign permission to role
-POST {{api}}/permissions/roles/assign?permission_name=read:events&role_name=admin
+POST {{api}}/permissions/roles/assign?permission_name=write:events&role_name=musician
 Authorization: Bearer {{user_token}}
 
 ###
@@ -103,7 +110,8 @@ Content-Type: application/json
 
 ###
 ### Delete a user role
-DELETE {{api}}/user-roles/superadmin
+DELETE {{api}}/user-roles/musician
+Authorization: Bearer {{user_token}}
 
 ###
 ### USERS ENDPOINTS ###

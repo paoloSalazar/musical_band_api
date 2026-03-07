@@ -20,27 +20,36 @@ Functions:
 import logging
 from typing import List
 from models.permission import Permission
-from schemas.permission import PermissionCreate, PermissionUpdate, PermissionResponse
+from schemas.permission import PermissionCreate, PermissionUpdate, PermissionResponse, PaginationResponse
 import data.permission as data
 from exceptions import NotFoundError, ConflictError, DatabaseError
 
 logger = logging.getLogger(__name__)
 
 
-def get_all() -> list[PermissionResponse]:
+def get_all(skip: int = 0, limit: int = 20) -> PaginationResponse:
     """
-    Retrieve all permissions from the database.
+    Retrieve permissions from the database with pagination.
+
+    Args:
+        skip: Number of records to skip (for pagination).
+        limit: Maximum number of records to return.
 
     Returns:
-        List of PermissionResponse objects.
+        PaginationResponse with list of PermissionResponse objects and metadata.
 
     Raises:
         DatabaseError: If database operation fails.
     """
     try:
-        db_permissions = data.get_all()
+        db_permissions, total = data.get_all(skip=skip, limit=limit)
         permissions = [PermissionResponse.model_validate(p) for p in db_permissions]
-        return permissions
+        return PaginationResponse(
+            data=permissions,
+            total=total,
+            skip=skip,
+            limit=limit
+        )
     except DatabaseError as e:
         logger.error(f"Error getting all permissions: {e}")
         raise

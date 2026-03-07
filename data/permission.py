@@ -84,12 +84,16 @@ def get_by_name(name: str) -> Permission | None:
         db.close()
 
 
-def get_all() -> list[Permission]:
+def get_all(skip: int = 0, limit: int = 20) -> tuple[list[Permission], int]:
     """
-    Retrieve all permissions from the database.
+    Retrieve permissions from the database with pagination.
+
+    Args:
+        skip: Number of records to skip (for pagination).
+        limit: Maximum number of records to return.
 
     Returns:
-        List of all Permission objects.
+        Tuple of (list of Permission objects, total count).
 
     Raises:
         DatabaseConnectionError: If database connection fails.
@@ -97,7 +101,11 @@ def get_all() -> list[Permission]:
     """
     db = SessionLocal()
     try:
-        return db.query(Permission).all()
+        # Get total count
+        total = db.query(Permission).count()
+        # Get paginated results
+        permissions = db.query(Permission).offset(skip).limit(limit).all()
+        return permissions, total
     except (OperationalError, InterfaceError) as e:
         logger.error("Database connection error while getting all permissions")
         raise DatabaseConnectionError("Database connection failed")

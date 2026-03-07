@@ -135,20 +135,22 @@ def test_get_all_permissions_empty(mocker):
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
-    mock_query.all.return_value = []
+    # Set up the chain: query() -> offset() -> limit() -> all()
+    mock_query.offset.return_value.limit.return_value.all.return_value = []
+    mock_query.count.return_value = 0
 
     mock_session_local = mocker.patch('data.permission.SessionLocal')
     mock_session_local.return_value = mock_session
 
     # Act - Call data function
-    result = data.get_all()
+    result, total = data.get_all()
 
     # Assert - Check result is empty list
     assert result == []
+    assert total == 0
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
-    mock_session.query.assert_called_once_with(Permission)
-    mock_query.all.assert_called_once()
+    mock_query.count.assert_called_once()
 
 
 def test_get_all_permissions_with_data(mocker):
@@ -161,13 +163,15 @@ def test_get_all_permissions_with_data(mocker):
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
-    mock_query.all.return_value = permissions
+    # Set up the chain: query() -> offset() -> limit() -> all()
+    mock_query.offset.return_value.limit.return_value.all.return_value = permissions
+    mock_query.count.return_value = 2
 
     mock_session_local = mocker.patch('data.permission.SessionLocal')
     mock_session_local.return_value = mock_session
 
     # Act - Call data function
-    result = data.get_all()
+    result, total = data.get_all()
 
     # Assert - Check result contains the expected permissions
     assert len(result) == 2
@@ -175,6 +179,7 @@ def test_get_all_permissions_with_data(mocker):
     assert result[0].name == "read:users"
     assert result[1].id == 2
     assert result[1].name == "write:users"
+    assert total == 2
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
 
@@ -185,7 +190,8 @@ def test_get_all_permissions_database_error(mocker):
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
-    mock_query.all.side_effect = SQLAlchemyError("Database connection failed")
+    # Set up the chain: query() -> offset() -> limit() -> all() raises error
+    mock_query.offset.return_value.limit.return_value.all.side_effect = SQLAlchemyError("Database connection failed")
 
     mock_session_local = mocker.patch('data.permission.SessionLocal')
     mock_session_local.return_value = mock_session

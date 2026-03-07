@@ -1,6 +1,6 @@
 import pytest
 from fastapi import HTTPException
-from schemas.permission import PermissionResponse, PermissionCreate, PermissionUpdate, RolePermissionCreate
+from schemas.permission import PermissionResponse, PermissionCreate, PermissionUpdate, RolePermissionCreate, PaginationResponse
 from web.permission import (
     get_all,
     get_one,
@@ -346,38 +346,44 @@ def test_remove_permission_from_role_database_error(mocker):
 
 def test_get_all_permissions_empty_list(mocker):
     """Test get_all() returns empty list when no permissions"""
-    # Arrange - Mock service to return empty list
+    # Arrange - Mock service to return empty PaginationResponse
+    from schemas.permission import PaginationResponse
     mock_service = mocker.patch('web.permission.service.get_all')
-    mock_service.return_value = []
+    mock_service.return_value = PaginationResponse(data=[], total=0, skip=0, limit=20)
 
     # Act - Call function directly
     result = get_all()
 
-    # Assert - Check result is empty list
-    assert result == []
-    mock_service.assert_called_once()
+    # Assert - Check result is empty PaginationResponse
+    assert result.data == []
+    assert result.total == 0
+    assert result.skip == 0
+    assert result.limit == 20
+    mock_service.assert_called_once_with(skip=0, limit=20)
 
 
 def test_get_all_permissions_with_data(mocker):
     """Test get_all() returns permissions when they exist"""
     # Arrange - Mock service to return specific permissions
+    from schemas.permission import PaginationResponse
     expected_permissions = [
         PermissionResponse(id=1, name="read:users", description="Read users"),
         PermissionResponse(id=2, name="write:users", description="Write users"),
     ]
     mock_service = mocker.patch('web.permission.service.get_all')
-    mock_service.return_value = expected_permissions
+    mock_service.return_value = PaginationResponse(data=expected_permissions, total=2, skip=0, limit=20)
 
     # Act - Call function directly
     result = get_all()
 
     # Assert - Check result contains the mocked data
-    assert len(result) == 2
-    assert result[0].id == 1
-    assert result[0].name == "read:users"
-    assert result[1].id == 2
-    assert result[1].name == "write:users"
-    mock_service.assert_called_once()
+    assert len(result.data) == 2
+    assert result.data[0].id == 1
+    assert result.data[0].name == "read:users"
+    assert result.data[1].id == 2
+    assert result.data[1].name == "write:users"
+    assert result.total == 2
+    mock_service.assert_called_once_with(skip=0, limit=20)
 
 
 def test_get_all_permissions_database_error(mocker):
@@ -392,7 +398,7 @@ def test_get_all_permissions_database_error(mocker):
 
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Internal server error"
-    mock_service.assert_called_once()
+    mock_service.assert_called_once_with(skip=0, limit=20)
 
 
 def test_get_one_permission_found(mocker):
