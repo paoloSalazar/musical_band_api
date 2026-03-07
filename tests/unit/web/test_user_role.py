@@ -267,6 +267,24 @@ def test_delete_role_not_found(mocker):
     mock_service.assert_called_once_with("nonexistent")
 
 
+def test_delete_role_conflict_error(mocker):
+    """Test delete() returns HTTP 409 when role has permissions assigned"""
+    # Arrange - Mock service to raise ConflictError
+    mock_service = mocker.patch('web.user_role.service.delete')
+    mock_service.side_effect = ConflictError(
+        "Cannot delete role 'admin' because it has the following permissions assigned: read:users, write:users"
+    )
+
+    # Act & Assert - Should raise HTTPException with 409
+    with pytest.raises(HTTPException) as exc_info:
+        delete("admin")
+
+    assert exc_info.value.status_code == 409
+    assert "admin" in exc_info.value.detail
+    assert "read:users" in exc_info.value.detail
+    mock_service.assert_called_once_with("admin")
+
+
 def test_get_all_database_error(mocker):
     """Test get_all() handles database errors"""
     # Arrange - Mock service to raise DatabaseError

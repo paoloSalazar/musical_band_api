@@ -174,3 +174,27 @@ def test_delete_user_role_not_found(mocker):
 
     assert str(exc_info.value) == "User role 'nonexistent' not found"
     mock_get_one.assert_called_once_with("nonexistent")
+
+
+def test_delete_user_role_conflict_error(mocker):
+    """Test delete() function when role has permissions assigned"""
+    # Arrange - Mock data.get_one to return existing role with permissions
+    from exceptions import ConflictError
+    existing_db_role = DBUserRole(id=1, name="admin", description="Administrator")
+    mock_get_one = mocker.patch('services.user_role.data.get_one')
+    mock_get_one.return_value = existing_db_role
+    
+    # Mock data.delete to raise ConflictError
+    mock_delete = mocker.patch('services.user_role.data.delete')
+    mock_delete.side_effect = ConflictError(
+        "Cannot delete role 'admin' because it has the following permissions assigned: read:users, write:users"
+    )
+
+    # Act & Assert - Call service function and expect ConflictError
+    with pytest.raises(ConflictError) as exc_info:
+        service.delete("admin")
+
+    assert "admin" in str(exc_info.value)
+    assert "read:users" in str(exc_info.value)
+    mock_get_one.assert_called_once_with("admin")
+    mock_delete.assert_called_once_with("admin")

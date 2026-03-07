@@ -191,6 +191,7 @@ def delete(name: str) -> bool:
 
     Raises:
         NotFoundError: If role to delete is not found.
+        ConflictError: If role has permissions assigned.
         DatabaseError: If database operation fails.
     """
     try:
@@ -200,6 +201,9 @@ def delete(name: str) -> bool:
             raise NotFoundError(f"User role '{name}' not found")
         logger.info(f"Deleted user role '{name}'")
         return data.delete(name)
+    except ConflictError:
+        # Re-raise ConflictError as-is
+        raise
     except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in delete")
         raise DatabaseError("Service error")

@@ -181,11 +181,14 @@ def delete(name: str) -> bool | None:
 
     Raises:
         HTTPException: 404 if role not found.
+        HTTPException: 409 if role has permissions assigned.
         HTTPException: 500 if database error occurs.
     """
     try:
         return service.delete(name)
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except ConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except DatabaseError:
         raise HTTPException(status_code=500, detail="Internal server error")

@@ -1,8 +1,9 @@
 import pytest
 from models.user_role import UserRole
+from models.permission import Permission
 import data.user_role as data
 from sqlalchemy.exc import SQLAlchemyError
-from exceptions import DatabaseError
+from exceptions import DatabaseError, ConflictError
 
 def test_get_one_user_role_found(mocker):
     """Test get_one() when role exists"""
@@ -400,3 +401,36 @@ def test_delete_user_role_database_error(mocker):
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
     mock_session.rollback.assert_called_once()  # Rollback should be called on error
+
+
+def test_delete_user_role_with_permissions(mocker):
+    """Test delete() raises ConflictError when role has permissions assigned"""
+    # Arrange - Mock a role that has permissions assigned
+    permission1 = Permission(id=1, name="read:users", description="Read users")
+    permission2 = Permission(id=2, name="write:users", description="Write users")
+    
+    existing_role = UserRole(id=1, name="admin", description="Administrator")
+    # Set up the permissions relationship
+    existing_role.permissions = [permission1, permission2]
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = existing_role
+
+    mock_session_local = mocker.patch('data.user_role.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect ConflictError
+    with pytest.raises(ConflictError) as exc_info:
+        data.delete("admin")
+
+    assert "admin" in str(exc_info.value)
+    assert "read:users" in str(exc_info.value)
+    assert "write:users" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    # Verify delete was NOT called
+    mock_session.delete.assert_not_called()
+    mock_session.commit.assert_not_called()
