@@ -21,7 +21,7 @@ from auth.auth import get_current_user as get_auth_current_user
 from auth.roles import RoleAndPermissionChecker
 from schemas.user_role import UserRole
 from schemas.auth import Token
-from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate
+from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate, UserPaginationResponse
 import services.user as service
 import services.auth as auth_service
 from auth.auth import decode_access_token
@@ -113,22 +113,26 @@ def get_current_user_info(current_user: Annotated[dict, Depends(get_auth_current
 
 
 @router.get("/")
-def get_all(current_user: Annotated[dict, Depends(get_current_user)]) -> list[UserResponse]:
+def get_all(current_user: Annotated[dict, Depends(get_current_user)], skip: int = 0, limit: int = 20) -> UserPaginationResponse:
     """
-    Retrieve all users from the database.
+    Retrieve users from the database with pagination.
 
     Requires authentication.
 
+    Query Parameters:
+        skip: Number of records to skip (default: 0).
+        limit: Maximum number of records to return (default: 20).
+
     Returns:
-        List of UserResponse objects.
+        UserPaginationResponse with list of UserResponseWithRole objects and metadata.
 
     Raises:
         HTTPException: 500 if database error occurs.
     """
     try:
-        users = service.get_all()
-        logger.info(f"API request: Retrieved {len(users)} users by {current_user.get('sub')}")
-        return users
+        result = service.get_all_paginated(skip=skip, limit=limit)
+        logger.info(f"API request: Retrieved {len(result.data)} users (total: {result.total}, skip: {skip}, limit: {limit}) by {current_user.get('sub')}")
+        return result
     except DatabaseError as e:
         logger.error(f"Database error in get_all: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

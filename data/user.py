@@ -14,6 +14,7 @@ import logging
 from config.database import SessionLocal
 from models.user import User
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
+from sqlalchemy.orm import selectinload
 from exceptions import DatabaseError, DatabaseConnectionError
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,40 @@ def get_all() -> list[User]:
     except SQLAlchemyError as e:
         logger.error("Database error while getting all users")
         raise DatabaseError("Failed to get all users")
+    finally:
+        db.close()
+
+
+def get_all_paginated(skip: int = 0, limit: int = 20) -> tuple[list[User], int]:
+    """
+    Retrieve users from the database with pagination and join with roles.
+
+    Args:
+        skip: Number of records to skip (for pagination).
+        limit: Maximum number of records to return.
+
+    Returns:
+        Tuple of (list of User objects with role relationship, total count).
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        # Get total count
+        total = db.query(User).count()
+        # Get paginated results with role relationship loaded
+        users = db.query(User).options(
+            selectinload(User.role)
+        ).offset(skip).limit(limit).all()
+        return users, total
+    except (OperationalError, InterfaceError) as e:
+        logger.error("Database connection error while getting paginated users")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error("Database error while getting paginated users")
+        raise DatabaseError("Failed to get paginated users")
     finally:
         db.close()
 

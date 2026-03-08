@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzcyODgwMTQ5fQ.eDLhWX02X6Tx_iMGvoa_sPCKD9d6aL8XR0Kb3ICb74c
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzcyOTcxMDUzfQ.HR5oUI12-LurCAItxJTkHKoTgl-_xVCg-44tXmIg01s
 ### Permissions Endpoints ###
 GET {{api}}/permissions
 Authorization: Bearer {{user_token}}
@@ -121,14 +121,15 @@ Authorization: Bearer {{user_token}}
 
 ### Post a new user
 POST {{api}}/users/
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "paolo",
-  "lastname": "salazar",
+  "name": "juan",
+  "lastname": "perez",
   "second_lastname": "villarroel",
-  "email": "paolo.salazar@example.com",
-  "password": "salazar",
+  "email": "juan.perez@example.com",
+  "password": "perez",
   "role_id": 1
 }
 

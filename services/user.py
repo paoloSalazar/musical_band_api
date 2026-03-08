@@ -13,7 +13,7 @@ Functions:
 """
 
 import logging
-from schemas.user import UserResponse, UserCreate, UserUpdate
+from schemas.user import UserResponse, UserCreate, UserUpdate, UserResponseWithRole, UserPaginationResponse
 import data.user as data
 from models.user import User as DBUser
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError, UnauthorizedError
@@ -39,6 +39,46 @@ def get_all() -> list[UserResponse]:
         return users
     except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in get_all")
+        raise DatabaseError("Service error")
+
+
+def get_all_paginated(skip: int = 0, limit: int = 20) -> UserPaginationResponse:
+    """
+    Retrieve users from the database with pagination.
+
+    Args:
+        skip: Number of records to skip (for pagination).
+        limit: Maximum number of records to return.
+
+    Returns:
+        UserPaginationResponse with list of UserResponseWithRole objects and metadata.
+
+    Raises:
+        DatabaseError: If database operation fails.
+    """
+    try:
+        db_users, total = data.get_all_paginated(skip=skip, limit=limit)
+        users = [
+            UserResponseWithRole(
+                id=user.id,
+                name=user.name,
+                lastname=user.lastname,
+                second_lastname=user.second_lastname,
+                email=user.email,
+                role_id=user.role_id,
+                role=user.role.name  # Get role name from relationship
+            )
+            for user in db_users
+        ]
+        logger.info(f"Retrieved {len(users)} users (total: {total}, skip: {skip}, limit: {limit})")
+        return UserPaginationResponse(
+            data=users,
+            total=total,
+            skip=skip,
+            limit=limit
+        )
+    except (DatabaseError, DatabaseConnectionError) as e:
+        logger.error("Service error in get_all_paginated")
         raise DatabaseError("Service error")
 
 
