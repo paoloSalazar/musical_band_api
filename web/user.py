@@ -18,6 +18,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, Request
 from auth.auth import decode_access_token
 from auth.auth import get_current_user as get_auth_current_user
+from auth.roles import RoleAndPermissionChecker
 from schemas.user_role import UserRole
 from schemas.auth import Token
 from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate
@@ -162,10 +163,12 @@ def get_one(current_user: Annotated[dict, Depends(get_current_user)], email: str
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/")
+@router.post("/", dependencies=[Depends(RoleAndPermissionChecker(required_roles=["admin"], required_permissions=["write:users"]))])
 def create(user: UserCreate) -> UserResponse:
     """
     Create a new user account.
+
+    Requires admin role AND write:users permission.
 
     Args:
         user: UserCreate schema with user data.
@@ -174,6 +177,7 @@ def create(user: UserCreate) -> UserResponse:
         Created UserResponse object.
 
     Raises:
+        HTTPException: 403 if user lacks admin role or write:users permission.
         HTTPException: 409 if email already exists.
         HTTPException: 500 if database error occurs.
     """

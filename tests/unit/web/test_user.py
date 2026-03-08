@@ -3,6 +3,7 @@ from fastapi import HTTPException
 from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate
 from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info
 from exceptions import NotFoundError, ConflictError, DatabaseError
+from auth.roles import RoleAndPermissionChecker
 
 
 def test_get_users_empty_list(mocker):
@@ -299,3 +300,120 @@ def test_get_current_user_info_with_empty_permissions(mocker):
     assert result["second_lastname"] is None
     assert result["role"] == "user"
     assert result["permissions"] == []
+
+
+# ============================================
+# Tests for POST /api/users/ RBAC (Admin + write:users)
+# ============================================
+
+
+def test_create_user_rbac_allows_admin_with_permission(mocker):
+    """Test create() allows admin user with write:users permission"""
+    # Arrange - Create RBAC checker requiring admin role AND write:users permission
+    checker = RoleAndPermissionChecker(
+        required_roles=["admin"],
+        required_permissions=["write:users"]
+    )
+    
+    # Simulate authenticated admin with write:users permission
+    mock_admin_user = {
+        "id": 1,
+        "email": "admin@example.com",
+        "role": "admin",
+        "role_id": 1,
+        "permissions": ["write:users"]
+    }
+    
+    # Mock service to return created user
+    input_data = UserCreate(name="NewUser", lastname="Test", email="newuser@example.com", password="hashedpass", role_id=2)
+    expected_created_user = UserResponse(id=3, name="NewUser", lastname="Test", email="newuser@example.com", role_id=2)
+    mock_service = mocker.patch('web.user.service.create')
+    mock_service.return_value = expected_created_user
+    
+    # Act - First verify RBAC passes, then call create
+    result_check = checker._check_role_and_permission(mock_admin_user)
+    assert result_check == mock_admin_user
+    
+    result = create(input_data)
+    
+    # Assert - Check result contains created user
+    assert result.id == 3
+    assert result.name == "NewUser"
+    mock_service.assert_called_once()
+
+
+def test_create_user_rbac_denies_non_admin(mocker):
+    """Test create() denies non-admin user even with write:users permission"""
+    # Arrange - Create RBAC checker requiring admin role AND write:users permission
+    checker = RoleAndPermissionChecker(
+        required_roles=["admin"],
+        required_permissions=["write:users"]
+    )
+    
+    # Simulate regular user with write:users permission (but not admin)
+    mock_regular_user = {
+        "id": 2,
+        "email": "user@example.com",
+        "role": "user",
+        "role_id": 2,
+        "permissions": ["write:users"]
+    }
+    
+    # Act & Assert - Should raise HTTPException for lacking admin role
+    with pytest.raises(HTTPException) as exc_info:
+        checker._check_role_and_permission(mock_regular_user)
+    
+    assert exc_info.value.status_code == 403
+    assert "Access denied" in exc_info.value.detail
+    assert "admin" in exc_info.value.detail
+
+
+def test_create_user_rbac_denies_admin_without_permission(mocker):
+    """Test create() denies admin user without write:users permission"""
+    # Arrange - Create RBAC checker requiring admin role AND write:users permission
+    checker = RoleAndPermissionChecker(
+        required_roles=["admin"],
+        required_permissions=["write:users"]
+    )
+    
+    # Simulate admin without write:users permission
+    mock_admin_without_perm = {
+        "id": 1,
+        "email": "admin@example.com",
+        "role": "admin",
+        "role_id": 1,
+        "permissions": ["users:read"]  # Has admin role but missing write:users
+    }
+    
+    # Act & Assert - Should raise HTTPException for lacking permission
+    with pytest.raises(HTTPException) as exc_info:
+        checker._check_role_and_permission(mock_admin_without_perm)
+    
+    assert exc_info.value.status_code == 403
+    assert "Missing required permission" in exc_info.value.detail
+    assert "write:users" in exc_info.value.detail
+
+
+def test_create_user_rbac_denies_non_admin_without_permission(mocker):
+    """Test create() denies non-admin user without write:users permission"""
+    # Arrange - Create RBAC checker requiring admin role AND write:users permission
+    checker = RoleAndPermissionChecker(
+        required_roles=["admin"],
+        required_permissions=["write:users"]
+    )
+    
+    # Simulate regular user without admin role or write:users permission
+    mock_regular_user = {
+        "id": 3,
+        "email": "regular@example.com",
+        "role": "user",
+        "role_id": 2,
+        "permissions": []
+    }
+    
+    # Act & Assert - Should raise HTTPException for lacking admin role
+    with pytest.raises(HTTPException) as exc_info:
+        checker._check_role_and_permission(mock_regular_user)
+    
+    assert exc_info.value.status_code == 403
+    assert "Access denied" in exc_info.value.detail
