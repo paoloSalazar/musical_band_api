@@ -141,6 +141,18 @@ Authorization: Bearer {{user_token}}
 GET {{api}}/users/1
 Authorization: Bearer {{user_token}}
 
+### Update an existing user by ID (PATCH)
+PATCH {{api}}/users/2
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Updated Name",
+  "lastname": "Updated Lastname",
+  "second_lastname": "Updated Second Lastname",
+  "role_id": 3
+}
+
 ### Update an existing user (PATCH)
 PATCH {{api}}/users/
 Authorization: Bearer {{user_token}}

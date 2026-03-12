@@ -1,6 +1,6 @@
 import pytest
 from fastapi import HTTPException
-from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate, UserResponseWithRole
+from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate, UserResponseWithRole, UserPaginationResponse
 from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info, get_one_by_id, modify_by_id
 from exceptions import NotFoundError, ConflictError, DatabaseError
 from auth.roles import RoleAndPermissionChecker
@@ -9,7 +9,6 @@ from auth.roles import RoleAndPermissionChecker
 def test_get_users_empty_list(mocker):
     """Test get_all() returns empty list when no users"""
     # Arrange - Mock service to return empty paginated response
-    from schemas.user import UserPaginationResponse
     mock_service = mocker.patch('web.user.service.get_all_paginated')
     mock_service.return_value = UserPaginationResponse(data=[], total=0, skip=0, limit=20)
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
@@ -21,6 +20,44 @@ def test_get_users_empty_list(mocker):
     assert result.data == []
     assert result.total == 0
     mock_service.assert_called_once()
+
+
+def test_get_users_with_order_by(mocker):
+    """Test get_all() passes order_by parameter to service"""
+    # Arrange - Mock service to return paginated users
+    expected_users = [
+        UserResponseWithRole(id=1, name="John", lastname="Doe", email="john.doe@example.com", role_id=1, role="admin"),
+        UserResponseWithRole(id=2, name="Jane", lastname="Smith", email="jane.smith@example.com", role_id=2, role="client")
+    ]
+    mock_service = mocker.patch('web.user.service.get_all_paginated')
+    mock_service.return_value = UserPaginationResponse(data=expected_users, total=2, skip=0, limit=20)
+    mock_current_user = {"sub": "test@example.com", "role": "admin"}
+
+    # Act - Call function with order_by parameter
+    result = get_all(current_user=mock_current_user, skip=0, limit=20, order_by='name')
+
+    # Assert
+    assert len(result.data) == 2
+    assert result.total == 2
+    mock_service.assert_called_once_with(skip=0, limit=20, order_by='name')
+
+
+def test_get_users_without_order_by(mocker):
+    """Test get_all() works without order_by parameter (backwards compatibility)"""
+    # Arrange - Mock service to return paginated users
+    expected_users = [
+        UserResponseWithRole(id=1, name="John", lastname="Doe", email="john.doe@example.com", role_id=1, role="admin")
+    ]
+    mock_service = mocker.patch('web.user.service.get_all_paginated')
+    mock_service.return_value = UserPaginationResponse(data=expected_users, total=1, skip=0, limit=20)
+    mock_current_user = {"sub": "test@example.com", "role": "admin"}
+
+    # Act - Call function without order_by parameter
+    result = get_all(current_user=mock_current_user, skip=0, limit=20)
+
+    # Assert
+    assert len(result.data) == 1
+    mock_service.assert_called_once_with(skip=0, limit=20, order_by=None)
 
 
 def test_get_users_with_data(mocker):

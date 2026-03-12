@@ -4,6 +4,97 @@ import data.user as data
 from sqlalchemy.exc import SQLAlchemyError
 from exceptions import DatabaseError
 
+
+def test_get_all_paginated_without_order_by(mocker):
+    """Test get_all_paginated() without order_by parameter"""
+    # Arrange - Mock SessionLocal
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    
+    # Mock count() and query chain
+    mock_query.count.return_value = 2
+    mock_query.options.return_value = mock_query
+    mock_query.offset.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.all.return_value = [
+        User(id=1, name="John", lastname="Doe", email="john@example.com", password="pass", role_id=1),
+        User(id=2, name="Jane", lastname="Smith", email="jane@example.com", password="pass", role_id=1)
+    ]
+
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act
+    result = data.get_all_paginated(skip=0, limit=20)
+
+    # Assert
+    assert result[0] is not None
+    assert result[1] == 2  # total count as integer
+    mock_query.order_by.assert_not_called()
+    mock_session.close.assert_called_once()
+
+
+def test_get_all_paginated_with_order_by(mocker):
+    """Test get_all_paginated() with order_by parameter"""
+    # Arrange - Mock SessionLocal
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    
+    # Mock count() and query chain
+    mock_query.count.return_value = 2
+    mock_query.options.return_value = mock_query
+    mock_query.offset.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.all.return_value = [
+        User(id=1, name="John", lastname="Doe", email="john@example.com", password="pass", role_id=1),
+        User(id=2, name="Jane", lastname="Smith", email="jane@example.com", password="pass", role_id=1)
+    ]
+
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act
+    result = data.get_all_paginated(skip=0, limit=20, order_by='name')
+
+    # Assert
+    assert result[0] is not None
+    assert result[1] == 2  # total count as integer
+    mock_query.order_by.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+def test_get_all_paginated_with_invalid_order_by(mocker):
+    """Test get_all_paginated() with invalid order_by field (should be ignored)"""
+    # Arrange - Mock SessionLocal
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    
+    # Mock count() and query chain
+    mock_query.count.return_value = 2
+    mock_query.options.return_value = mock_query
+    mock_query.offset.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.all.return_value = [
+        User(id=1, name="John", lastname="Doe", email="john@example.com", password="pass", role_id=1),
+        User(id=2, name="Jane", lastname="Smith", email="jane@example.com", password="pass", role_id=1)
+    ]
+
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - with invalid field name
+    result = data.get_all_paginated(skip=0, limit=20, order_by='invalid_field')
+
+    # Assert
+    assert result[0] is not None
+    assert result[1] == 2  # total count as integer
+    # order_by should NOT be called with invalid field
+    mock_query.order_by.assert_not_called()
+    mock_session.close.assert_called_once()
+
 def test_get_one_user_found(mocker):
     """Test get_one() when user exists"""
     # Arrange - Mock SessionLocal and query

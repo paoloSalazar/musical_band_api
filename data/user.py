@@ -15,6 +15,7 @@ from config.database import SessionLocal
 from models.user import User
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from exceptions import DatabaseError, DatabaseConnectionError
 
 logger = logging.getLogger(__name__)
@@ -110,13 +111,14 @@ def get_all() -> list[User]:
         db.close()
 
 
-def get_all_paginated(skip: int = 0, limit: int = 20) -> tuple[list[User], int]:
+def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = None) -> tuple[list[User], int]:
     """
     Retrieve users from the database with pagination and join with roles.
 
     Args:
         skip: Number of records to skip (for pagination).
         limit: Maximum number of records to return.
+        order_by: Field name to order results by (e.g., 'name', 'email', 'created_at').
 
     Returns:
         Tuple of (list of User objects with role relationship, total count).
@@ -129,10 +131,19 @@ def get_all_paginated(skip: int = 0, limit: int = 20) -> tuple[list[User], int]:
     try:
         # Get total count
         total = db.query(User).count()
-        # Get paginated results with role relationship loaded
-        users = db.query(User).options(
-            selectinload(User.role)
-        ).offset(skip).limit(limit).all()
+        
+        # Build query with optional ordering
+        query = db.query(User).options(selectinload(User.role))
+        
+        # Apply ordering if order_by is provided
+        if order_by:
+            # Get the attribute from the User model
+            order_column: InstrumentedAttribute | None = getattr(User, order_by, None)
+            if order_column is not None:
+                query = query.order_by(order_column)
+        
+        # Apply pagination
+        users = query.offset(skip).limit(limit).all()
         return users, total
     except (OperationalError, InterfaceError) as e:
         logger.error("Database connection error while getting paginated users")

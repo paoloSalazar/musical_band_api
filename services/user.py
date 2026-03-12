@@ -42,13 +42,14 @@ def get_all() -> list[UserResponse]:
         raise DatabaseError("Service error")
 
 
-def get_all_paginated(skip: int = 0, limit: int = 20) -> UserPaginationResponse:
+def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = None) -> UserPaginationResponse:
     """
     Retrieve users from the database with pagination.
 
     Args:
         skip: Number of records to skip (for pagination).
         limit: Maximum number of records to return.
+        order_by: Field name to order results by (e.g., 'name', 'email', 'created_at').
 
     Returns:
         UserPaginationResponse with list of UserResponseWithRole objects and metadata.
@@ -57,7 +58,7 @@ def get_all_paginated(skip: int = 0, limit: int = 20) -> UserPaginationResponse:
         DatabaseError: If database operation fails.
     """
     try:
-        db_users, total = data.get_all_paginated(skip=skip, limit=limit)
+        db_users, total = data.get_all_paginated(skip=skip, limit=limit, order_by=order_by)
         users = [
             UserResponseWithRole(
                 id=user.id,
@@ -165,6 +166,9 @@ def modify_by_id(user_id: int, user_update: UserUpdate) -> UserResponseWithRole:
             logger.warning(f"User with id {user_id} not found")
             raise NotFoundError(f"User with id {user_id} not found")
 
+        # Store the role name before the modify operation
+        role_name = existing_user.role.name if existing_user.role else ""
+
         db_user = DBUser(
             id=existing_user.id,
             name=user_update.name if user_update.name else existing_user.name,
@@ -184,7 +188,7 @@ def modify_by_id(user_id: int, user_update: UserUpdate) -> UserResponseWithRole:
                 second_lastname=modified_db_user.second_lastname,
                 email=modified_db_user.email,
                 role_id=modified_db_user.role_id,
-                role=modified_db_user.role.name if modified_db_user.role else ""
+                role=role_name
             )
         else:
             logger.warning(f"User with id {user_id} not found during modification")

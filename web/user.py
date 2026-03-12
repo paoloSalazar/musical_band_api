@@ -113,7 +113,7 @@ def get_current_user_info(current_user: Annotated[dict, Depends(get_auth_current
 
 
 @router.get("/")
-def get_all(current_user: Annotated[dict, Depends(get_current_user)], skip: int = 0, limit: int = 20) -> UserPaginationResponse:
+def get_all(current_user: Annotated[dict, Depends(get_current_user)], skip: int = 0, limit: int = 20, order_by: str | None = None) -> UserPaginationResponse:
     """
     Retrieve users from the database with pagination.
 
@@ -122,6 +122,7 @@ def get_all(current_user: Annotated[dict, Depends(get_current_user)], skip: int 
     Query Parameters:
         skip: Number of records to skip (default: 0).
         limit: Maximum number of records to return (default: 20).
+        order_by: Field name to order results by (e.g., 'name', 'email', 'created_at'). Optional.
 
     Returns:
         UserPaginationResponse with list of UserResponseWithRole objects and metadata.
@@ -130,8 +131,8 @@ def get_all(current_user: Annotated[dict, Depends(get_current_user)], skip: int 
         HTTPException: 500 if database error occurs.
     """
     try:
-        result = service.get_all_paginated(skip=skip, limit=limit)
-        logger.info(f"API request: Retrieved {len(result.data)} users (total: {result.total}, skip: {skip}, limit: {limit}) by {current_user.get('sub')}")
+        result = service.get_all_paginated(skip=skip, limit=limit, order_by=order_by)
+        logger.info(f"API request: Retrieved {len(result.data)} users (total: {result.total}, skip: {skip}, limit: {limit}, order_by: {order_by}) by {current_user.get('sub')}")
         return result
     except DatabaseError as e:
         logger.error(f"Database error in get_all: {str(e)}")

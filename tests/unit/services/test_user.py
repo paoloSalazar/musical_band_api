@@ -5,6 +5,41 @@ from models.user import User as DBUser
 import services.user as service
 from exceptions import NotFoundError, UnauthorizedError
 
+
+def test_get_all_paginated_without_order_by(mocker):
+    """Test get_all_paginated() without order_by parameter"""
+    # Arrange - Mock data.get_all_paginated
+    mock_data = mocker.patch('services.user.data.get_all_paginated')
+    mock_data.return_value = (
+        [],
+        0
+    )
+
+    # Act - Call service function
+    result = service.get_all_paginated(skip=0, limit=20)
+
+    # Assert
+    assert result.total == 0
+    assert result.skip == 0
+    assert result.limit == 20
+    mock_data.assert_called_once_with(skip=0, limit=20, order_by=None)
+
+
+def test_get_all_paginated_with_order_by(mocker):
+    """Test get_all_paginated() with order_by parameter"""
+    # Arrange - Mock data.get_all_paginated
+    mock_data = mocker.patch('services.user.data.get_all_paginated')
+    mock_data.return_value = ([], 0)
+
+    # Act - Call service function with order_by
+    result = service.get_all_paginated(skip=0, limit=20, order_by='name')
+
+    # Assert
+    assert result.total == 0
+    assert result.skip == 0
+    assert result.limit == 20
+    mock_data.assert_called_once_with(skip=0, limit=20, order_by='name')
+
 def test_get_all_users_empty(mocker):
     """Test get_all() returns empty list when no users"""
     # Arrange - Mock data.get_all to return empty list
