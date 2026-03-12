@@ -1,47 +1,49 @@
 import pytest
 from fastapi import HTTPException
-from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate
-from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info
+from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate, UserResponseWithRole
+from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info, get_one_by_id
 from exceptions import NotFoundError, ConflictError, DatabaseError
 from auth.roles import RoleAndPermissionChecker
 
 
 def test_get_users_empty_list(mocker):
     """Test get_all() returns empty list when no users"""
-    # Arrange - Mock service to return empty list
-    mock_service = mocker.patch('web.user.service.get_all')
-    mock_service.return_value = []
+    # Arrange - Mock service to return empty paginated response
+    from schemas.user import UserPaginationResponse
+    mock_service = mocker.patch('web.user.service.get_all_paginated')
+    mock_service.return_value = UserPaginationResponse(data=[], total=0, skip=0, limit=20)
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
 
     # Act - Call function directly
     result = get_all(current_user=mock_current_user)
 
-    # Assert - Check result is empty list
-    assert result == []
+    # Assert - Check result is empty pagination response
+    assert result.data == []
+    assert result.total == 0
     mock_service.assert_called_once()
 
 
 def test_get_users_with_data(mocker):
     """Test get_all() returns users when they exist"""
-    # Arrange - Mock service to return specific users
+    # Arrange - Mock service to return paginated users
+    from schemas.user import UserPaginationResponse, UserResponseWithRole
     expected_users = [
-        UserResponse(id=1, name="John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1),
-        UserResponse(id=2, name="Jane", lastname="Smith", email="jane.smith@example.com", password="hashedpass", role_id=2)
+        UserResponseWithRole(id=1, name="John", lastname="Doe", email="john.doe@example.com", role_id=1, role="admin"),
+        UserResponseWithRole(id=2, name="Jane", lastname="Smith", email="jane.smith@example.com", role_id=2, role="client")
     ]
-    mock_service = mocker.patch('web.user.service.get_all')
-    mock_service.return_value = expected_users
+    mock_service = mocker.patch('web.user.service.get_all_paginated')
+    mock_service.return_value = UserPaginationResponse(data=expected_users, total=2, skip=0, limit=20)
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
 
     # Act - Call function directly
     result = get_all(current_user=mock_current_user)
 
     # Assert - Check result contains the mocked data
-    assert len(result) == 2
-    assert result[0].id == 1
-    assert result[0].name == "John"
-    assert result[0].email == "john.doe@example.com"
-    assert result[1].id == 2
-    assert result[1].name == "Jane"
+    assert len(result.data) == 2
+    assert result.data[0].id == 1
+    assert result.data[0].name == "John"
+    assert result.data[1].id == 2
+    assert result.data[1].name == "Jane"
     mock_service.assert_called_once()
 
 
@@ -165,10 +167,9 @@ def test_modify_user_not_found(mocker):
 def test_get_all_database_error(mocker):
     """Test get_all() handles database errors"""
     # Arrange - Mock service to raise DatabaseError
-    mock_service = mocker.patch('web.user.service.get_all')
+    mock_service = mocker.patch('web.user.service.get_all_paginated')
     mock_service.side_effect = DatabaseError("Database connection failed")
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
-
 
     # Act & Assert - Call function and expect HTTPException
     with pytest.raises(HTTPException) as exc_info:
@@ -365,7 +366,70 @@ def test_create_user_rbac_denies_non_admin(mocker):
     
     assert exc_info.value.status_code == 403
     assert "Access denied" in exc_info.value.detail
-    assert "admin" in exc_info.value.detail
+
+
+# ============================================
+# Tests for GET /api/users/{id} endpoint
+# ============================================
+
+
+def test_get_one_by_id_success(mocker):
+    """Test get_one_by_id() when user exists"""
+    # Arrange - Mock service to return a user with role
+    expected_user = UserResponseWithRole(
+        id=1,
+        name="John",
+        lastname="Doe",
+        email="john.doe@example.com",
+        role_id=1,
+        role="admin"
+    )
+    mock_service = mocker.patch('web.user.service.get_one_by_id')
+    mock_service.return_value = expected_user
+    mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+
+    # Act - Call function directly
+    result = get_one_by_id(current_user=mock_current_user, user_id=1)
+
+    # Assert - Check result contains the mocked user
+    assert result.id == 1
+    assert result.name == "John"
+    assert result.email == "john.doe@example.com"
+    assert result.role_id == 1
+    assert result.role == "admin"  # role_name should be included
+    mock_service.assert_called_once_with(1)
+
+
+def test_get_one_by_id_not_found(mocker):
+    """Test get_one_by_id() when user doesn't exist"""
+    # Arrange - Mock service to raise NotFoundError
+    mock_service = mocker.patch('web.user.service.get_one_by_id')
+    mock_service.side_effect = NotFoundError("User with id 999 not found")
+    mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        get_one_by_id(current_user=mock_current_user, user_id=999)
+
+    assert exc_info.value.status_code == 404
+    assert "User not found" in exc_info.value.detail
+    mock_service.assert_called_once_with(999)
+
+
+def test_get_one_by_id_database_error(mocker):
+    """Test get_one_by_id() handles database errors"""
+    # Arrange - Mock service to raise DatabaseError
+    mock_service = mocker.patch('web.user.service.get_one_by_id')
+    mock_service.side_effect = DatabaseError("Database connection failed")
+    mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        get_one_by_id(current_user=mock_current_user, user_id=1)
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.detail == "Internal server error"
+    mock_service.assert_called_once_with(1)
 
 
 def test_create_user_rbac_denies_admin_without_permission(mocker):

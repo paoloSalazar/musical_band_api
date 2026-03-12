@@ -52,6 +52,40 @@ def get_one(email: str) -> User | None:
         db.close()
 
 
+def get_one_by_id(user_id: int) -> User | None:
+    """
+    Retrieve a user by their ID.
+
+    Args:
+        user_id: The ID of the user to retrieve.
+
+    Returns:
+        The User object with role relationship if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+
+    Example:
+        >>> user = get_one_by_id(1)
+        >>> if user:
+        ...     print(f"Found user: {user.name}")
+    """
+    db = SessionLocal()
+    try:
+        return db.query(User).options(
+            selectinload(User.role)
+        ).filter(User.id == user_id).first()
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting user by id '{user_id}'")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting user by id '{user_id}'")
+        raise DatabaseError("Failed to get user")
+    finally:
+        db.close()
+
+
 def get_all() -> list[User]:
     """
     Retrieve all users from the database.

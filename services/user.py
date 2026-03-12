@@ -109,6 +109,41 @@ def get_one(email: str) -> UserResponse:
         raise DatabaseError("Service error")
 
 
+def get_one_by_id(user_id: int) -> UserResponseWithRole:
+    """
+    Retrieve a user by their ID.
+
+    Args:
+        user_id: The ID of the user.
+
+    Returns:
+        UserResponseWithRole object with role_name.
+
+    Raises:
+        NotFoundError: If user with ID is not found.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        db_user = data.get_one_by_id(user_id)
+        if db_user is None:
+            logger.warning(f"User with id {user_id} not found")
+            raise NotFoundError(f"User with id {user_id} not found")
+        user = UserResponseWithRole(
+            id=db_user.id,
+            name=db_user.name,
+            lastname=db_user.lastname,
+            second_lastname=db_user.second_lastname,
+            email=db_user.email,
+            role_id=db_user.role_id,
+            role=db_user.role.name  # Get role name from relationship
+        )
+        logger.info(f"Retrieved user with id {user_id}")
+        return user
+    except (DatabaseError, DatabaseConnectionError) as e:
+        logger.error("Service error in get_one_by_id")
+        raise DatabaseError("Service error")
+
+
 def create(user_create: UserCreate) -> UserResponse:
     """
     Create a new user in the database.

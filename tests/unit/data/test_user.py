@@ -77,6 +77,104 @@ def test_get_one_user_database_error(mocker):
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
 
+
+def test_get_one_by_id_user_found(mocker):
+    """Test get_one_by_id() when user exists"""
+    # Arrange - Mock SessionLocal, query and selectinload
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_options = mocker.Mock()
+    
+    mock_session.query.return_value = mock_query
+    mock_query.options.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    
+    # Create a mock user with a mock role
+    mock_role = mocker.MagicMock()
+    mock_role.name = "admin"
+    mock_user = User(
+        id=1,
+        name="John",
+        lastname="Doe",
+        email="john.doe@example.com",
+        password="hashedpass",
+        role_id=1
+    )
+    mock_user.role = mock_role
+    mock_query.first.return_value = mock_user
+
+    # Mock selectinload
+    mocker.patch('data.user.selectinload', return_value=mock_options)
+    
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.get_one_by_id(1)
+
+    # Assert - Check result and session calls
+    assert result is not None
+    assert result.id == 1
+    assert result.name == "John"
+    assert result.email == "john.doe@example.com"
+    assert result.role.name == "admin"
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+def test_get_one_by_id_user_not_found(mocker):
+    """Test get_one_by_id() when user does not exist"""
+    # Arrange - Mock SessionLocal and query to return None
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_options = mocker.Mock()
+    
+    mock_session.query.return_value = mock_query
+    mock_query.options.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = None
+
+    # Mock selectinload
+    mocker.patch('data.user.selectinload', return_value=mock_options)
+    
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.get_one_by_id(999)
+
+    # Assert - Check result is None and session calls
+    assert result is None
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+def test_get_one_by_id_database_error(mocker):
+    """Test get_one_by_id() raises DatabaseError on SQLAlchemyError"""
+    # Arrange - Mock SessionLocal and query to raise SQLAlchemyError
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_options = mocker.Mock()
+    
+    mock_session.query.return_value = mock_query
+    mock_query.options.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.side_effect = SQLAlchemyError("Test error")
+
+    # Mock selectinload
+    mocker.patch('data.user.selectinload', return_value=mock_options)
+    
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect DatabaseError
+    with pytest.raises(DatabaseError) as exc_info:
+        data.get_one_by_id(1)
+
+    assert str(exc_info.value) == "Failed to get user"
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+
 def test_get_all_users(mocker):
     """Test get_all() returns list of users"""
     # Arrange - Mock SessionLocal and query

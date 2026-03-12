@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzcyOTcxMDUzfQ.HR5oUI12-LurCAItxJTkHKoTgl-_xVCg-44tXmIg01s
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzczMjgyNDExfQ.BrfSB97obS_4o4l5UfKCaNvxcrEeE4fMLS1aTaga7PY
 ### Permissions Endpoints ###
 GET {{api}}/permissions
 Authorization: Bearer {{user_token}}
@@ -135,6 +135,10 @@ Content-Type: application/json
 
 ### Get a specific user
 GET {{api}}/users/paolo.salazar@example.com
+Authorization: Bearer {{user_token}}
+
+### Get a specific user by Id
+GET {{api}}/users/1
 Authorization: Bearer {{user_token}}
 
 ### Update an existing user (PATCH)

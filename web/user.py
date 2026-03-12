@@ -21,7 +21,7 @@ from auth.auth import get_current_user as get_auth_current_user
 from auth.roles import RoleAndPermissionChecker
 from schemas.user_role import UserRole
 from schemas.auth import Token
-from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate, UserPaginationResponse
+from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate, UserPaginationResponse, UserResponseWithRole
 import services.user as service
 import services.auth as auth_service
 from auth.auth import decode_access_token
@@ -135,6 +135,35 @@ def get_all(current_user: Annotated[dict, Depends(get_current_user)], skip: int 
         return result
     except DatabaseError as e:
         logger.error(f"Database error in get_all: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{user_id}", dependencies=[Depends(RoleAndPermissionChecker(required_roles=["admin"], required_permissions=["read:users", "write:users", "delete:users"]))])
+def get_one_by_id(current_user: Annotated[dict, Depends(get_current_user)], user_id: int) -> UserResponseWithRole:
+    """
+    Retrieve a user by their ID.
+
+    Requires authentication.
+
+    Args:
+        user_id: The ID of the user.
+
+    Returns:
+        UserResponseWithRole object with role_name.
+
+    Raises:
+        HTTPException: 404 if user not found.
+        HTTPException: 500 if database error occurs.
+    """
+    try:
+        user = service.get_one_by_id(user_id)
+        logger.info(f"API request: Retrieved user with id {user_id}")
+        return user
+    except NotFoundError:
+        logger.warning(f"User with id {user_id} not found")
+        raise HTTPException(status_code=404, detail="User not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in get_one_by_id: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
