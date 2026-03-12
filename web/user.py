@@ -143,7 +143,7 @@ def get_one_by_id(current_user: Annotated[dict, Depends(get_current_user)], user
     """
     Retrieve a user by their ID.
 
-    Requires authentication.
+    Requires admin role AND read:users, write:users, delete:users permissions.
 
     Args:
         user_id: The ID of the user.
@@ -164,6 +164,37 @@ def get_one_by_id(current_user: Annotated[dict, Depends(get_current_user)], user
         raise HTTPException(status_code=404, detail="User not found")
     except DatabaseError as e:
         logger.error(f"Database error in get_one_by_id: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/{user_id}", dependencies=[Depends(RoleAndPermissionChecker(required_roles=["admin"], required_permissions=["read:users","write:users"]))])
+def modify_by_id(current_user: Annotated[dict, Depends(get_current_user)], user_id: int, user_update: UserUpdate) -> UserResponseWithRole:
+    """
+    Update an existing user's profile by their ID.
+
+    Requires admin role AND write:users permission.
+
+    Args:
+        user_id: The ID of the user to update.
+        user_update: UserUpdate schema with fields to update (name, lastname, second_lastname, role_id).
+
+    Returns:
+        Updated UserResponseWithRole object.
+
+    Raises:
+        HTTPException: 403 if user lacks admin role or write:users permission.
+        HTTPException: 404 if user not found.
+        HTTPException: 500 if database error occurs.
+    """
+    try:
+        updated_user = service.modify_by_id(user_id, user_update)
+        logger.info(f"API request: Modified user with id {user_id} by {current_user.get('sub')}")
+        return updated_user
+    except NotFoundError:
+        logger.warning(f"User with id {user_id} not found for modification")
+        raise HTTPException(status_code=404, detail="User not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in modify_by_id: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

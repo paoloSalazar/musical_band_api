@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate, UserResponseWithRole
-from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info, get_one_by_id
+from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info, get_one_by_id, modify_by_id
 from exceptions import NotFoundError, ConflictError, DatabaseError
 from auth.roles import RoleAndPermissionChecker
 
@@ -430,6 +430,70 @@ def test_get_one_by_id_database_error(mocker):
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Internal server error"
     mock_service.assert_called_once_with(1)
+
+
+def test_modify_by_id_success(mocker):
+    """Test modify_by_id() when user is updated successfully"""
+    # Arrange - Mock service to return updated user
+    from schemas.user import UserUpdate, UserResponseWithRole
+    expected_user = UserResponseWithRole(
+        id=1,
+        name="John Updated",
+        lastname="Doe",
+        email="john.doe@example.com",
+        role_id=2,
+        role="admin"
+    )
+    mock_service = mocker.patch('web.user.service.modify_by_id')
+    mock_service.return_value = expected_user
+    mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+    user_update = UserUpdate(name="John Updated", role_id=2)
+
+    # Act - Call function directly
+    result = modify_by_id(current_user=mock_current_user, user_id=1, user_update=user_update)
+
+    # Assert - Check result contains the mocked user
+    assert result.id == 1
+    assert result.name == "John Updated"
+    assert result.role_id == 2
+    assert result.role == "admin"
+    mock_service.assert_called_once_with(1, user_update)
+
+
+def test_modify_by_id_not_found(mocker):
+    """Test modify_by_id() when user doesn't exist"""
+    # Arrange - Mock service to raise NotFoundError
+    from schemas.user import UserUpdate
+    mock_service = mocker.patch('web.user.service.modify_by_id')
+    mock_service.side_effect = NotFoundError("User with id 999 not found")
+    mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+    user_update = UserUpdate(name="John Updated")
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        modify_by_id(current_user=mock_current_user, user_id=999, user_update=user_update)
+
+    assert exc_info.value.status_code == 404
+    assert "User not found" in exc_info.value.detail
+    mock_service.assert_called_once_with(999, user_update)
+
+
+def test_modify_by_id_database_error(mocker):
+    """Test modify_by_id() handles database errors"""
+    # Arrange - Mock service to raise DatabaseError
+    from schemas.user import UserUpdate
+    mock_service = mocker.patch('web.user.service.modify_by_id')
+    mock_service.side_effect = DatabaseError("Database connection failed")
+    mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+    user_update = UserUpdate(name="John Updated")
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        modify_by_id(current_user=mock_current_user, user_id=1, user_update=user_update)
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.detail == "Internal server error"
+    mock_service.assert_called_once_with(1, user_update)
 
 
 def test_create_user_rbac_denies_admin_without_permission(mocker):

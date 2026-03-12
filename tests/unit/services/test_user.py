@@ -106,6 +106,55 @@ def test_get_one_by_id_user_not_found(mocker):
     assert str(exc_info.value.args[0]) == "User with id 999 not found"
     mock_data.assert_called_once_with(999)
 
+def test_modify_by_id_user_found(mocker):
+    """Test modify_by_id() when user exists"""
+    # Arrange - Mock data.get_one_by_id to return a DB user with role, and data.modify to return modified user
+    mock_role = mocker.MagicMock()
+    mock_role.name = "admin"
+    
+    existing_user = DBUser(id=1, name="John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1)
+    existing_user.role = mock_role
+    
+    modified_user = DBUser(id=1, name="John Updated", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=2)
+    modified_user.role = mock_role
+
+    mock_get_one = mocker.patch('services.user.data.get_one_by_id')
+    mock_get_one.return_value = existing_user
+    
+    mock_modify = mocker.patch('services.user.data.modify')
+    mock_modify.return_value = modified_user
+
+    from schemas.user import UserUpdate
+    user_update = UserUpdate(name="John Updated", role_id=2)
+
+    # Act - Call service function
+    result = service.modify_by_id(1, user_update)
+
+    # Assert - Check result contains the expected UserResponseWithRole object
+    assert result is not None
+    assert result.id == 1
+    assert result.name == "John Updated"
+    assert result.role_id == 2
+    assert result.role == "admin"  # role_name should be included
+    mock_get_one.assert_called_once_with(1)
+    mock_modify.assert_called_once()
+
+def test_modify_by_id_user_not_found(mocker):
+    """Test modify_by_id() when user does not exist"""
+    # Arrange - Mock data.get_one_by_id to return None
+    mock_get_one = mocker.patch('services.user.data.get_one_by_id')
+    mock_get_one.return_value = None
+
+    from schemas.user import UserUpdate
+    user_update = UserUpdate(name="John Updated")
+
+    # Act & Assert - Call service function and expect NotFoundError
+    with pytest.raises(NotFoundError) as exc_info:
+        service.modify_by_id(999, user_update)
+
+    assert str(exc_info.value.args[0]) == "User with id 999 not found"
+    mock_get_one.assert_called_once_with(999)
+
 def test_create_user(mocker):
     """Test create() function"""
     # Arrange - Mock data.get_one to return None (user doesn't exist) and data.create to return the created DB user

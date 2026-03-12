@@ -144,6 +144,56 @@ def get_one_by_id(user_id: int) -> UserResponseWithRole:
         raise DatabaseError("Service error")
 
 
+def modify_by_id(user_id: int, user_update: UserUpdate) -> UserResponseWithRole:
+    """
+    Update an existing user's profile by their ID.
+
+    Args:
+        user_id: The ID of the user to update.
+        user_update: UserUpdate schema with fields to update.
+
+    Returns:
+        Updated UserResponseWithRole object.
+
+    Raises:
+        NotFoundError: If user to update is not found.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        existing_user = data.get_one_by_id(user_id)
+        if existing_user is None:
+            logger.warning(f"User with id {user_id} not found")
+            raise NotFoundError(f"User with id {user_id} not found")
+
+        db_user = DBUser(
+            id=existing_user.id,
+            name=user_update.name if user_update.name else existing_user.name,
+            lastname=user_update.lastname if user_update.lastname else existing_user.lastname,
+            second_lastname=user_update.second_lastname if user_update.second_lastname is not None else existing_user.second_lastname,
+            email=existing_user.email,  # Keep existing email when updating by ID
+            password=existing_user.password,  # Keep existing password
+            role_id=user_update.role_id if user_update.role_id else existing_user.role_id
+        )
+        modified_db_user = data.modify(db_user)
+        if modified_db_user:
+            logger.info(f"Modified user with id {user_id}")
+            return UserResponseWithRole(
+                id=modified_db_user.id,
+                name=modified_db_user.name,
+                lastname=modified_db_user.lastname,
+                second_lastname=modified_db_user.second_lastname,
+                email=modified_db_user.email,
+                role_id=modified_db_user.role_id,
+                role=modified_db_user.role.name if modified_db_user.role else ""
+            )
+        else:
+            logger.warning(f"User with id {user_id} not found during modification")
+            raise NotFoundError(f"User with id {user_id} not found")
+    except (DatabaseError, DatabaseConnectionError) as e:
+        logger.error("Service error in modify_by_id")
+        raise DatabaseError("Service error")
+
+
 def create(user_create: UserCreate) -> UserResponse:
     """
     Create a new user in the database.
