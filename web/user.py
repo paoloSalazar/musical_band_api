@@ -219,7 +219,7 @@ def delete(current_user: Annotated[dict, Depends(get_current_user)], user_id: in
         HTTPException: 500 if database error occurs.
     """
     # Check if current user is trying to delete themselves
-    current_user_id = current_user.get("id")
+    current_user_id = current_user.get("user_id")
     if current_user_id == user_id:
         logger.warning(f"User {current_user.get('sub')} attempted to delete themselves")
         raise HTTPException(status_code=403, detail="Cannot delete your own account")
