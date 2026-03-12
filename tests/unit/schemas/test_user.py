@@ -97,6 +97,7 @@ def test_user_to_dict():
         "lastname": "Wilson",
         "second_lastname": None,
         "email": "bob.wilson@example.com",
+        "phone_number": None,
         "role_id": 1
     }
     assert data == expected

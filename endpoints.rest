@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzczMjgyNDExfQ.BrfSB97obS_4o4l5UfKCaNvxcrEeE4fMLS1aTaga7PY
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzczMjkxMjE1fQ.jLjaYthUaRLxInHnuB755kKPwztnJKOwtBpLTil9WSY
 ### Permissions Endpoints ###
 GET {{api}}/permissions
 Authorization: Bearer {{user_token}}
@@ -126,10 +126,11 @@ Content-Type: application/json
 
 {
   "name": "juan",
-  "lastname": "perez",
+  "lastname": "lopez",
   "second_lastname": "villarroel",
-  "email": "juan.perez@example.com",
-  "password": "perez",
+  "email": "juan.lopez@example.com",
+  "password": "lopez",
+  "phone_number": "1234567890",
   "role_id": 1
 }
 
