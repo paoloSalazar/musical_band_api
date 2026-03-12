@@ -210,6 +210,7 @@ def modify(user: User) -> User:
             db_user.second_lastname = user.second_lastname
             db_user.email = user.email
             db_user.password = user.password
+            db_user.phone_number = user.phone_number
             db_user.role_id = user.role_id
             db.commit()
             db.refresh(db_user)

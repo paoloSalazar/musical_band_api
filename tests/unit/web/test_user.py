@@ -78,7 +78,7 @@ def test_delete_user_success(mocker):
 def test_delete_user_self_deletion_forbidden(mocker):
     """Test delete() prevents user from deleting themselves"""
     # Arrange
-    mock_current_user = {"sub": "admin@example.com", "role": "admin", "id": 1}
+    mock_current_user = {"sub": "admin@example.com", "role": "admin", "user_id": 1}
 
     # Act & Assert - Should raise 403 error
     from fastapi import HTTPException

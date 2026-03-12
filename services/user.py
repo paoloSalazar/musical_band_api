@@ -176,6 +176,7 @@ def modify_by_id(user_id: int, user_update: UserUpdate) -> UserResponseWithRole:
             second_lastname=user_update.second_lastname if user_update.second_lastname is not None else existing_user.second_lastname,
             email=existing_user.email,  # Keep existing email when updating by ID
             password=existing_user.password,  # Keep existing password
+            phone_number=user_update.phone_number if user_update.phone_number is not None else existing_user.phone_number,
             role_id=user_update.role_id if user_update.role_id else existing_user.role_id
         )
         modified_db_user = data.modify(db_user)
@@ -187,6 +188,7 @@ def modify_by_id(user_id: int, user_update: UserUpdate) -> UserResponseWithRole:
                 lastname=modified_db_user.lastname,
                 second_lastname=modified_db_user.second_lastname,
                 email=modified_db_user.email,
+                phone_number=modified_db_user.phone_number,
                 role_id=modified_db_user.role_id,
                 role=role_name
             )
@@ -223,6 +225,7 @@ def create(user_create: UserCreate) -> UserResponse:
             lastname=user_create.lastname,
             second_lastname=user_create.second_lastname,
             email=user_create.email,
+            phone_number=user_create.phone_number,
             password=get_password_hash(user_create.password),
             role_id=user_create.role_id
         )
@@ -262,6 +265,7 @@ def modify(user_update: UserUpdate) -> UserResponse:
             second_lastname=user_update.second_lastname if user_update.second_lastname else existing_user.second_lastname,
             email=user_update.email if user_update.email else existing_user.email,
             password=existing_user.password,  # Keep existing password
+            phone_number=user_update.phone_number if user_update.phone_number is not None else existing_user.phone_number,
             role_id=user_update.role_id if user_update.role_id else existing_user.role_id
         )
         modified_db_user = data.modify(db_user)
