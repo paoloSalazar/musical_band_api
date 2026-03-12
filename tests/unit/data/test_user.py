@@ -95,6 +95,56 @@ def test_get_all_paginated_with_invalid_order_by(mocker):
     mock_query.order_by.assert_not_called()
     mock_session.close.assert_called_once()
 
+
+def test_delete_user_found(mocker):
+    """Test delete() when user exists"""
+    # Arrange - Mock SessionLocal
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = User(
+        id=1,
+        name="John",
+        lastname="Doe",
+        email="john.doe@example.com",
+        password="hashedpass",
+        role_id=1
+    )
+
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act - Call data function
+    result = data.delete(1)
+
+    # Assert
+    assert result is True
+    mock_session.delete.assert_called_once()
+    mock_session.commit.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+def test_delete_user_not_found(mocker):
+    """Test delete() when user does not exist"""
+    # Arrange - Mock SessionLocal
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = None
+
+    mock_session_local = mocker.patch('data.user.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act
+    result = data.delete(999)
+
+    # Assert
+    assert result is False
+    mock_session.delete.assert_not_called()
+    mock_session.close.assert_called_once()
+
 def test_get_one_user_found(mocker):
     """Test get_one() when user exists"""
     # Arrange - Mock SessionLocal and query

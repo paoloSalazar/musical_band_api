@@ -40,6 +40,36 @@ def test_get_all_paginated_with_order_by(mocker):
     assert result.limit == 20
     mock_data.assert_called_once_with(skip=0, limit=20, order_by='name')
 
+
+def test_delete_user_success(mocker):
+    """Test delete() when user exists"""
+    # Arrange - Mock data.get_one_by_id and data.delete
+    mock_user = DBUser(id=1, name="John", lastname="Doe", email="john@example.com", password="pass", role_id=1)
+    mock_get_one = mocker.patch('services.user.data.get_one_by_id')
+    mock_get_one.return_value = mock_user
+    
+    mock_delete = mocker.patch('services.user.data.delete')
+    mock_delete.return_value = True
+
+    # Act - Call service function
+    result = service.delete(1)
+
+    # Assert
+    assert result is True
+    mock_get_one.assert_called_once_with(1)
+    mock_delete.assert_called_once_with(1)
+
+
+def test_delete_user_not_found(mocker):
+    """Test delete() when user does not exist"""
+    # Arrange - Mock data.get_one_by_id to return None
+    mock_get_one = mocker.patch('services.user.data.get_one_by_id')
+    mock_get_one.return_value = None
+
+    # Act & Assert - Should raise NotFoundError
+    with pytest.raises(NotFoundError):
+        service.delete(999)
+
 def test_get_all_users_empty(mocker):
     """Test get_all() returns empty list when no users"""
     # Arrange - Mock data.get_all to return empty list

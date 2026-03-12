@@ -324,3 +324,36 @@ def modify_password(email: str, current_password: str, new_password: str) -> boo
     except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in modify_password")
         raise DatabaseError("Service error")
+
+
+def delete(user_id: int) -> bool:
+    """
+    Delete a user from the database.
+
+    Args:
+        user_id: The ID of the user to delete.
+
+    Returns:
+        True if user was deleted successfully.
+
+    Raises:
+        NotFoundError: If user is not found.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        # Check if user exists first
+        existing_user = data.get_one_by_id(user_id)
+        if existing_user is None:
+            logger.warning(f"User with id {user_id} not found for deletion")
+            raise NotFoundError(f"User with id {user_id} not found")
+
+        result = data.delete(user_id)
+        if result:
+            logger.info(f"Deleted user with id {user_id}")
+            return True
+        else:
+            logger.warning(f"User with id {user_id} not found during deletion")
+            raise NotFoundError(f"User with id {user_id} not found")
+    except (DatabaseError, DatabaseConnectionError) as e:
+        logger.error("Service error in delete")
+        raise DatabaseError("Service error")

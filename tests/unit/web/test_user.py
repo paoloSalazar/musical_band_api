@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate, UserResponseWithRole, UserPaginationResponse
-from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info, get_one_by_id, modify_by_id
+from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info, get_one_by_id, modify_by_id, delete
 from exceptions import NotFoundError, ConflictError, DatabaseError
 from auth.roles import RoleAndPermissionChecker
 
@@ -58,6 +58,51 @@ def test_get_users_without_order_by(mocker):
     # Assert
     assert len(result.data) == 1
     mock_service.assert_called_once_with(skip=0, limit=20, order_by=None)
+
+
+def test_delete_user_success(mocker):
+    """Test delete() successfully deletes a user"""
+    # Arrange - Mock service.delete
+    mock_service = mocker.patch('web.user.service.delete')
+    mock_service.return_value = True
+    mock_current_user = {"sub": "admin@example.com", "role": "admin", "id": 1}
+
+    # Act - Call function
+    result = delete(current_user=mock_current_user, user_id=2)
+
+    # Assert
+    assert result == {"message": "User deleted successfully"}
+    mock_service.assert_called_once_with(2)
+
+
+def test_delete_user_self_deletion_forbidden(mocker):
+    """Test delete() prevents user from deleting themselves"""
+    # Arrange
+    mock_current_user = {"sub": "admin@example.com", "role": "admin", "id": 1}
+
+    # Act & Assert - Should raise 403 error
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        delete(current_user=mock_current_user, user_id=1)
+    
+    assert exc_info.value.status_code == 403
+    assert "Cannot delete your own account" in exc_info.value.detail
+
+
+def test_delete_user_not_found(mocker):
+    """Test delete() returns 404 when user not found"""
+    # Arrange - Mock service.delete to raise NotFoundError
+    mock_service = mocker.patch('web.user.service.delete')
+    from exceptions import NotFoundError
+    mock_service.side_effect = NotFoundError("User not found")
+    mock_current_user = {"sub": "admin@example.com", "role": "admin", "id": 1}
+
+    # Act & Assert
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        delete(current_user=mock_current_user, user_id=999)
+    
+    assert exc_info.value.status_code == 404
 
 
 def test_get_users_with_data(mocker):

@@ -224,3 +224,37 @@ def modify(user: User) -> User:
         raise DatabaseError("Failed to modify user")
     finally:
         db.close()
+
+
+def delete(user_id: int) -> bool:
+    """
+    Delete a user from the database.
+
+    Args:
+        user_id: The ID of the user to delete.
+
+    Returns:
+        True if deleted, False if not found.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        db_user = db.query(User).filter(User.id == user_id).first()
+        if db_user:
+            db.delete(db_user)
+            db.commit()
+            return True
+        return False
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while deleting user '{user_id}'")
+        db.rollback()
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while deleting user '{user_id}'")
+        db.rollback()
+        raise DatabaseError("Failed to delete user")
+    finally:
+        db.close()

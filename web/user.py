@@ -199,6 +199,43 @@ def modify_by_id(current_user: Annotated[dict, Depends(get_current_user)], user_
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@router.delete("/{user_id}", dependencies=[Depends(RoleAndPermissionChecker(required_roles=["admin"], required_permissions=["read:users", "delete:users"]))])
+def delete(current_user: Annotated[dict, Depends(get_current_user)], user_id: int) -> dict:
+    """
+    Delete a user by their ID.
+
+    Requires admin role AND read:users, delete:users permissions.
+    Current user cannot delete themselves.
+
+    Args:
+        user_id: The ID of the user to delete.
+
+    Returns:
+        Success message.
+
+    Raises:
+        HTTPException: 403 if user tries to delete themselves.
+        HTTPException: 404 if user not found.
+        HTTPException: 500 if database error occurs.
+    """
+    # Check if current user is trying to delete themselves
+    current_user_id = current_user.get("id")
+    if current_user_id == user_id:
+        logger.warning(f"User {current_user.get('sub')} attempted to delete themselves")
+        raise HTTPException(status_code=403, detail="Cannot delete your own account")
+    
+    try:
+        service.delete(user_id)
+        logger.info(f"API request: Deleted user with id {user_id} by {current_user.get('sub')}")
+        return {"message": "User deleted successfully"}
+    except NotFoundError:
+        logger.warning(f"User with id {user_id} not found for deletion")
+        raise HTTPException(status_code=404, detail="User not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in delete: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @router.get("/{email}")
 def get_one(current_user: Annotated[dict, Depends(get_current_user)], email: str) -> UserResponse:
     """
