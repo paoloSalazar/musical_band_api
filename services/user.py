@@ -66,6 +66,7 @@ def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = Non
                 lastname=user.lastname,
                 second_lastname=user.second_lastname,
                 email=user.email,
+                phone_number=user.phone_number,
                 role_id=user.role_id,
                 role=user.role.name  # Get role name from relationship
             )
@@ -135,6 +136,7 @@ def get_one_by_id(user_id: int) -> UserResponseWithRole:
             lastname=db_user.lastname,
             second_lastname=db_user.second_lastname,
             email=db_user.email,
+            phone_number=db_user.phone_number,
             role_id=db_user.role_id,
             role=db_user.role.name  # Get role name from relationship
         )

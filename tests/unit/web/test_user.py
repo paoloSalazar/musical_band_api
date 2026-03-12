@@ -46,7 +46,7 @@ def test_get_users_without_order_by(mocker):
     """Test get_all() works without order_by parameter (backwards compatibility)"""
     # Arrange - Mock service to return paginated users
     expected_users = [
-        UserResponseWithRole(id=1, name="John", lastname="Doe", email="john.doe@example.com", role_id=1, role="admin")
+        UserResponseWithRole(id=1, name="John", lastname="Doe", email="john.doe@example.com", phone_number=None, role_id=1, role="admin")
     ]
     mock_service = mocker.patch('web.user.service.get_all_paginated')
     mock_service.return_value = UserPaginationResponse(data=expected_users, total=1, skip=0, limit=20)
