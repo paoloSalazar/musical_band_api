@@ -16,9 +16,12 @@ Endpoints:
 import logging
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, Request
+from auth.auth import decode_access_token
+from auth.auth import get_current_user as get_auth_current_user
+from auth.roles import RoleAndPermissionChecker
 from schemas.user_role import UserRole
 from schemas.auth import Token
-from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate
+from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate, UserPaginationResponse, UserResponseWithRole
 import services.user as service
 import services.auth as auth_service
 from auth.auth import decode_access_token
@@ -58,25 +61,178 @@ async def get_current_user(request: Request) -> dict:
     return payload
 
 
-@router.get("/")
-def get_all(current_user: Annotated[dict, Depends(get_current_user)]) -> list[UserResponse]:
+@router.get("/me")
+def get_current_user_info(current_user: Annotated[dict, Depends(get_auth_current_user)]) -> dict:
     """
-    Retrieve all users from the database.
+    Get current user information including roles and permissions.
+
+    Requires authentication. Returns the authenticated user's profile
+    along with their role and permissions for UI rendering.
+
+    Args:
+        current_user: Current user from JWT token (injected by dependency).
+
+    Returns:
+        Dictionary containing:
+        - id: User's ID
+        - name: User's first name
+        - lastname: User's last name
+        - second_lastname: User's second last name (optional)
+        - email: User's email address
+        - role: User's role name (e.g., "admin", "user")
+        - role_id: User's role ID
+        - permissions: List of permission names (e.g., ["users:read", "users:write"])
+
+    Raises:
+        HTTPException: 401 if not authenticated.
+        HTTPException: 404 if user not found.
+    """
+    # Get full user profile from database
+    try:
+        user = service.get_one(current_user.get("email"))
+        if not user:
+            logger.warning(f"User not found: {current_user.get('email')}")
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        logger.info(f"API request: Retrieved current user info for {current_user.get('email')}")
+        return {
+            "id": user.id,
+            "name": user.name,
+            "lastname": user.lastname,
+            "second_lastname": user.second_lastname,
+            "email": user.email,
+            "role": current_user.get("role"),
+            "role_id": current_user.get("role_id"),
+            "permissions": current_user.get("permissions", []),
+        }
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="User not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in get_current_user_info: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/")
+def get_all(current_user: Annotated[dict, Depends(get_current_user)], skip: int = 0, limit: int = 20, order_by: str | None = None) -> UserPaginationResponse:
+    """
+    Retrieve users from the database with pagination.
 
     Requires authentication.
 
+    Query Parameters:
+        skip: Number of records to skip (default: 0).
+        limit: Maximum number of records to return (default: 20).
+        order_by: Field name to order results by (e.g., 'name', 'email', 'created_at'). Optional.
+
     Returns:
-        List of UserResponse objects.
+        UserPaginationResponse with list of UserResponseWithRole objects and metadata.
 
     Raises:
         HTTPException: 500 if database error occurs.
     """
     try:
-        users = service.get_all()
-        logger.info(f"API request: Retrieved {len(users)} users by {current_user.get('sub')}")
-        return users
+        result = service.get_all_paginated(skip=skip, limit=limit, order_by=order_by)
+        logger.info(f"API request: Retrieved {len(result.data)} users (total: {result.total}, skip: {skip}, limit: {limit}, order_by: {order_by}) by {current_user.get('sub')}")
+        return result
     except DatabaseError as e:
         logger.error(f"Database error in get_all: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{user_id}", dependencies=[Depends(RoleAndPermissionChecker(required_roles=["admin"], required_permissions=["read:users", "write:users", "delete:users"]))])
+def get_one_by_id(current_user: Annotated[dict, Depends(get_current_user)], user_id: int) -> UserResponseWithRole:
+    """
+    Retrieve a user by their ID.
+
+    Requires admin role AND read:users, write:users, delete:users permissions.
+
+    Args:
+        user_id: The ID of the user.
+
+    Returns:
+        UserResponseWithRole object with role_name.
+
+    Raises:
+        HTTPException: 404 if user not found.
+        HTTPException: 500 if database error occurs.
+    """
+    try:
+        user = service.get_one_by_id(user_id)
+        logger.info(f"API request: Retrieved user with id {user_id}")
+        return user
+    except NotFoundError:
+        logger.warning(f"User with id {user_id} not found")
+        raise HTTPException(status_code=404, detail="User not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in get_one_by_id: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/{user_id}", dependencies=[Depends(RoleAndPermissionChecker(required_roles=["admin"], required_permissions=["read:users","write:users"]))])
+def modify_by_id(current_user: Annotated[dict, Depends(get_current_user)], user_id: int, user_update: UserUpdate) -> UserResponseWithRole:
+    """
+    Update an existing user's profile by their ID.
+
+    Requires admin role AND write:users permission.
+
+    Args:
+        user_id: The ID of the user to update.
+        user_update: UserUpdate schema with fields to update (name, lastname, second_lastname, role_id).
+
+    Returns:
+        Updated UserResponseWithRole object.
+
+    Raises:
+        HTTPException: 403 if user lacks admin role or write:users permission.
+        HTTPException: 404 if user not found.
+        HTTPException: 500 if database error occurs.
+    """
+    try:
+        updated_user = service.modify_by_id(user_id, user_update)
+        logger.info(f"API request: Modified user with id {user_id} by {current_user.get('sub')}")
+        return updated_user
+    except NotFoundError:
+        logger.warning(f"User with id {user_id} not found for modification")
+        raise HTTPException(status_code=404, detail="User not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in modify_by_id: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.delete("/{user_id}", dependencies=[Depends(RoleAndPermissionChecker(required_roles=["admin"], required_permissions=["read:users", "delete:users"]))])
+def delete(current_user: Annotated[dict, Depends(get_current_user)], user_id: int) -> dict:
+    """
+    Delete a user by their ID.
+
+    Requires admin role AND read:users, delete:users permissions.
+    Current user cannot delete themselves.
+
+    Args:
+        user_id: The ID of the user to delete.
+
+    Returns:
+        Success message.
+
+    Raises:
+        HTTPException: 403 if user tries to delete themselves.
+        HTTPException: 404 if user not found.
+        HTTPException: 500 if database error occurs.
+    """
+    # Check if current user is trying to delete themselves
+    current_user_id = current_user.get("user_id")
+    if current_user_id == user_id:
+        logger.warning(f"User {current_user.get('sub')} attempted to delete themselves")
+        raise HTTPException(status_code=403, detail="Cannot delete your own account")
+    
+    try:
+        service.delete(user_id)
+        logger.info(f"API request: Deleted user with id {user_id} by {current_user.get('sub')}")
+        return {"message": "User deleted successfully"}
+    except NotFoundError:
+        logger.warning(f"User with id {user_id} not found for deletion")
+        raise HTTPException(status_code=404, detail="User not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in delete: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -109,10 +265,12 @@ def get_one(current_user: Annotated[dict, Depends(get_current_user)], email: str
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/")
+@router.post("/", dependencies=[Depends(RoleAndPermissionChecker(required_roles=["admin"], required_permissions=["write:users"]))])
 def create(user: UserCreate) -> UserResponse:
     """
     Create a new user account.
+
+    Requires admin role AND write:users permission.
 
     Args:
         user: UserCreate schema with user data.
@@ -121,6 +279,7 @@ def create(user: UserCreate) -> UserResponse:
         Created UserResponse object.
 
     Raises:
+        HTTPException: 403 if user lacks admin role or write:users permission.
         HTTPException: 409 if email already exists.
         HTTPException: 500 if database error occurs.
     """

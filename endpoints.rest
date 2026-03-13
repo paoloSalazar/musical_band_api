@@ -1,13 +1,76 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Nywicm9sZV9pZCI6MSwiZXhwIjoxNzcwODk1MDQ0fQ.h09rdz5HjUSUxRTJBy5tXAVI61flPkBpxNTzaiH_3aA
-GET {{api}}/user-roles/
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzczMjkxMjE1fQ.jLjaYthUaRLxInHnuB755kKPwztnJKOwtBpLTil9WSY
+### Permissions Endpoints ###
+GET {{api}}/permissions
+Authorization: Bearer {{user_token}}
+
+###
+GET {{api}}/permissions?skip=0&limit=8
+Authorization: Bearer {{user_token}}
+###
+GET {{api}}/permissions?skip=8&limit=8
+Authorization: Bearer {{user_token}}
+
+###
+POST {{api}}/permissions
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "write:events",
+  "description": "Permission to write event information"
+}
+
+###
+GET {{api}}/permissions/admin/permissions
+Authorization: Bearer {{user_token}}
+
+###
+### Assign permission to role
+POST {{api}}/permissions/roles/assign?permission_name=write:events&role_name=musician
+Authorization: Bearer {{user_token}}
+
+###
+### Remove permission from role
+POST {{api}}/permissions/roles/remove?permission_name=write:user_roles&role_name=admin
+Authorization: Bearer {{user_token}}
+
+###
+### Get permissions for a specific role
+GET {{api}}/permissions/admin/permissions
+Authorization: Bearer {{user_token}}
+
+###
+### Get roles that have a specific permission
+GET {{api}}/permissions/role/write:user_roles/roles
 Authorization: Bearer {{user_token}}
 
 ###
 
-### Get a specific user role
-GET {{api}}/user-roles/musician
+PATCH {{api}}/permissions/1
 Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "description": "Updated description for the permission"
+}
+
+###
+
+DELETE {{api}}/permissions/read:user_roles
+Authorization : Bearer {{user_token}}
+
+###
+
+
+
+### Get all user roles
+GET {{api}}/user-roles/
+Authorization: Bearer {{user_token}}
+###
+
+### Get a specific user role
+GET {{api}}/user-roles/admin
 
 ###
 
@@ -17,99 +80,37 @@ Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "musician",
-  "description": "Musician role"
+  "name": "admin",
+  "description": "Administrator role"
 }
 
 ###
 
 ### Update an existing user role (PATCH)
-PATCH {{api}}/user-roles/
+PATCH {{api}}/user-roles/1
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "id": 9,
-  "name": "musician",
-  "description": "Musician role changed"
+  "name": "admin",
+  "description": "Administrator role updated"
 }
 
 ###
 
 ### Replace an existing user role (PUT)
 PUT {{api}}/user-roles/
-Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "id": 9,
-  "name": "musician",
-  "description": "Musician role put changed"
+  "id": 2,
+  "name": "superadmin",
+  "description": "Super administrator role"
 }
 
 ###
 ### Delete a user role
 DELETE {{api}}/user-roles/musician
-Authorization: Bearer {{user_token}}
-
-###
-### PERMISSIONS ENDPOINTS ###
-### Get all permissions
-GET {{api}}/permissions/
-Authorization: Bearer {{user_token}}
-
-###
-
-### Get a specific permission
-GET {{api}}/permissions/1
-
-###
-
-### Create a new permission
-POST {{api}}/permissions/
-Authorization: Bearer {{user_token}}
-Content-Type: application/json
-
-{
-  "name": "read:users",
-  "description": "Permission to read users"
-}
-
-###
-
-### Update an existing permission (PATCH)
-PATCH {{api}}/permissions/1
-Content-Type: application/json
-
-{
-  "name": "read:all_users",
-  "description": "Permission to read all users"
-}
-
-###
-
-### Delete a permission
-DELETE {{api}}/permissions/1
-
-###
-### ROLE-PERMISSION ASSIGNMENT ENDPOINTS ###
-### Get permissions for a role by role name
-GET {{api}}/permissions/admin/permissions
-Authorization: Bearer {{user_token}}
-###
-
-### Get roles for a permission by permission name
-GET {{api}}/permissions/role/read:users/roles
-
-###
-
-### Assign a permission to a role
-POST {{api}}/permissions/roles/assign?permission_name=delete:user_roles&role_name=admin
-Authorization: Bearer {{user_token}}
-###
-
-### Remove a permission from a role
-POST {{api}}/permissions/roles/remove?permission_name=delete:user_roles&role_name=admin
 Authorization: Bearer {{user_token}}
 
 ###
@@ -120,33 +121,38 @@ Authorization: Bearer {{user_token}}
 
 ### Post a new user
 POST {{api}}/users/
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "Paolo",
-  "lastname": "Salazar",
-  "second_lastname": "Villarroel",
-  "email": "paolo.salazar@example.com",
-  "password": "salazar",
+  "name": "juan",
+  "lastname": "lopez",
+  "second_lastname": "villarroel",
+  "email": "juan.lopez@example.com",
+  "password": "lopez",
+  "phone_number": "1234567890",
   "role_id": 1
-}
-###
-
-POST {{api}}/users/
-Content-Type: application/json
-
-{
-  "name": "Juan",
-  "lastname": "Perez",
-  "second_lastname": "Villarroel",
-  "email": "juan.perez@example.com",
-  "password": "perez",
-  "role_id": 2
 }
 
 ### Get a specific user
-GET {{api}}/users/jane.smith@example.com
+GET {{api}}/users/paolo.salazar@example.com
 Authorization: Bearer {{user_token}}
+
+### Get a specific user by Id
+GET {{api}}/users/1
+Authorization: Bearer {{user_token}}
+
+### Update an existing user by ID (PATCH)
+PATCH {{api}}/users/2
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Updated Name",
+  "lastname": "Updated Lastname",
+  "second_lastname": "Updated Second Lastname",
+  "role_id": 3
+}
 
 ### Update an existing user (PATCH)
 PATCH {{api}}/users/
@@ -169,8 +175,8 @@ Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "current_password": "securepassword123",
-  "new_password": "newsecurepassword456"
+  "current_password": "newsecurepassword456",
+  "new_password": "newsecurepassword123"
 }
 
 ###
@@ -186,11 +192,6 @@ Content-Type: application/json
   "password": "salazar"
 }
 
-###
-POST {{api}}/users/login
-Content-Type: application/json
-
-{
-  "email": "juan.perez@example.com",
-  "password": "perez"
-}
+### Get Current User Info
+GET {{api}}/users/me
+Authorization: Bearer {{user_token}}

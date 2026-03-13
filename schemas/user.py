@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict
+from typing import List
 
 
 class UserBase(BaseModel):
@@ -6,6 +7,7 @@ class UserBase(BaseModel):
     lastname: str
     second_lastname: str | None = None
     email: str
+    phone_number: str | None = None
     role_id: int
 
 
@@ -33,6 +35,7 @@ class UserUpdate(BaseModel):
     lastname: str | None = None
     second_lastname: str | None = None
     email: str | None = None
+    phone_number: str | None = None
     role_id: int | None = None
 
 
@@ -40,3 +43,25 @@ class UserPasswordUpdate(BaseModel):
     """Schema for updating user password (requires current password)"""
     current_password: str
     new_password: str
+
+
+class UserResponseWithRole(BaseModel):
+    """Schema for user response including role name."""
+    id: int
+    name: str
+    lastname: str
+    second_lastname: str | None = None
+    email: str
+    phone_number: str | None = None
+    role_id: int
+    role: str  # Role name
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserPaginationResponse(BaseModel):
+    """Schema for paginated user response."""
+    data: List[UserResponseWithRole]
+    total: int
+    skip: int
+    limit: int

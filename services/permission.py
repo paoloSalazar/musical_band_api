@@ -20,27 +20,36 @@ Functions:
 import logging
 from typing import List
 from models.permission import Permission
-from schemas.permission import PermissionCreate, PermissionUpdate, PermissionResponse
+from schemas.permission import PermissionCreate, PermissionUpdate, PermissionResponse, PaginationResponse
 import data.permission as data
 from exceptions import NotFoundError, ConflictError, DatabaseError
 
 logger = logging.getLogger(__name__)
 
 
-def get_all() -> list[PermissionResponse]:
+def get_all(skip: int = 0, limit: int = 20) -> PaginationResponse:
     """
-    Retrieve all permissions from the database.
+    Retrieve permissions from the database with pagination.
+
+    Args:
+        skip: Number of records to skip (for pagination).
+        limit: Maximum number of records to return.
 
     Returns:
-        List of PermissionResponse objects.
+        PaginationResponse with list of PermissionResponse objects and metadata.
 
     Raises:
         DatabaseError: If database operation fails.
     """
     try:
-        db_permissions = data.get_all()
+        db_permissions, total = data.get_all(skip=skip, limit=limit)
         permissions = [PermissionResponse.model_validate(p) for p in db_permissions]
-        return permissions
+        return PaginationResponse(
+            data=permissions,
+            total=total,
+            skip=skip,
+            limit=limit
+        )
     except DatabaseError as e:
         logger.error(f"Error getting all permissions: {e}")
         raise
@@ -173,6 +182,30 @@ def delete(permission_id: int) -> bool:
         return data.delete(permission_id)
     except DatabaseError as e:
         logger.error(f"Error deleting permission {permission_id}: {e}")
+        raise
+
+
+def delete_by_name(name: str) -> bool:
+    """
+    Delete a permission from the database by its name.
+
+    Args:
+        name: The name of the permission to delete.
+
+    Returns:
+        True if deleted successfully.
+
+    Raises:
+        NotFoundError: If permission is not found.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        db_permission = data.get_by_name(name)
+        if not db_permission:
+            raise NotFoundError(f"Permission with name '{name}' not found")
+        return data.delete_by_name(name)
+    except DatabaseError as e:
+        logger.error(f"Error deleting permission '{name}': {e}")
         raise
 
 

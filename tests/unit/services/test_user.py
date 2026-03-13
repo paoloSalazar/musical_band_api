@@ -5,6 +5,71 @@ from models.user import User as DBUser
 import services.user as service
 from exceptions import NotFoundError, UnauthorizedError
 
+
+def test_get_all_paginated_without_order_by(mocker):
+    """Test get_all_paginated() without order_by parameter"""
+    # Arrange - Mock data.get_all_paginated
+    mock_data = mocker.patch('services.user.data.get_all_paginated')
+    mock_data.return_value = (
+        [],
+        0
+    )
+
+    # Act - Call service function
+    result = service.get_all_paginated(skip=0, limit=20)
+
+    # Assert
+    assert result.total == 0
+    assert result.skip == 0
+    assert result.limit == 20
+    mock_data.assert_called_once_with(skip=0, limit=20, order_by=None)
+
+
+def test_get_all_paginated_with_order_by(mocker):
+    """Test get_all_paginated() with order_by parameter"""
+    # Arrange - Mock data.get_all_paginated
+    mock_data = mocker.patch('services.user.data.get_all_paginated')
+    mock_data.return_value = ([], 0)
+
+    # Act - Call service function with order_by
+    result = service.get_all_paginated(skip=0, limit=20, order_by='name')
+
+    # Assert
+    assert result.total == 0
+    assert result.skip == 0
+    assert result.limit == 20
+    mock_data.assert_called_once_with(skip=0, limit=20, order_by='name')
+
+
+def test_delete_user_success(mocker):
+    """Test delete() when user exists"""
+    # Arrange - Mock data.get_one_by_id and data.delete
+    mock_user = DBUser(id=1, name="John", lastname="Doe", email="john@example.com", password="pass", role_id=1)
+    mock_get_one = mocker.patch('services.user.data.get_one_by_id')
+    mock_get_one.return_value = mock_user
+    
+    mock_delete = mocker.patch('services.user.data.delete')
+    mock_delete.return_value = True
+
+    # Act - Call service function
+    result = service.delete(1)
+
+    # Assert
+    assert result is True
+    mock_get_one.assert_called_once_with(1)
+    mock_delete.assert_called_once_with(1)
+
+
+def test_delete_user_not_found(mocker):
+    """Test delete() when user does not exist"""
+    # Arrange - Mock data.get_one_by_id to return None
+    mock_get_one = mocker.patch('services.user.data.get_one_by_id')
+    mock_get_one.return_value = None
+
+    # Act & Assert - Should raise NotFoundError
+    with pytest.raises(NotFoundError):
+        service.delete(999)
+
 def test_get_all_users_empty(mocker):
     """Test get_all() returns empty list when no users"""
     # Arrange - Mock data.get_all to return empty list
@@ -69,6 +134,91 @@ def test_get_one_user_not_found(mocker):
 
     assert str(exc_info.value.args[0]) == "User with email nonexistent@example.com not found"
     mock_data.assert_called_once_with("nonexistent@example.com")
+
+def test_get_one_by_id_user_found(mocker):
+    """Test get_one_by_id() when user exists"""
+    # Arrange - Mock data.get_one_by_id to return a DB user with role
+    mock_role = mocker.MagicMock()
+    mock_role.name = "admin"
+    db_user = DBUser(id=1, name="John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1)
+    db_user.role = mock_role
+    
+    mock_data = mocker.patch('services.user.data.get_one_by_id')
+    mock_data.return_value = db_user
+
+    # Act - Call service function
+    result = service.get_one_by_id(1)
+
+    # Assert - Check result contains the expected UserResponseWithRole object
+    assert result is not None
+    assert result.id == 1
+    assert result.name == "John"
+    assert result.email == "john.doe@example.com"
+    assert result.role_id == 1
+    assert result.role == "admin"  # role_name should be included
+    mock_data.assert_called_once_with(1)
+
+def test_get_one_by_id_user_not_found(mocker):
+    """Test get_one_by_id() when user does not exist"""
+    # Arrange - Mock data.get_one_by_id to return None
+    mock_data = mocker.patch('services.user.data.get_one_by_id')
+    mock_data.return_value = None
+
+    # Act & Assert - Call service function and expect NotFoundError
+    with pytest.raises(NotFoundError) as exc_info:
+        service.get_one_by_id(999)
+
+    assert str(exc_info.value.args[0]) == "User with id 999 not found"
+    mock_data.assert_called_once_with(999)
+
+def test_modify_by_id_user_found(mocker):
+    """Test modify_by_id() when user exists"""
+    # Arrange - Mock data.get_one_by_id to return a DB user with role, and data.modify to return modified user
+    mock_role = mocker.MagicMock()
+    mock_role.name = "admin"
+    
+    existing_user = DBUser(id=1, name="John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1)
+    existing_user.role = mock_role
+    
+    modified_user = DBUser(id=1, name="John Updated", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=2)
+    modified_user.role = mock_role
+
+    mock_get_one = mocker.patch('services.user.data.get_one_by_id')
+    mock_get_one.return_value = existing_user
+    
+    mock_modify = mocker.patch('services.user.data.modify')
+    mock_modify.return_value = modified_user
+
+    from schemas.user import UserUpdate
+    user_update = UserUpdate(name="John Updated", role_id=2)
+
+    # Act - Call service function
+    result = service.modify_by_id(1, user_update)
+
+    # Assert - Check result contains the expected UserResponseWithRole object
+    assert result is not None
+    assert result.id == 1
+    assert result.name == "John Updated"
+    assert result.role_id == 2
+    assert result.role == "admin"  # role_name should be included
+    mock_get_one.assert_called_once_with(1)
+    mock_modify.assert_called_once()
+
+def test_modify_by_id_user_not_found(mocker):
+    """Test modify_by_id() when user does not exist"""
+    # Arrange - Mock data.get_one_by_id to return None
+    mock_get_one = mocker.patch('services.user.data.get_one_by_id')
+    mock_get_one.return_value = None
+
+    from schemas.user import UserUpdate
+    user_update = UserUpdate(name="John Updated")
+
+    # Act & Assert - Call service function and expect NotFoundError
+    with pytest.raises(NotFoundError) as exc_info:
+        service.modify_by_id(999, user_update)
+
+    assert str(exc_info.value.args[0]) == "User with id 999 not found"
+    mock_get_one.assert_called_once_with(999)
 
 def test_create_user(mocker):
     """Test create() function"""

@@ -1,6 +1,6 @@
 import pytest
 from fastapi import HTTPException
-from schemas.permission import PermissionResponse, PermissionCreate, PermissionUpdate, RolePermissionCreate
+from schemas.permission import PermissionResponse, PermissionCreate, PermissionUpdate, RolePermissionCreate, PaginationResponse
 from web.permission import (
     get_all,
     get_one,
@@ -346,38 +346,44 @@ def test_remove_permission_from_role_database_error(mocker):
 
 def test_get_all_permissions_empty_list(mocker):
     """Test get_all() returns empty list when no permissions"""
-    # Arrange - Mock service to return empty list
+    # Arrange - Mock service to return empty PaginationResponse
+    from schemas.permission import PaginationResponse
     mock_service = mocker.patch('web.permission.service.get_all')
-    mock_service.return_value = []
+    mock_service.return_value = PaginationResponse(data=[], total=0, skip=0, limit=20)
 
     # Act - Call function directly
     result = get_all()
 
-    # Assert - Check result is empty list
-    assert result == []
-    mock_service.assert_called_once()
+    # Assert - Check result is empty PaginationResponse
+    assert result.data == []
+    assert result.total == 0
+    assert result.skip == 0
+    assert result.limit == 20
+    mock_service.assert_called_once_with(skip=0, limit=20)
 
 
 def test_get_all_permissions_with_data(mocker):
     """Test get_all() returns permissions when they exist"""
     # Arrange - Mock service to return specific permissions
+    from schemas.permission import PaginationResponse
     expected_permissions = [
         PermissionResponse(id=1, name="read:users", description="Read users"),
         PermissionResponse(id=2, name="write:users", description="Write users"),
     ]
     mock_service = mocker.patch('web.permission.service.get_all')
-    mock_service.return_value = expected_permissions
+    mock_service.return_value = PaginationResponse(data=expected_permissions, total=2, skip=0, limit=20)
 
     # Act - Call function directly
     result = get_all()
 
     # Assert - Check result contains the mocked data
-    assert len(result) == 2
-    assert result[0].id == 1
-    assert result[0].name == "read:users"
-    assert result[1].id == 2
-    assert result[1].name == "write:users"
-    mock_service.assert_called_once()
+    assert len(result.data) == 2
+    assert result.data[0].id == 1
+    assert result.data[0].name == "read:users"
+    assert result.data[1].id == 2
+    assert result.data[1].name == "write:users"
+    assert result.total == 2
+    mock_service.assert_called_once_with(skip=0, limit=20)
 
 
 def test_get_all_permissions_database_error(mocker):
@@ -392,7 +398,7 @@ def test_get_all_permissions_database_error(mocker):
 
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Internal server error"
-    mock_service.assert_called_once()
+    mock_service.assert_called_once_with(skip=0, limit=20)
 
 
 def test_get_one_permission_found(mocker):
@@ -544,43 +550,63 @@ def test_update_permission_database_error(mocker):
 
 def test_delete_permission_success(mocker):
     """Test delete() deletes the permission"""
-    # Arrange - Mock service delete method
-    mock_service = mocker.patch('web.permission.service.delete')
+    # Arrange - Mock service delete_by_name method
+    mock_service = mocker.patch('web.permission.service.delete_by_name')
     mock_service.return_value = True
 
     # Act - Call function directly
-    result = delete(permission_id=1)
+    result = delete(permission_name="read:users")
 
     # Assert - Check result is True
     assert result is True
-    mock_service.assert_called_once_with(1)
+    mock_service.assert_called_once_with("read:users")
 
 
 def test_delete_permission_not_found(mocker):
     """Test delete() when permission doesn't exist"""
     # Arrange - Mock service to raise NotFoundError
-    mock_service = mocker.patch('web.permission.service.delete')
-    mock_service.side_effect = NotFoundError("Permission with ID 99 not found")
+    mock_service = mocker.patch('web.permission.service.delete_by_name')
+    mock_service.side_effect = NotFoundError("Permission with name 'nonexistent' not found")
 
     # Act & Assert - Call function and expect HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        delete(permission_id=99)
+        delete(permission_name="nonexistent")
 
     assert exc_info.value.status_code == 404
-    assert "Permission with ID 99 not found" in exc_info.value.detail
-    mock_service.assert_called_once_with(99)
+    assert "Permission with name 'nonexistent' not found" in exc_info.value.detail
+    mock_service.assert_called_once_with("nonexistent")
 
 
 def test_delete_permission_database_error(mocker):
     """Test delete() handles database errors"""
     # Arrange - Mock service to raise DatabaseError
-    mock_service = mocker.patch('web.permission.service.delete')
+    mock_service = mocker.patch('web.permission.service.delete_by_name')
     mock_service.side_effect = DatabaseError("Database connection failed")
 
     # Act & Assert - Call function and expect HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        delete(permission_id=1)
+        delete(permission_name="read:users")
 
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Internal server error"
-    mock_service.assert_called_once_with(1)
+    mock_service.assert_called_once_with("read:users")
+
+
+def test_delete_permission_assigned_to_roles(mocker):
+    """Test delete() when permission is assigned to roles - should return 409 Conflict"""
+    # Arrange - Mock service to raise ConflictError (permission assigned to roles)
+    mock_service = mocker.patch('web.permission.service.delete_by_name')
+    mock_service.side_effect = ConflictError(
+        "Permission 'read:user_roles' is already assigned to role(s): 'admin', 'moderator'. "
+        "Remove the permission from these roles before deleting."
+    )
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        delete(permission_name="read:user_roles")
+
+    assert exc_info.value.status_code == 409
+    assert "read:user_roles" in exc_info.value.detail
+    assert "admin" in exc_info.value.detail
+    assert "moderator" in exc_info.value.detail
+    mock_service.assert_called_once_with("read:user_roles")

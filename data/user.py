@@ -14,6 +14,8 @@ import logging
 from config.database import SessionLocal
 from models.user import User
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from exceptions import DatabaseError, DatabaseConnectionError
 
 logger = logging.getLogger(__name__)
@@ -51,6 +53,40 @@ def get_one(email: str) -> User | None:
         db.close()
 
 
+def get_one_by_id(user_id: int) -> User | None:
+    """
+    Retrieve a user by their ID.
+
+    Args:
+        user_id: The ID of the user to retrieve.
+
+    Returns:
+        The User object with role relationship if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+
+    Example:
+        >>> user = get_one_by_id(1)
+        >>> if user:
+        ...     print(f"Found user: {user.name}")
+    """
+    db = SessionLocal()
+    try:
+        return db.query(User).options(
+            selectinload(User.role)
+        ).filter(User.id == user_id).first()
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting user by id '{user_id}'")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting user by id '{user_id}'")
+        raise DatabaseError("Failed to get user")
+    finally:
+        db.close()
+
+
 def get_all() -> list[User]:
     """
     Retrieve all users from the database.
@@ -71,6 +107,50 @@ def get_all() -> list[User]:
     except SQLAlchemyError as e:
         logger.error("Database error while getting all users")
         raise DatabaseError("Failed to get all users")
+    finally:
+        db.close()
+
+
+def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = None) -> tuple[list[User], int]:
+    """
+    Retrieve users from the database with pagination and join with roles.
+
+    Args:
+        skip: Number of records to skip (for pagination).
+        limit: Maximum number of records to return.
+        order_by: Field name to order results by (e.g., 'name', 'email', 'created_at').
+
+    Returns:
+        Tuple of (list of User objects with role relationship, total count).
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        # Get total count
+        total = db.query(User).count()
+        
+        # Build query with optional ordering
+        query = db.query(User).options(selectinload(User.role))
+        
+        # Apply ordering if order_by is provided
+        if order_by:
+            # Get the attribute from the User model
+            order_column: InstrumentedAttribute | None = getattr(User, order_by, None)
+            if order_column is not None:
+                query = query.order_by(order_column)
+        
+        # Apply pagination
+        users = query.offset(skip).limit(limit).all()
+        return users, total
+    except (OperationalError, InterfaceError) as e:
+        logger.error("Database connection error while getting paginated users")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error("Database error while getting paginated users")
+        raise DatabaseError("Failed to get paginated users")
     finally:
         db.close()
 
@@ -130,6 +210,7 @@ def modify(user: User) -> User:
             db_user.second_lastname = user.second_lastname
             db_user.email = user.email
             db_user.password = user.password
+            db_user.phone_number = user.phone_number
             db_user.role_id = user.role_id
             db.commit()
             db.refresh(db_user)
@@ -142,5 +223,39 @@ def modify(user: User) -> User:
         logger.error(f"Database error while modifying user '{user.email}'")
         db.rollback()
         raise DatabaseError("Failed to modify user")
+    finally:
+        db.close()
+
+
+def delete(user_id: int) -> bool:
+    """
+    Delete a user from the database.
+
+    Args:
+        user_id: The ID of the user to delete.
+
+    Returns:
+        True if deleted, False if not found.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        db_user = db.query(User).filter(User.id == user_id).first()
+        if db_user:
+            db.delete(db_user)
+            db.commit()
+            return True
+        return False
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while deleting user '{user_id}'")
+        db.rollback()
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while deleting user '{user_id}'")
+        db.rollback()
+        raise DatabaseError("Failed to delete user")
     finally:
         db.close()

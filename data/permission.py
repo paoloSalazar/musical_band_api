@@ -24,8 +24,8 @@ import logging
 from config.database import SessionLocal
 from models.permission import Permission
 from models.user_role import UserRole
-from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
-from exceptions import DatabaseError, DatabaseConnectionError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError, IntegrityError
+from exceptions import DatabaseError, DatabaseConnectionError, ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -84,12 +84,16 @@ def get_by_name(name: str) -> Permission | None:
         db.close()
 
 
-def get_all() -> list[Permission]:
+def get_all(skip: int = 0, limit: int = 20) -> tuple[list[Permission], int]:
     """
-    Retrieve all permissions from the database.
+    Retrieve permissions from the database with pagination.
+
+    Args:
+        skip: Number of records to skip (for pagination).
+        limit: Maximum number of records to return.
 
     Returns:
-        List of all Permission objects.
+        Tuple of (list of Permission objects, total count).
 
     Raises:
         DatabaseConnectionError: If database connection fails.
@@ -97,7 +101,11 @@ def get_all() -> list[Permission]:
     """
     db = SessionLocal()
     try:
-        return db.query(Permission).all()
+        # Get total count
+        total = db.query(Permission).count()
+        # Get paginated results
+        permissions = db.query(Permission).offset(skip).limit(limit).all()
+        return permissions, total
     except (OperationalError, InterfaceError) as e:
         logger.error("Database connection error while getting all permissions")
         raise DatabaseConnectionError("Database connection failed")
@@ -205,6 +213,80 @@ def delete(permission_id: int) -> bool:
         raise DatabaseConnectionError("Database connection failed")
     except SQLAlchemyError as e:
         logger.error(f"Database error while deleting permission '{permission_id}'")
+        db.rollback()
+        raise DatabaseError("Failed to delete permission")
+    finally:
+        db.close()
+
+
+def delete_by_name(name: str) -> bool:
+    """
+    Delete a permission from the database by its name.
+
+    Args:
+        name: The name of the permission to delete.
+
+    Returns:
+        True if deleted, False if not found.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+        ConflictError: If permission is assigned to roles.
+    """
+    db = SessionLocal()
+    try:
+        db_permission = db.query(Permission).filter(Permission.name == name).first()
+        if not db_permission:
+            return False
+        
+        # Check if permission is assigned to any roles BEFORE attempting delete
+        # This prevents cascade delete and gives a friendly error message
+        if db_permission.roles:
+            assigned_roles = [role.name for role in db_permission.roles]
+            roles_str = "', '".join(assigned_roles)
+            raise ConflictError(
+                f"Permission '{name}' is already assigned to role(s): '{roles_str}'. "
+                f"Remove the permission from these roles before deleting."
+            )
+        
+        db.delete(db_permission)
+        db.commit()
+        return True
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while deleting permission '{name}'")
+        db.rollback()
+        raise DatabaseConnectionError("Database connection failed")
+    except IntegrityError as e:
+        db.rollback()
+        # Check if this is a foreign key constraint violation
+        error_msg = str(e).lower()
+        if 'foreign key constraint' in error_msg or 'restrict' in error_msg:
+            # Get the roles that have this permission assigned
+            assigned_roles = []
+            try:
+                db2 = SessionLocal()
+                permission = db2.query(Permission).filter(Permission.name == name).first()
+                if permission:
+                    assigned_roles = [role.name for role in permission.roles]
+                db2.close()
+            except Exception:
+                pass
+            
+            if assigned_roles:
+                roles_str = "', '".join(assigned_roles)
+                raise ConflictError(
+                    f"Permission '{name}' is already assigned to role(s): '{roles_str}'. "
+                    f"Remove the permission from these roles before deleting."
+                )
+            raise ConflictError(f"Permission '{name}' cannot be deleted because it is in use")
+        logger.error(f"Integrity error while deleting permission '{name}': {e}")
+        raise DatabaseError("Failed to delete permission due to data integrity issue")
+    except ConflictError:
+        # Re-raise ConflictError as-is
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while deleting permission '{name}'")
         db.rollback()
         raise DatabaseError("Failed to delete permission")
     finally:

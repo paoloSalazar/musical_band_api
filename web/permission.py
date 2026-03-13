@@ -22,7 +22,7 @@ Endpoints:
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 import services.permission as service
-from schemas.permission import PermissionResponse, PermissionCreate, PermissionUpdate, RolePermissionCreate
+from schemas.permission import PermissionResponse, PermissionCreate, PermissionUpdate, RolePermissionCreate, PaginationResponse
 from exceptions import DatabaseError, NotFoundError, ConflictError
 from auth.auth import get_current_user
 from auth.roles import create_role_checker
@@ -38,22 +38,26 @@ router = APIRouter(prefix="/api/permissions")
 
 
 @router.get("/", dependencies=[Depends(create_role_checker(["admin"]))])
-def get_all() -> list[PermissionResponse]:
+def get_all(skip: int = 0, limit: int = 20) -> PaginationResponse:
     """
-    Retrieve all permissions from the database.
+    Retrieve permissions from the database with pagination.
 
     Requires: Admin role.
 
+    Query Parameters:
+        skip: Number of records to skip (default: 0).
+        limit: Maximum number of records to return (default: 20).
+
     Returns:
-        List of PermissionResponse objects.
+        PaginationResponse with list of PermissionResponse objects and metadata.
 
     Raises:
         HTTPException: 500 if database error occurs.
     """
     try:
-        permissions = service.get_all()
-        logger.info(f"API request: Retrieved {len(permissions)} permissions")
-        return permissions
+        result = service.get_all(skip=skip, limit=limit)
+        logger.info(f"API request: Retrieved {len(result.data)} permissions (total: {result.total}, skip: {skip}, limit: {limit})")
+        return result
     except DatabaseError as e:
         logger.error(f"Database error in get_all: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -151,15 +155,15 @@ def update(permission_id: int, permission_update: PermissionUpdate) -> Permissio
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.delete("/{permission_id}", dependencies=[Depends(create_role_checker(["admin"]))])
-def delete(permission_id: int) -> bool:
+@router.delete("/{permission_name}", dependencies=[Depends(create_role_checker(["admin"]))])
+def delete(permission_name: str) -> bool:
     """
     Delete a permission from the database.
 
     Requires: Admin role.
 
     Args:
-        permission_id: The ID of the permission to delete.
+        permission_name: The name of the permission to delete (e.g., "read:user_roles").
 
     Returns:
         True if deleted successfully.
@@ -169,14 +173,17 @@ def delete(permission_id: int) -> bool:
         HTTPException: 500 if database error occurs.
     """
     try:
-        result = service.delete(permission_id)
+        result = service.delete_by_name(permission_name)
         if not result:
-            raise NotFoundError(f"Permission with ID {permission_id} not found")
-        logger.info(f"API request: Deleted permission {permission_id}")
+            raise NotFoundError(f"Permission with name '{permission_name}' not found")
+        logger.info(f"API request: Deleted permission '{permission_name}'")
         return result
     except NotFoundError as e:
-        logger.warning(f"Permission {permission_id} not found: {str(e)}")
+        logger.warning(f"Permission '{permission_name}' not found: {str(e)}")
         raise HTTPException(status_code=404, detail=str(e))
+    except ConflictError as e:
+        logger.warning(f"Permission '{permission_name}' conflict: {str(e)}")
+        raise HTTPException(status_code=409, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error in delete: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

@@ -13,7 +13,7 @@ Functions:
 """
 
 import logging
-from schemas.user import UserResponse, UserCreate, UserUpdate
+from schemas.user import UserResponse, UserCreate, UserUpdate, UserResponseWithRole, UserPaginationResponse
 import data.user as data
 from models.user import User as DBUser
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError, UnauthorizedError
@@ -39,6 +39,48 @@ def get_all() -> list[UserResponse]:
         return users
     except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in get_all")
+        raise DatabaseError("Service error")
+
+
+def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = None) -> UserPaginationResponse:
+    """
+    Retrieve users from the database with pagination.
+
+    Args:
+        skip: Number of records to skip (for pagination).
+        limit: Maximum number of records to return.
+        order_by: Field name to order results by (e.g., 'name', 'email', 'created_at').
+
+    Returns:
+        UserPaginationResponse with list of UserResponseWithRole objects and metadata.
+
+    Raises:
+        DatabaseError: If database operation fails.
+    """
+    try:
+        db_users, total = data.get_all_paginated(skip=skip, limit=limit, order_by=order_by)
+        users = [
+            UserResponseWithRole(
+                id=user.id,
+                name=user.name,
+                lastname=user.lastname,
+                second_lastname=user.second_lastname,
+                email=user.email,
+                phone_number=user.phone_number,
+                role_id=user.role_id,
+                role=user.role.name  # Get role name from relationship
+            )
+            for user in db_users
+        ]
+        logger.info(f"Retrieved {len(users)} users (total: {total}, skip: {skip}, limit: {limit})")
+        return UserPaginationResponse(
+            data=users,
+            total=total,
+            skip=skip,
+            limit=limit
+        )
+    except (DatabaseError, DatabaseConnectionError) as e:
+        logger.error("Service error in get_all_paginated")
         raise DatabaseError("Service error")
 
 
@@ -69,6 +111,97 @@ def get_one(email: str) -> UserResponse:
         raise DatabaseError("Service error")
 
 
+def get_one_by_id(user_id: int) -> UserResponseWithRole:
+    """
+    Retrieve a user by their ID.
+
+    Args:
+        user_id: The ID of the user.
+
+    Returns:
+        UserResponseWithRole object with role_name.
+
+    Raises:
+        NotFoundError: If user with ID is not found.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        db_user = data.get_one_by_id(user_id)
+        if db_user is None:
+            logger.warning(f"User with id {user_id} not found")
+            raise NotFoundError(f"User with id {user_id} not found")
+        user = UserResponseWithRole(
+            id=db_user.id,
+            name=db_user.name,
+            lastname=db_user.lastname,
+            second_lastname=db_user.second_lastname,
+            email=db_user.email,
+            phone_number=db_user.phone_number,
+            role_id=db_user.role_id,
+            role=db_user.role.name  # Get role name from relationship
+        )
+        logger.info(f"Retrieved user with id {user_id}")
+        return user
+    except (DatabaseError, DatabaseConnectionError) as e:
+        logger.error("Service error in get_one_by_id")
+        raise DatabaseError("Service error")
+
+
+def modify_by_id(user_id: int, user_update: UserUpdate) -> UserResponseWithRole:
+    """
+    Update an existing user's profile by their ID.
+
+    Args:
+        user_id: The ID of the user to update.
+        user_update: UserUpdate schema with fields to update.
+
+    Returns:
+        Updated UserResponseWithRole object.
+
+    Raises:
+        NotFoundError: If user to update is not found.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        existing_user = data.get_one_by_id(user_id)
+        if existing_user is None:
+            logger.warning(f"User with id {user_id} not found")
+            raise NotFoundError(f"User with id {user_id} not found")
+
+        # Store the role name before the modify operation
+        role_name = existing_user.role.name if existing_user.role else ""
+
+        db_user = DBUser(
+            id=existing_user.id,
+            name=user_update.name if user_update.name else existing_user.name,
+            lastname=user_update.lastname if user_update.lastname else existing_user.lastname,
+            second_lastname=user_update.second_lastname if user_update.second_lastname is not None else existing_user.second_lastname,
+            email=existing_user.email,  # Keep existing email when updating by ID
+            password=existing_user.password,  # Keep existing password
+            phone_number=user_update.phone_number if user_update.phone_number is not None else existing_user.phone_number,
+            role_id=user_update.role_id if user_update.role_id else existing_user.role_id
+        )
+        modified_db_user = data.modify(db_user)
+        if modified_db_user:
+            logger.info(f"Modified user with id {user_id}")
+            return UserResponseWithRole(
+                id=modified_db_user.id,
+                name=modified_db_user.name,
+                lastname=modified_db_user.lastname,
+                second_lastname=modified_db_user.second_lastname,
+                email=modified_db_user.email,
+                phone_number=modified_db_user.phone_number,
+                role_id=modified_db_user.role_id,
+                role=role_name
+            )
+        else:
+            logger.warning(f"User with id {user_id} not found during modification")
+            raise NotFoundError(f"User with id {user_id} not found")
+    except (DatabaseError, DatabaseConnectionError) as e:
+        logger.error("Service error in modify_by_id")
+        raise DatabaseError("Service error")
+
+
 def create(user_create: UserCreate) -> UserResponse:
     """
     Create a new user in the database.
@@ -94,6 +227,7 @@ def create(user_create: UserCreate) -> UserResponse:
             lastname=user_create.lastname,
             second_lastname=user_create.second_lastname,
             email=user_create.email,
+            phone_number=user_create.phone_number,
             password=get_password_hash(user_create.password),
             role_id=user_create.role_id
         )
@@ -133,6 +267,7 @@ def modify(user_update: UserUpdate) -> UserResponse:
             second_lastname=user_update.second_lastname if user_update.second_lastname else existing_user.second_lastname,
             email=user_update.email if user_update.email else existing_user.email,
             password=existing_user.password,  # Keep existing password
+            phone_number=user_update.phone_number if user_update.phone_number is not None else existing_user.phone_number,
             role_id=user_update.role_id if user_update.role_id else existing_user.role_id
         )
         modified_db_user = data.modify(db_user)
@@ -194,4 +329,37 @@ def modify_password(email: str, current_password: str, new_password: str) -> boo
             raise NotFoundError(f"User with email {email} not found")
     except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in modify_password")
+        raise DatabaseError("Service error")
+
+
+def delete(user_id: int) -> bool:
+    """
+    Delete a user from the database.
+
+    Args:
+        user_id: The ID of the user to delete.
+
+    Returns:
+        True if user was deleted successfully.
+
+    Raises:
+        NotFoundError: If user is not found.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        # Check if user exists first
+        existing_user = data.get_one_by_id(user_id)
+        if existing_user is None:
+            logger.warning(f"User with id {user_id} not found for deletion")
+            raise NotFoundError(f"User with id {user_id} not found")
+
+        result = data.delete(user_id)
+        if result:
+            logger.info(f"Deleted user with id {user_id}")
+            return True
+        else:
+            logger.warning(f"User with id {user_id} not found during deletion")
+            raise NotFoundError(f"User with id {user_id} not found")
+    except (DatabaseError, DatabaseConnectionError) as e:
+        logger.error("Service error in delete")
         raise DatabaseError("Service error")

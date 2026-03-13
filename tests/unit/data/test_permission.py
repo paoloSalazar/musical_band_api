@@ -3,7 +3,7 @@ from models.permission import Permission
 from models.user_role import UserRole
 import data.permission as data
 from sqlalchemy.exc import SQLAlchemyError
-from exceptions import DatabaseError
+from exceptions import DatabaseError, ConflictError
 
 
 def test_get_one_permission_found(mocker):
@@ -135,20 +135,22 @@ def test_get_all_permissions_empty(mocker):
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
-    mock_query.all.return_value = []
+    # Set up the chain: query() -> offset() -> limit() -> all()
+    mock_query.offset.return_value.limit.return_value.all.return_value = []
+    mock_query.count.return_value = 0
 
     mock_session_local = mocker.patch('data.permission.SessionLocal')
     mock_session_local.return_value = mock_session
 
     # Act - Call data function
-    result = data.get_all()
+    result, total = data.get_all()
 
     # Assert - Check result is empty list
     assert result == []
+    assert total == 0
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
-    mock_session.query.assert_called_once_with(Permission)
-    mock_query.all.assert_called_once()
+    mock_query.count.assert_called_once()
 
 
 def test_get_all_permissions_with_data(mocker):
@@ -161,13 +163,15 @@ def test_get_all_permissions_with_data(mocker):
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
-    mock_query.all.return_value = permissions
+    # Set up the chain: query() -> offset() -> limit() -> all()
+    mock_query.offset.return_value.limit.return_value.all.return_value = permissions
+    mock_query.count.return_value = 2
 
     mock_session_local = mocker.patch('data.permission.SessionLocal')
     mock_session_local.return_value = mock_session
 
     # Act - Call data function
-    result = data.get_all()
+    result, total = data.get_all()
 
     # Assert - Check result contains the expected permissions
     assert len(result) == 2
@@ -175,6 +179,7 @@ def test_get_all_permissions_with_data(mocker):
     assert result[0].name == "read:users"
     assert result[1].id == 2
     assert result[1].name == "write:users"
+    assert total == 2
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
 
@@ -185,7 +190,8 @@ def test_get_all_permissions_database_error(mocker):
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
-    mock_query.all.side_effect = SQLAlchemyError("Database connection failed")
+    # Set up the chain: query() -> offset() -> limit() -> all() raises error
+    mock_query.offset.return_value.limit.return_value.all.side_effect = SQLAlchemyError("Database connection failed")
 
     mock_session_local = mocker.patch('data.permission.SessionLocal')
     mock_session_local.return_value = mock_session
@@ -411,6 +417,43 @@ def test_delete_permission_database_error(mocker):
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
     mock_session.rollback.assert_called_once()  # Rollback should be called on error
+
+
+def test_delete_by_name_permission_assigned_to_roles(mocker):
+    """Test delete_by_name() raises ConflictError when permission is assigned to roles"""
+    # Arrange - Mock permission that has roles assigned
+    role_admin = UserRole(id=1, name="admin", description="Administrator")
+    role_moderator = UserRole(id=2, name="moderator", description="Moderator")
+    
+    existing_permission = Permission(
+        id=1,
+        name="read:user_roles",
+        description="Permission to read user roles"
+    )
+    # Set up the roles relationship
+    existing_permission.roles = [role_admin, role_moderator]
+
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = existing_permission
+
+    mock_session_local = mocker.patch('data.permission.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert - Call data function and expect ConflictError
+    with pytest.raises(ConflictError) as exc_info:
+        data.delete_by_name("read:user_roles")
+
+    assert "read:user_roles" in str(exc_info.value)
+    assert "admin" in str(exc_info.value)
+    assert "moderator" in str(exc_info.value)
+    mock_session_local.assert_called_once()
+    mock_session.close.assert_called_once()
+    # Verify delete and commit were NOT called
+    mock_session.delete.assert_not_called()
+    mock_session.commit.assert_not_called()
 
 
 # ============================================

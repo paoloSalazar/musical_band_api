@@ -15,8 +15,8 @@ Functions:
 import logging
 from config.database import SessionLocal
 from models.user_role import UserRole
-from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
-from exceptions import DatabaseError, DatabaseConnectionError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError, IntegrityError
+from exceptions import DatabaseError, DatabaseConnectionError, ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,33 @@ def get_one(name: str) -> UserRole | None:
         raise DatabaseConnectionError("Database connection failed")
     except SQLAlchemyError as e:
         logger.error(f"Database error while getting user role '{name}'")
+        raise DatabaseError("Failed to get user role")
+    finally:
+        db.close()
+
+
+def get_by_id(role_id: int) -> UserRole | None:
+    """
+    Retrieve a user role by its ID.
+
+    Args:
+        role_id: The unique ID of the role.
+
+    Returns:
+        The UserRole object if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        return db.query(UserRole).filter(UserRole.id == role_id).first()
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting user role by id '{role_id}'")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting user role by id '{role_id}'")
         raise DatabaseError("Failed to get user role")
     finally:
         db.close()
@@ -191,19 +218,59 @@ def delete(name: str) -> bool:
     Raises:
         DatabaseConnectionError: If database connection fails.
         DatabaseError: If database operation fails.
+        ConflictError: If role has permissions assigned.
     """
     db = SessionLocal()
     try:
         db_user = db.query(UserRole).filter(UserRole.name == name).first()
-        if db_user:
-            db.delete(db_user)
-            db.commit()
-            return True
-        return False
+        if not db_user:
+            return False
+        
+        # Check if role has any permissions assigned BEFORE attempting delete
+        # This prevents cascade delete and gives a friendly error message
+        if db_user.permissions:
+            assigned_permissions = [perm.name for perm in db_user.permissions]
+            perm_str = "', '".join(assigned_permissions)
+            raise ConflictError(
+                f"Role '{name}' has permission(s) assigned: '{perm_str}'. "
+                f"Remove these permissions from the role before deleting."
+            )
+        
+        db.delete(db_user)
+        db.commit()
+        return True
     except (OperationalError, InterfaceError) as e:
         logger.error(f"Database connection error while deleting user role '{name}'")
         db.rollback()
         raise DatabaseConnectionError("Database connection failed")
+    except IntegrityError as e:
+        db.rollback()
+        # Check if this is a foreign key constraint violation
+        error_msg = str(e).lower()
+        if 'foreign key constraint' in error_msg or 'restrict' in error_msg:
+            # Get the permissions that are assigned to this role
+            assigned_permissions = []
+            try:
+                db2 = SessionLocal()
+                role = db2.query(UserRole).filter(UserRole.name == name).first()
+                if role:
+                    assigned_permissions = [perm.name for perm in role.permissions]
+                db2.close()
+            except Exception:
+                pass
+            
+            if assigned_permissions:
+                perm_str = "', '".join(assigned_permissions)
+                raise ConflictError(
+                    f"Role '{name}' has permission(s) assigned: '{perm_str}'. "
+                    f"Remove these permissions from the role before deleting."
+                )
+            raise ConflictError(f"Role '{name}' cannot be deleted because it is in use")
+        logger.error(f"Integrity error while deleting user role '{name}': {e}")
+        raise DatabaseError("Failed to delete user role due to data integrity issue")
+    except ConflictError:
+        # Re-raise ConflictError as-is
+        raise
     except SQLAlchemyError as e:
         logger.error(f"Database error while deleting user role '{name}'")
         db.rollback()

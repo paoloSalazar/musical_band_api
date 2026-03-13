@@ -3,6 +3,14 @@ from typing import List, Optional
 from datetime import datetime
 
 
+class PaginationResponse(BaseModel):
+    """Schema for paginated response."""
+    data: List["PermissionResponse"]
+    total: int
+    skip: int
+    limit: int
+
+
 class PermissionCreate(BaseModel):
     """Schema for creating a permission."""
     name: str
