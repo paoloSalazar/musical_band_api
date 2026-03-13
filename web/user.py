@@ -24,6 +24,7 @@ from schemas.auth import Token
 from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate, UserPaginationResponse, UserResponseWithRole
 import services.user as service
 import services.auth as auth_service
+from services.email import send_registration_confirmation
 from auth.auth import decode_access_token
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError, UnauthorizedError
 
@@ -266,7 +267,7 @@ def get_one(current_user: Annotated[dict, Depends(get_current_user)], email: str
 
 
 @router.post("/", dependencies=[Depends(RoleAndPermissionChecker(required_roles=["admin"], required_permissions=["write:users"]))])
-def create(user: UserCreate) -> UserResponse:
+async def create(user: UserCreate) -> UserResponse:
     """
     Create a new user account.
 
@@ -286,6 +287,17 @@ def create(user: UserCreate) -> UserResponse:
     try:
         new_user = service.create(user)
         logger.info(f"API request: Created user with email {user.email}")
+        
+        # Send registration confirmation email (non-blocking)
+        try:
+            await send_registration_confirmation(
+                email=user.email,
+                name=user.name,
+                lastname=user.lastname
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send registration email to {user.email}: {str(e)}")
+        
         return new_user
     except ConflictError:
         logger.warning(f"User with email {user.email} already exists")
