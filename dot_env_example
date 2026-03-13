@@ -4,3 +4,11 @@ DATABASE_URL=postgresql+pg8000://admin:password123@localhost:5432/my_database
 JWT_SECRET_KEY=your-super-secret-key-change-in-production
 JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Email Configuration (MailHog - Development)
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM_NAME=Musical Band
+SMTP_FROM_EMAIL=noreply@musicalband.local
