@@ -1,10 +1,13 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from config.database import Base
 
 
 class UserDetail(Base):
     __tablename__ = "user_details"
+    __table_args__ = (
+        UniqueConstraint('user_id', 'detail_type', name='uq_user_detail_type'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)

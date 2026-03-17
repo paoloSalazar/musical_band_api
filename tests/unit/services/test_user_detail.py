@@ -9,7 +9,7 @@ from services.user_detail import (
     delete,
     delete_by_user_id,
 )
-from exceptions import NotFoundError, DatabaseError
+from exceptions import NotFoundError, DatabaseError, ConflictError
 from models.user_detail import UserDetail
 from schemas.user_detail import UserDetailCreate, UserDetailUpdate, UserDetailResponse
 
@@ -269,3 +269,43 @@ def test_delete_by_user_id_not_found(mocker):
     # Assert
     assert result is False
     mock_data_delete.assert_called_once_with(999)
+
+
+def test_create_conflict_error(mocker):
+    """Test create() raises ConflictError when duplicate detail type exists"""
+    # Arrange
+    mock_data_create = mocker.patch('services.user_detail.data.create')
+    mock_data_create.side_effect = ConflictError(
+        "A detail of type 'phone' already exists for this user"
+    )
+
+    detail_data = UserDetailCreate(
+        user_id=1,
+        detail_type="phone",
+        detail_value="+1234567890"
+    )
+
+    # Act & Assert
+    with pytest.raises(ConflictError) as exc_info:
+        create(detail_data)
+    
+    assert "phone" in str(exc_info.value)
+    mock_data_create.assert_called_once()
+
+
+def test_update_conflict_error(mocker):
+    """Test update() raises ConflictError when duplicate detail type exists"""
+    # Arrange
+    mock_data_update = mocker.patch('services.user_detail.data.update')
+    mock_data_update.side_effect = ConflictError(
+        "A detail of type 'address' already exists for this user"
+    )
+
+    detail_data = UserDetailUpdate(detail_type="address")
+
+    # Act & Assert
+    with pytest.raises(ConflictError) as exc_info:
+        update(1, detail_data)
+    
+    assert "address" in str(exc_info.value)
+    mock_data_update.assert_called_once()

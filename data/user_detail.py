@@ -17,8 +17,8 @@ import logging
 from typing import List
 from config.database import SessionLocal
 from models.user_detail import UserDetail
-from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
-from exceptions import DatabaseError, DatabaseConnectionError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError, IntegrityError
+from exceptions import DatabaseError, DatabaseConnectionError, ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +114,7 @@ def create(detail_data: dict) -> UserDetail:
     Raises:
         DatabaseConnectionError: If database connection fails.
         DatabaseError: If database operation fails.
+        ConflictError: If a duplicate detail type exists for the user.
     """
     db = SessionLocal()
     try:
@@ -126,6 +127,10 @@ def create(detail_data: dict) -> UserDetail:
         db.rollback()
         logger.error(f"Database connection error in create: {str(e)}")
         raise DatabaseConnectionError(f"Database connection error: {str(e)}")
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"Duplicate entry error in create: {str(e)}")
+        raise ConflictError(f"A detail of type '{detail_data.get('detail_type')}' already exists for this user")
     except SQLAlchemyError as e:
         db.rollback()
         logger.error(f"Database error in create: {str(e)}")
@@ -148,6 +153,7 @@ def update(detail_id: int, detail_data: dict) -> UserDetail | None:
     Raises:
         DatabaseConnectionError: If database connection fails.
         DatabaseError: If database operation fails.
+        ConflictError: If a duplicate detail type exists for the user.
     """
     db = SessionLocal()
     try:
@@ -166,6 +172,10 @@ def update(detail_id: int, detail_data: dict) -> UserDetail | None:
         db.rollback()
         logger.error(f"Database connection error in update: {str(e)}")
         raise DatabaseConnectionError(f"Database connection error: {str(e)}")
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"Duplicate entry error in update: {str(e)}")
+        raise ConflictError(f"A detail of type '{detail_data.get('detail_type')}' already exists for this user")
     except SQLAlchemyError as e:
         db.rollback()
         logger.error(f"Database error in update: {str(e)}")

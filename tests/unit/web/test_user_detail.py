@@ -2,7 +2,7 @@ import pytest
 from fastapi import HTTPException
 from schemas.user_detail import UserDetailCreate, UserDetailUpdate, UserDetailResponse
 from web.user_detail import get_all_by_user, get_one, create, update, delete
-from exceptions import NotFoundError, DatabaseError
+from exceptions import NotFoundError, DatabaseError, ConflictError
 
 
 def test_get_all_by_user_success(mocker):
@@ -229,3 +229,50 @@ def test_delete_user_detail_wrong_user(mocker):
         delete(current_user=mock_current_user, user_id=1, detail_id=1)
 
     assert exc_info.value.status_code == 404
+
+
+def test_create_user_detail_conflict_error(mocker):
+    """Test create() returns HTTP 409 when duplicate detail type exists"""
+    # Arrange - Mock service to raise ConflictError
+    mock_service = mocker.patch('web.user_detail.service.create')
+    mock_service.side_effect = ConflictError(
+        "A detail of type 'phone' already exists for this user"
+    )
+    mock_current_user = {"sub": "test@example.com", "role": "admin"}
+    detail_data = UserDetailCreate(
+        user_id=1,
+        detail_type="phone",
+        detail_value="+1234567890"
+    )
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        create(current_user=mock_current_user, user_id=1, detail=detail_data)
+
+    assert exc_info.value.status_code == 409
+    assert "phone" in exc_info.value.detail
+    mock_service.assert_called_once()
+
+
+def test_update_user_detail_conflict_error(mocker):
+    """Test update() returns HTTP 409 when duplicate detail type exists"""
+    # Arrange - Mock service.get_one to return existing detail
+    mock_existing = UserDetailResponse(id=1, user_id=1, detail_type="phone", detail_value="+1234567890")
+    mock_service_get = mocker.patch('web.user_detail.service.get_one')
+    mock_service_get.return_value = mock_existing
+
+    # Mock service.update to raise ConflictError
+    mock_service_update = mocker.patch('web.user_detail.service.update')
+    mock_service_update.side_effect = ConflictError(
+        "A detail of type 'address' already exists for this user"
+    )
+    mock_current_user = {"sub": "test@example.com", "role": "admin"}
+    detail_data = UserDetailUpdate(detail_type="address")
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        update(current_user=mock_current_user, user_id=1, detail_id=1, detail=detail_data)
+
+    assert exc_info.value.status_code == 409
+    assert "address" in exc_info.value.detail
+    mock_service_update.assert_called_once()

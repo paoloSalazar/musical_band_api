@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from auth.auth import get_current_user as get_auth_current_user
 from schemas.user_detail import UserDetailCreate, UserDetailUpdate, UserDetailResponse
 import services.user_detail as service
-from exceptions import DatabaseError, NotFoundError
+from exceptions import DatabaseError, NotFoundError, ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +120,8 @@ def create(
         Created UserDetailResponse object.
 
     Raises:
+        HTTPException: 400 if user ID mismatch.
+        HTTPException: 409 if duplicate detail type exists for the user.
         HTTPException: 500 if database error occurs.
     """
     if detail.user_id != user_id:
@@ -129,6 +131,9 @@ def create(
         new_detail = service.create(detail)
         logger.info(f"API request: Created user detail for user {user_id}")
         return new_detail
+    except ConflictError as e:
+        logger.warning(f"Conflict error in create: {str(e)}")
+        raise HTTPException(status_code=409, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error in create: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -156,6 +161,7 @@ def update(
 
     Raises:
         HTTPException: 404 if detail not found.
+        HTTPException: 409 if duplicate detail type exists for the user.
         HTTPException: 500 if database error occurs.
     """
     try:
@@ -169,6 +175,9 @@ def update(
         return updated_detail
     except NotFoundError:
         raise HTTPException(status_code=404, detail="User detail not found")
+    except ConflictError as e:
+        logger.warning(f"Conflict error in update: {str(e)}")
+        raise HTTPException(status_code=409, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error in update: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

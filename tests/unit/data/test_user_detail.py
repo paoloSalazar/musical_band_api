@@ -1,8 +1,8 @@
 import pytest
 from models.user_detail import UserDetail
 import data.user_detail as data
-from sqlalchemy.exc import SQLAlchemyError
-from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError
 
 
 def test_get_one_user_detail_found(mocker):
@@ -373,3 +373,65 @@ def test_delete_by_user_id_not_found(mocker):
     assert result is False
     mock_session.delete.assert_not_called()
     mock_session.commit.assert_not_called()
+
+
+def test_create_user_detail_duplicate_constraint(mocker):
+    """Test create() raises ConflictError when duplicate detail type exists"""
+    # Arrange - Mock SessionLocal to raise IntegrityError (unique constraint violation)
+    mock_session = mocker.Mock()
+    mock_session.add.side_effect = IntegrityError(
+        "duplicate key value violates unique constraint \"uq_user_detail_type\"",
+        orig=None,
+        params=None
+    )
+
+    mock_session_local = mocker.patch('data.user_detail.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    detail_data = {
+        "user_id": 1,
+        "detail_type": "phone",
+        "detail_value": "+1234567890"
+    }
+
+    # Act & Assert - Call data function and expect ConflictError
+    with pytest.raises(ConflictError) as exc_info:
+        data.create(detail_data)
+    
+    assert "phone" in str(exc_info.value)
+    mock_session.rollback.assert_called_once()
+
+
+def test_update_user_detail_duplicate_constraint(mocker):
+    """Test update() raises ConflictError when duplicate detail type exists"""
+    # Arrange - Mock SessionLocal and query to return existing detail
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = UserDetail(
+        id=1,
+        user_id=1,
+        detail_type="phone",
+        detail_value="+1234567890"
+    )
+    # Make commit raise IntegrityError
+    mock_session.commit.side_effect = IntegrityError(
+        "duplicate key value violates unique constraint \"uq_user_detail_type\"",
+        orig=None,
+        params=None
+    )
+
+    mock_session_local = mocker.patch('data.user_detail.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    update_data = {
+        "detail_type": "address"
+    }
+
+    # Act & Assert - Call data function and expect ConflictError
+    with pytest.raises(ConflictError) as exc_info:
+        data.update(1, update_data)
+    
+    assert "address" in str(exc_info.value)
+    mock_session.rollback.assert_called_once()

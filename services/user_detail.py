@@ -17,7 +17,7 @@ import logging
 from typing import List
 import data.user_detail as data
 from schemas.user_detail import UserDetailCreate, UserDetailUpdate, UserDetailResponse
-from exceptions import DatabaseError
+from exceptions import DatabaseError, ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -96,11 +96,15 @@ def create(detail_data: UserDetailCreate) -> UserDetailResponse:
 
     Raises:
         DatabaseError: If database operation fails.
+        ConflictError: If a duplicate detail type exists for the user.
     """
     try:
         detail_dict = detail_data.model_dump()
         new_detail = data.create(detail_dict)
         return UserDetailResponse.model_validate(new_detail)
+    except ConflictError as e:
+        logger.error(f"Conflict error in create: {str(e)}")
+        raise
     except DatabaseError as e:
         logger.error(f"Database error in create: {str(e)}")
         raise
@@ -119,6 +123,7 @@ def update(detail_id: int, detail_data: UserDetailUpdate) -> UserDetailResponse 
 
     Raises:
         DatabaseError: If database operation fails.
+        ConflictError: If a duplicate detail type exists for the user.
     """
     try:
         detail_dict = detail_data.model_dump(exclude_unset=True)
@@ -126,6 +131,9 @@ def update(detail_id: int, detail_data: UserDetailUpdate) -> UserDetailResponse 
         if updated_detail is None:
             return None
         return UserDetailResponse.model_validate(updated_detail)
+    except ConflictError as e:
+        logger.error(f"Conflict error in update: {str(e)}")
+        raise
     except DatabaseError as e:
         logger.error(f"Database error in update: {str(e)}")
         raise
