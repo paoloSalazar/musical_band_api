@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzczMjkxMjE1fQ.jLjaYthUaRLxInHnuB755kKPwztnJKOwtBpLTil9WSY
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzczNzIyMDI3fQ.zwL5RHDMi8QU2WFFBXIiVCdp3TtMsn70x4MKMaWHNJk
 ### Permissions Endpoints ###
 GET {{api}}/permissions
 Authorization: Bearer {{user_token}}
@@ -194,4 +194,46 @@ Content-Type: application/json
 
 ### Get Current User Info
 GET {{api}}/users/me
+
+###
+### USER DETAILS ENDPOINTS ###
+
+### Get all details for a user
+GET {{api}}/users/1/details
+Authorization: Bearer {{user_token}}
+
+###
+
+### Get a specific user detail
+GET {{api}}/users/1/details/1
+Authorization: Bearer {{user_token}}
+
+###
+
+### Create a new user detail
+POST {{api}}/users/1/details
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "user_id": 1,
+  "detail_type": "address1",
+  "detail_value": "Cochabamba, Bolivia"
+}
+
+###
+
+### Update a user detail
+PATCH {{api}}/users/1/details/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "detail_value": "calle calama sn"
+}
+
+###
+
+### Delete a user detail
+DELETE {{api}}/users/1/details/1
 Authorization: Bearer {{user_token}}
