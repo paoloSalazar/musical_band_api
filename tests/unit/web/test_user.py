@@ -163,27 +163,30 @@ def test_get_user_not_found(mocker):
     mock_service.assert_called_once_with("nonexistent@example.com")
 
 
-def test_create_user(mocker):
+@pytest.mark.asyncio
+async def test_create_user(mocker):
     """Test create() creates and returns new user"""
     # Arrange - Mock service to return created user
-    input_data = UserCreate(name="Jane", lastname="Smith", email="jane.smith@example.com", password="hashedpass", role_id=2)
-    expected_created_user = UserResponse(id=3, name="Jane", lastname="Smith", email="jane.smith@example.com", role_id=2)
+    input_data = UserCreate(name="Jane", lastname="Smith", email="jane.smith@example.com", password="hashedpass", role_id=2, phone_number="+1234567890")
+    expected_created_user = UserResponse(id=3, name="Jane", lastname="Smith", email="jane.smith@example.com", role_id=2, phone_number="+1234567890")
     mock_service = mocker.patch('web.user.service.create')
     mock_service.return_value = expected_created_user
 
     # Act - Call function directly
-    result = create(input_data)
+    result = await create(input_data)
 
     # Assert - Check result contains created user
     assert result.id == 3
     assert result.name == "Jane"
     assert result.email == "jane.smith@example.com"
+    assert result.phone_number == "+1234567890"
     mock_service.assert_called_once()
     # Verify service was called with UserCreate object
     call_args = mock_service.call_args[0][0]
     assert isinstance(call_args, UserCreate)
     assert call_args.name == "Jane"
     assert call_args.email == "jane.smith@example.com"
+    assert call_args.phone_number == "+1234567890"
 
 
 def test_modify_user(mocker):
@@ -209,7 +212,8 @@ def test_modify_user(mocker):
     assert call_args.email == "john.doe@example.com"
 
 
-def test_create_user_conflict(mocker):
+@pytest.mark.asyncio
+async def test_create_user_conflict(mocker):
     """Test create() handles conflict when user already exists"""
     # Arrange - Mock service to raise ConflictError for duplicate user
     input_data = UserCreate(name="John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1)
@@ -218,7 +222,7 @@ def test_create_user_conflict(mocker):
 
     # Act & Assert - Call function and expect HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        create(input_data)
+        await create(input_data)
 
     assert exc_info.value.status_code == 409
     assert "User already exists" in exc_info.value.detail
@@ -390,7 +394,8 @@ def test_get_current_user_info_with_empty_permissions(mocker):
 # ============================================
 
 
-def test_create_user_rbac_allows_admin_with_permission(mocker):
+@pytest.mark.asyncio
+async def test_create_user_rbac_allows_admin_with_permission(mocker):
     """Test create() allows admin user with write:users permission"""
     # Arrange - Create RBAC checker requiring admin role AND write:users permission
     checker = RoleAndPermissionChecker(
@@ -417,7 +422,7 @@ def test_create_user_rbac_allows_admin_with_permission(mocker):
     result_check = checker._check_role_and_permission(mock_admin_user)
     assert result_check == mock_admin_user
     
-    result = create(input_data)
+    result = await create(input_data)
     
     # Assert - Check result contains created user
     assert result.id == 3
