@@ -21,7 +21,7 @@ from auth.auth import get_current_user as get_auth_current_user
 from auth.roles import RoleAndPermissionChecker
 from schemas.user_role import UserRole
 from schemas.auth import Token
-from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate, UserPaginationResponse, UserResponseWithRole
+from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate, UserPaginationResponse, UserResponseWithRole, UserProfileUpdate
 import services.user as service
 import services.auth as auth_service
 from services.email import send_registration_confirmation
@@ -102,6 +102,7 @@ def get_current_user_info(current_user: Annotated[dict, Depends(get_auth_current
             "lastname": user.lastname,
             "second_lastname": user.second_lastname,
             "email": user.email,
+            "phone_number": user.phone_number,
             "role": current_user.get("role"),
             "role_id": current_user.get("role_id"),
             "permissions": current_user.get("permissions", []),
@@ -110,6 +111,51 @@ def get_current_user_info(current_user: Annotated[dict, Depends(get_auth_current
         raise HTTPException(status_code=404, detail="User not found")
     except DatabaseError as e:
         logger.error(f"Database error in get_current_user_info: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/me")
+def modify_me(current_user: Annotated[dict, Depends(get_current_user)], user_update: UserProfileUpdate) -> UserResponseWithRole:
+    """
+    Update the current user's own profile.
+
+    Requires authentication. Users can only update their own profile
+    (name, lastname, second_lastname, phone_number). They cannot change
+    their role_id or email through this endpoint.
+
+    Args:
+        user_update: UserProfileUpdate schema with fields to update.
+
+    Returns:
+        Updated UserResponseWithRole object.
+
+    Raises:
+        HTTPException: 404 if user not found.
+        HTTPException: 500 if database error occurs.
+    """
+    # Get user_id from the current user's JWT token
+    user_id = current_user.get("user_id")
+    if not user_id:
+        logger.warning(f"User ID not found in token for {current_user.get('sub')}")
+        raise HTTPException(status_code=401, detail="Invalid token: missing user ID")
+    
+    try:
+        # Create a UserUpdate object from UserProfileUpdate (service expects UserUpdate)
+        # We need to convert UserProfileUpdate to UserUpdate to pass to modify_by_id
+        user_update_full = UserUpdate(
+            name=user_update.name,
+            lastname=user_update.lastname,
+            second_lastname=user_update.second_lastname,
+            phone_number=user_update.phone_number
+        )
+        updated_user = service.modify_by_id(user_id, user_update_full)
+        logger.info(f"API request: Modified profile for user with id {user_id} by {current_user.get('sub')}")
+        return updated_user
+    except NotFoundError:
+        logger.warning(f"User with id {user_id} not found for profile modification")
+        raise HTTPException(status_code=404, detail="User not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in modify_me: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

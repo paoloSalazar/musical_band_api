@@ -39,6 +39,14 @@ class UserUpdate(BaseModel):
     role_id: int | None = None
 
 
+class UserProfileUpdate(BaseModel):
+    """Schema for users to update their own profile (excludes role_id and email - only basic info)"""
+    name: str | None = None
+    lastname: str | None = None
+    second_lastname: str | None = None
+    phone_number: str | None = None
+
+
 class UserPasswordUpdate(BaseModel):
     """Schema for updating user password (requires current password)"""
     current_password: str
