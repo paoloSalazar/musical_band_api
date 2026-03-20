@@ -1,5 +1,6 @@
 import enum
-from sqlalchemy import Column, Integer, String, Date, Time, DateTime, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Enum, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from config.database import Base
 
@@ -19,18 +20,23 @@ class Event(Base):
     name = Column(String(100), nullable=False)
     place = Column(String(200), nullable=False)
     description = Column(String(500), nullable=True)
-    date = Column(Date, nullable=False)
-    time = Column(Time, nullable=False)
-    created_by = Column(String(100), nullable=False)
-    reference_phone = Column(String(20), nullable=False)
+    start_datetime = Column(DateTime(timezone=True), nullable=False)
+    end_datetime = Column(DateTime(timezone=True), nullable=False)
+    is_all_day = Column(Boolean, default=False, server_default='false', nullable=False)
     status = Column(Enum(EventStatus), default=EventStatus.PENDING, server_default=EventStatus.PENDING, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationship to User
+    user = relationship("User", back_populates="events")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if self.status is None:
             self.status = EventStatus.PENDING
+        if self.is_all_day is None:
+            self.is_all_day = False
 
     def __repr__(self):
         return f"<Event(name={self.name}, place={self.place})>"

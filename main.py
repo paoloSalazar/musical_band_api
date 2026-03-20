@@ -20,7 +20,7 @@ for name in ['sqlalchemy.engine', 'sqlalchemy.pool', 'sqlalchemy.orm', 'sqlalche
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from web import user_role, user, permission
+from web import user_role, user, permission, event
 
 app = FastAPI()
 
@@ -36,6 +36,7 @@ app.add_middleware(
 app.include_router(user_role.router)
 app.include_router(user.router)
 app.include_router(permission.router)
+app.include_router(event.router)
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,6 +1,14 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import date as date_type
-from datetime import time as time_type
+from datetime import datetime
+from enum import Enum
+
+
+class EventStatusEnum(str, Enum):
+    """Enum for event status values"""
+    PENDING = "PENDING"
+    CONFIRMED = "CONFIRMED"
+    CANCELLED = "CANCELLED"
+    COMPLETED = "COMPLETED"
 
 
 class EventBase(BaseModel):
@@ -8,10 +16,10 @@ class EventBase(BaseModel):
     name: str
     place: str
     description: str | None = None
-    date: date_type
-    time: time_type
-    created_by: str
-    reference_phone: str
+    start_datetime: datetime
+    end_datetime: datetime
+    is_all_day: bool = False
+    user_id: int
 
 
 class EventCreate(EventBase):
@@ -20,8 +28,11 @@ class EventCreate(EventBase):
 
 
 class EventResponse(EventBase):
-    """Schema for event responses (includes id)"""
+    """Schema for event responses (includes id, status, timestamps)"""
     id: int
+    status: EventStatusEnum
+    created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -31,6 +42,6 @@ class EventUpdate(BaseModel):
     name: str | None = None
     place: str | None = None
     description: str | None = None
-    date: date_type | None = None
-    time: time_type | None = None
-    reference_phone: str | None = None
+    start_datetime: datetime | None = None
+    end_datetime: datetime | None = None
+    is_all_day: bool | None = None
