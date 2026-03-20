@@ -136,3 +136,40 @@ async def send_profile_update_notification(
     """
     
     return await send_email(email, subject, body_html, body_text)
+
+
+async def send_password_change_confirmation(
+    email: str,
+    name: str,
+    lastname: str
+) -> bool:
+    """Send password change confirmation email."""
+    subject = "Musical Band API - Password Changed"
+    
+    body_html = f"""
+    <html>
+    <body>
+        <h1>Password Changed</h1>
+        <p>Hello {name} {lastname},</p>
+        <p>Your password has been successfully changed.</p>
+        <p>If you did not make this change, please contact support immediately and consider resetting your password.</p>
+        <br>
+        <p>Best regards,<br>The Musical Band API Team</p>
+    </body>
+    </html>
+    """
+    
+    body_text = f"""
+    Password Changed
+    
+    Hello {name} {lastname},
+    
+    Your password has been successfully changed.
+    
+    If you did not make this change, please contact support immediately and consider resetting your password.
+    
+    Best regards,
+    The Musical Band API Team
+    """
+    
+    return await send_email(email, subject, body_html, body_text)

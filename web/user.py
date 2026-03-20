@@ -24,7 +24,7 @@ from schemas.auth import Token
 from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate, UserPaginationResponse, UserResponseWithRole, UserProfileUpdate
 import services.user as service
 import services.auth as auth_service
-from services.email import send_registration_confirmation
+from services.email import send_registration_confirmation, send_password_change_confirmation
 from auth.auth import decode_access_token
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError, UnauthorizedError
 
@@ -383,7 +383,7 @@ def modify(current_user: Annotated[dict, Depends(get_current_user)], user_update
 
 
 @router.patch("/{email}/password")
-def modify_password(current_user: Annotated[dict, Depends(get_current_user)], email: str, password_update: UserPasswordUpdate) -> dict:
+async def modify_password(current_user: Annotated[dict, Depends(get_current_user)], email: str, password_update: UserPasswordUpdate) -> dict:
     """
     Change a user's password.
 
@@ -405,6 +405,18 @@ def modify_password(current_user: Annotated[dict, Depends(get_current_user)], em
         success = service.modify_password(email, password_update.current_password, password_update.new_password)
         if success:
             logger.info(f"API request: Modified password for user {email} by {current_user.get('sub')}")
+            
+            # Send password change confirmation email (non-blocking)
+            try:
+                user = service.get_one(email)
+                await send_password_change_confirmation(
+                    email=user.email,
+                    name=user.name,
+                    lastname=user.lastname
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send password change email to {email}: {str(e)}")
+            
             return {"message": "Password updated successfully"}
     except NotFoundError:
         logger.warning(f"User with email {email} not found for password modification")

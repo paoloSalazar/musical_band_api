@@ -271,11 +271,25 @@ def test_modify_password_success(mocker):
     # Arrange - Mock service to return True
     mock_service = mocker.patch('web.user.service.modify_password')
     mock_service.return_value = True
+    
+    # Mock service.get_one to return user info for email
+    mock_get_one = mocker.patch('web.user.service.get_one')
+    mock_get_one.return_value = mocker.MagicMock(
+        email="john.doe@example.com",
+        name="John",
+        lastname="Doe"
+    )
+    
+    # Mock send_password_change_confirmation to be an async function
+    mock_email = mocker.patch('web.user.send_password_change_confirmation')
+    mock_email.return_value = True
+    
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
     password_update = UserPasswordUpdate(current_password="oldpassword", new_password="newpassword")
 
-    # Act - Call function directly
-    result = modify_password(current_user=mock_current_user, email="john.doe@example.com", password_update=password_update)
+    # Act - Call function directly and await since it's async
+    import asyncio
+    result = asyncio.run(modify_password(current_user=mock_current_user, email="john.doe@example.com", password_update=password_update))
 
     # Assert - Check result contains success message
     assert result == {"message": "Password updated successfully"}
@@ -287,12 +301,18 @@ def test_modify_password_user_not_found(mocker):
     # Arrange - Mock service to raise NotFoundError
     mock_service = mocker.patch('web.user.service.modify_password')
     mock_service.side_effect = NotFoundError("User with email nonexistent@example.com not found")
+    
+    # Mock send_password_change_confirmation to avoid issues
+    mock_email = mocker.patch('web.user.send_password_change_confirmation')
+    mock_email.return_value = True
+    
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
     password_update = UserPasswordUpdate(current_password="oldpassword", new_password="newpassword")
 
-    # Act & Assert - Call function and expect HTTPException
+    # Act & Assert - Call function and expect HTTPException (need to run async)
+    import asyncio
     with pytest.raises(HTTPException) as exc_info:
-        modify_password(current_user=mock_current_user, email="nonexistent@example.com", password_update=password_update)
+        asyncio.run(modify_password(current_user=mock_current_user, email="nonexistent@example.com", password_update=password_update))
 
     assert exc_info.value.status_code == 404
     assert "User not found" in exc_info.value.detail
@@ -305,12 +325,18 @@ def test_modify_password_invalid_current(mocker):
     from exceptions import UnauthorizedError
     mock_service = mocker.patch('web.user.service.modify_password')
     mock_service.side_effect = UnauthorizedError("Current password is incorrect")
+    
+    # Mock send_password_change_confirmation to avoid issues
+    mock_email = mocker.patch('web.user.send_password_change_confirmation')
+    mock_email.return_value = True
+    
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
     password_update = UserPasswordUpdate(current_password="wrongpassword", new_password="newpassword")
 
-    # Act & Assert - Call function and expect HTTPException
+    # Act & Assert - Call function and expect HTTPException (need to run async)
+    import asyncio
     with pytest.raises(HTTPException) as exc_info:
-        modify_password(current_user=mock_current_user, email="john.doe@example.com", password_update=password_update)
+        asyncio.run(modify_password(current_user=mock_current_user, email="john.doe@example.com", password_update=password_update))
 
     assert exc_info.value.status_code == 401
     assert "Current password is incorrect" in exc_info.value.detail
