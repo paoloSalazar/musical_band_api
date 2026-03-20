@@ -21,9 +21,10 @@ from auth.auth import get_current_user as get_auth_current_user
 from auth.roles import RoleAndPermissionChecker
 from schemas.user_role import UserRole
 from schemas.auth import Token
-from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate, UserPaginationResponse, UserResponseWithRole
+from schemas.user import UserResponse, UserCreate, UserLogin, UserUpdate, UserPasswordUpdate, UserPaginationResponse, UserResponseWithRole, UserProfileUpdate
 import services.user as service
 import services.auth as auth_service
+from services.email import send_registration_confirmation, send_password_change_confirmation
 from auth.auth import decode_access_token
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError, UnauthorizedError
 
@@ -101,6 +102,7 @@ def get_current_user_info(current_user: Annotated[dict, Depends(get_auth_current
             "lastname": user.lastname,
             "second_lastname": user.second_lastname,
             "email": user.email,
+            "phone_number": user.phone_number,
             "role": current_user.get("role"),
             "role_id": current_user.get("role_id"),
             "permissions": current_user.get("permissions", []),
@@ -109,6 +111,51 @@ def get_current_user_info(current_user: Annotated[dict, Depends(get_auth_current
         raise HTTPException(status_code=404, detail="User not found")
     except DatabaseError as e:
         logger.error(f"Database error in get_current_user_info: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/me")
+def modify_me(current_user: Annotated[dict, Depends(get_current_user)], user_update: UserProfileUpdate) -> UserResponseWithRole:
+    """
+    Update the current user's own profile.
+
+    Requires authentication. Users can only update their own profile
+    (name, lastname, second_lastname, phone_number). They cannot change
+    their role_id or email through this endpoint.
+
+    Args:
+        user_update: UserProfileUpdate schema with fields to update.
+
+    Returns:
+        Updated UserResponseWithRole object.
+
+    Raises:
+        HTTPException: 404 if user not found.
+        HTTPException: 500 if database error occurs.
+    """
+    # Get user_id from the current user's JWT token
+    user_id = current_user.get("user_id")
+    if not user_id:
+        logger.warning(f"User ID not found in token for {current_user.get('sub')}")
+        raise HTTPException(status_code=401, detail="Invalid token: missing user ID")
+    
+    try:
+        # Create a UserUpdate object from UserProfileUpdate (service expects UserUpdate)
+        # We need to convert UserProfileUpdate to UserUpdate to pass to modify_by_id
+        user_update_full = UserUpdate(
+            name=user_update.name,
+            lastname=user_update.lastname,
+            second_lastname=user_update.second_lastname,
+            phone_number=user_update.phone_number
+        )
+        updated_user = service.modify_by_id(user_id, user_update_full)
+        logger.info(f"API request: Modified profile for user with id {user_id} by {current_user.get('sub')}")
+        return updated_user
+    except NotFoundError:
+        logger.warning(f"User with id {user_id} not found for profile modification")
+        raise HTTPException(status_code=404, detail="User not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in modify_me: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -266,7 +313,7 @@ def get_one(current_user: Annotated[dict, Depends(get_current_user)], email: str
 
 
 @router.post("/", dependencies=[Depends(RoleAndPermissionChecker(required_roles=["admin"], required_permissions=["write:users"]))])
-def create(user: UserCreate) -> UserResponse:
+async def create(user: UserCreate) -> UserResponse:
     """
     Create a new user account.
 
@@ -286,6 +333,17 @@ def create(user: UserCreate) -> UserResponse:
     try:
         new_user = service.create(user)
         logger.info(f"API request: Created user with email {user.email}")
+        
+        # Send registration confirmation email (non-blocking)
+        try:
+            await send_registration_confirmation(
+                email=user.email,
+                name=user.name,
+                lastname=user.lastname
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send registration email to {user.email}: {str(e)}")
+        
         return new_user
     except ConflictError:
         logger.warning(f"User with email {user.email} already exists")
@@ -325,7 +383,7 @@ def modify(current_user: Annotated[dict, Depends(get_current_user)], user_update
 
 
 @router.patch("/{email}/password")
-def modify_password(current_user: Annotated[dict, Depends(get_current_user)], email: str, password_update: UserPasswordUpdate) -> dict:
+async def modify_password(current_user: Annotated[dict, Depends(get_current_user)], email: str, password_update: UserPasswordUpdate) -> dict:
     """
     Change a user's password.
 
@@ -347,6 +405,18 @@ def modify_password(current_user: Annotated[dict, Depends(get_current_user)], em
         success = service.modify_password(email, password_update.current_password, password_update.new_password)
         if success:
             logger.info(f"API request: Modified password for user {email} by {current_user.get('sub')}")
+            
+            # Send password change confirmation email (non-blocking)
+            try:
+                user = service.get_one(email)
+                await send_password_change_confirmation(
+                    email=user.email,
+                    name=user.name,
+                    lastname=user.lastname
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send password change email to {email}: {str(e)}")
+            
             return {"message": "Password updated successfully"}
     except NotFoundError:
         logger.warning(f"User with email {email} not found for password modification")

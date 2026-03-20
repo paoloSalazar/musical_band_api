@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
-from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate, UserResponseWithRole, UserPaginationResponse
-from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info, get_one_by_id, modify_by_id, delete
+from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate, UserResponseWithRole, UserPaginationResponse, UserProfileUpdate
+from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info, get_one_by_id, modify_by_id, delete, modify_me
 from exceptions import NotFoundError, ConflictError, DatabaseError
 from auth.roles import RoleAndPermissionChecker
 
@@ -163,27 +163,30 @@ def test_get_user_not_found(mocker):
     mock_service.assert_called_once_with("nonexistent@example.com")
 
 
-def test_create_user(mocker):
+@pytest.mark.asyncio
+async def test_create_user(mocker):
     """Test create() creates and returns new user"""
     # Arrange - Mock service to return created user
-    input_data = UserCreate(name="Jane", lastname="Smith", email="jane.smith@example.com", password="hashedpass", role_id=2)
-    expected_created_user = UserResponse(id=3, name="Jane", lastname="Smith", email="jane.smith@example.com", role_id=2)
+    input_data = UserCreate(name="Jane", lastname="Smith", email="jane.smith@example.com", password="hashedpass", role_id=2, phone_number="+1234567890")
+    expected_created_user = UserResponse(id=3, name="Jane", lastname="Smith", email="jane.smith@example.com", role_id=2, phone_number="+1234567890")
     mock_service = mocker.patch('web.user.service.create')
     mock_service.return_value = expected_created_user
 
     # Act - Call function directly
-    result = create(input_data)
+    result = await create(input_data)
 
     # Assert - Check result contains created user
     assert result.id == 3
     assert result.name == "Jane"
     assert result.email == "jane.smith@example.com"
+    assert result.phone_number == "+1234567890"
     mock_service.assert_called_once()
     # Verify service was called with UserCreate object
     call_args = mock_service.call_args[0][0]
     assert isinstance(call_args, UserCreate)
     assert call_args.name == "Jane"
     assert call_args.email == "jane.smith@example.com"
+    assert call_args.phone_number == "+1234567890"
 
 
 def test_modify_user(mocker):
@@ -209,7 +212,8 @@ def test_modify_user(mocker):
     assert call_args.email == "john.doe@example.com"
 
 
-def test_create_user_conflict(mocker):
+@pytest.mark.asyncio
+async def test_create_user_conflict(mocker):
     """Test create() handles conflict when user already exists"""
     # Arrange - Mock service to raise ConflictError for duplicate user
     input_data = UserCreate(name="John", lastname="Doe", email="john.doe@example.com", password="hashedpass", role_id=1)
@@ -218,7 +222,7 @@ def test_create_user_conflict(mocker):
 
     # Act & Assert - Call function and expect HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        create(input_data)
+        await create(input_data)
 
     assert exc_info.value.status_code == 409
     assert "User already exists" in exc_info.value.detail
@@ -267,11 +271,25 @@ def test_modify_password_success(mocker):
     # Arrange - Mock service to return True
     mock_service = mocker.patch('web.user.service.modify_password')
     mock_service.return_value = True
+    
+    # Mock service.get_one to return user info for email
+    mock_get_one = mocker.patch('web.user.service.get_one')
+    mock_get_one.return_value = mocker.MagicMock(
+        email="john.doe@example.com",
+        name="John",
+        lastname="Doe"
+    )
+    
+    # Mock send_password_change_confirmation to be an async function
+    mock_email = mocker.patch('web.user.send_password_change_confirmation')
+    mock_email.return_value = True
+    
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
     password_update = UserPasswordUpdate(current_password="oldpassword", new_password="newpassword")
 
-    # Act - Call function directly
-    result = modify_password(current_user=mock_current_user, email="john.doe@example.com", password_update=password_update)
+    # Act - Call function directly and await since it's async
+    import asyncio
+    result = asyncio.run(modify_password(current_user=mock_current_user, email="john.doe@example.com", password_update=password_update))
 
     # Assert - Check result contains success message
     assert result == {"message": "Password updated successfully"}
@@ -283,12 +301,18 @@ def test_modify_password_user_not_found(mocker):
     # Arrange - Mock service to raise NotFoundError
     mock_service = mocker.patch('web.user.service.modify_password')
     mock_service.side_effect = NotFoundError("User with email nonexistent@example.com not found")
+    
+    # Mock send_password_change_confirmation to avoid issues
+    mock_email = mocker.patch('web.user.send_password_change_confirmation')
+    mock_email.return_value = True
+    
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
     password_update = UserPasswordUpdate(current_password="oldpassword", new_password="newpassword")
 
-    # Act & Assert - Call function and expect HTTPException
+    # Act & Assert - Call function and expect HTTPException (need to run async)
+    import asyncio
     with pytest.raises(HTTPException) as exc_info:
-        modify_password(current_user=mock_current_user, email="nonexistent@example.com", password_update=password_update)
+        asyncio.run(modify_password(current_user=mock_current_user, email="nonexistent@example.com", password_update=password_update))
 
     assert exc_info.value.status_code == 404
     assert "User not found" in exc_info.value.detail
@@ -301,12 +325,18 @@ def test_modify_password_invalid_current(mocker):
     from exceptions import UnauthorizedError
     mock_service = mocker.patch('web.user.service.modify_password')
     mock_service.side_effect = UnauthorizedError("Current password is incorrect")
+    
+    # Mock send_password_change_confirmation to avoid issues
+    mock_email = mocker.patch('web.user.send_password_change_confirmation')
+    mock_email.return_value = True
+    
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
     password_update = UserPasswordUpdate(current_password="wrongpassword", new_password="newpassword")
 
-    # Act & Assert - Call function and expect HTTPException
+    # Act & Assert - Call function and expect HTTPException (need to run async)
+    import asyncio
     with pytest.raises(HTTPException) as exc_info:
-        modify_password(current_user=mock_current_user, email="john.doe@example.com", password_update=password_update)
+        asyncio.run(modify_password(current_user=mock_current_user, email="john.doe@example.com", password_update=password_update))
 
     assert exc_info.value.status_code == 401
     assert "Current password is incorrect" in exc_info.value.detail
@@ -335,6 +365,7 @@ def test_get_current_user_info_success(mocker):
     mock_user.lastname = "Doe"
     mock_user.second_lastname = "Smith"
     mock_user.email = "john.doe@example.com"
+    mock_user.phone_number = "+1234567890"
     mock_service = mocker.patch('web.user.service.get_one')
     mock_service.return_value = mock_user
 
@@ -347,6 +378,7 @@ def test_get_current_user_info_success(mocker):
     assert result["name"] == "John"
     assert result["lastname"] == "Doe"
     assert result["second_lastname"] == "Smith"
+    assert result["phone_number"] == "+1234567890"
     assert result["role"] == "admin"
     assert result["role_id"] == 1
     assert result["permissions"] == ["users:read", "users:write", "users:delete"]
@@ -390,7 +422,8 @@ def test_get_current_user_info_with_empty_permissions(mocker):
 # ============================================
 
 
-def test_create_user_rbac_allows_admin_with_permission(mocker):
+@pytest.mark.asyncio
+async def test_create_user_rbac_allows_admin_with_permission(mocker):
     """Test create() allows admin user with write:users permission"""
     # Arrange - Create RBAC checker requiring admin role AND write:users permission
     checker = RoleAndPermissionChecker(
@@ -417,7 +450,7 @@ def test_create_user_rbac_allows_admin_with_permission(mocker):
     result_check = checker._check_role_and_permission(mock_admin_user)
     assert result_check == mock_admin_user
     
-    result = create(input_data)
+    result = await create(input_data)
     
     # Assert - Check result contains created user
     assert result.id == 3
@@ -576,6 +609,82 @@ def test_modify_by_id_database_error(mocker):
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Internal server error"
     mock_service.assert_called_once_with(1, user_update)
+
+
+def test_modify_me_success(mocker):
+    """Test modify_me() successfully updates current user's profile"""
+    # Arrange - Mock service to return modified user
+    input_data = UserProfileUpdate(name="Updated John", lastname="Doe", second_lastname="Smith", phone_number="+1234567890")
+    expected_modified_user = UserResponse(id=1, name="Updated John", lastname="Doe", second_lastname="Smith", email="john.doe@example.com", phone_number="+1234567890", role_id=2)
+    mock_service = mocker.patch('web.user.service.modify_by_id')
+    mock_service.return_value = UserResponseWithRole(id=1, name="Updated John", lastname="Doe", second_lastname="Smith", email="john.doe@example.com", phone_number="+1234567890", role_id=2, role="user")
+    mock_current_user = {"sub": "john.doe@example.com", "role": "user", "user_id": 1, "role_id": 2}
+
+    # Act - Call function directly
+    result = modify_me(current_user=mock_current_user, user_update=input_data)
+
+    # Assert - Check result contains modified user
+    assert result.id == 1
+    assert result.name == "Updated John"
+    mock_service.assert_called_once()
+    # Verify service was called with the correct user_id from current_user
+    call_args = mock_service.call_args[0]
+    assert call_args[0] == 1  # user_id
+    assert isinstance(call_args[1], UserUpdate)
+    assert call_args[1].name == "Updated John"
+    assert call_args[1].lastname == "Doe"
+
+
+def test_modify_me_not_found(mocker):
+    """Test modify_me() when current user doesn't exist"""
+    # Arrange - Mock service to raise NotFoundError
+    from exceptions import NotFoundError
+    input_data = UserProfileUpdate(name="John", lastname="Doe")
+    mock_service = mocker.patch('web.user.service.modify_by_id')
+    mock_service.side_effect = NotFoundError("User with id 1 not found")
+    mock_current_user = {"sub": "john.doe@example.com", "role": "user", "user_id": 1, "role_id": 2}
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        modify_me(current_user=mock_current_user, user_update=input_data)
+
+    assert exc_info.value.status_code == 404
+    assert "User not found" in exc_info.value.detail
+    mock_service.assert_called_once()
+
+
+def test_modify_me_database_error(mocker):
+    """Test modify_me() handles database errors"""
+    # Arrange - Mock service to raise DatabaseError
+    from exceptions import DatabaseError
+    input_data = UserProfileUpdate(name="John", lastname="Doe")
+    mock_service = mocker.patch('web.user.service.modify_by_id')
+    mock_service.side_effect = DatabaseError("Database connection failed")
+    mock_current_user = {"sub": "john.doe@example.com", "role": "user", "user_id": 1, "role_id": 2}
+
+    # Act & Assert - Call function and expect HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        modify_me(current_user=mock_current_user, user_update=input_data)
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.detail == "Internal server error"
+    mock_service.assert_called_once()
+
+
+def test_modify_me_partial_update(mocker):
+    """Test modify_me() allows partial updates (only name)"""
+    # Arrange - Mock service to return modified user with partial update
+    input_data = UserProfileUpdate(name="NewName")
+    mock_service = mocker.patch('web.user.service.modify_by_id')
+    mock_service.return_value = UserResponseWithRole(id=1, name="NewName", lastname="Doe", second_lastname=None, email="john.doe@example.com", phone_number=None, role_id=2, role="user")
+    mock_current_user = {"sub": "john.doe@example.com", "role": "user", "user_id": 1, "role_id": 2}
+
+    # Act - Call function with partial data
+    result = modify_me(current_user=mock_current_user, user_update=input_data)
+
+    # Assert - Check result
+    assert result.name == "NewName"
+    mock_service.assert_called_once()
 
 
 def test_create_user_rbac_denies_admin_without_permission(mocker):
