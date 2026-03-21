@@ -238,11 +238,11 @@ Authorization: Bearer {{user_token}}
 ### EVENTS ENDPOINTS ###
 
 ### Get all events (with pagination - table view)
-GET {{api}}/events/?page=1&limit=20
+GET {{api}}/events/?page=1&limit=10
 Authorization: Bearer {{user_token}}
 
 ### Get events with filters
-GET {{api}}/events/?page=1&limit=20
+GET {{api}}/events/?page=1&limit=20&status=PENDING&search=rock
 Authorization: Bearer {{user_token}}
 
 ### Get events sorted
@@ -267,12 +267,12 @@ Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "Cumpleaños de Martha",
+  "name": "Cumpleaños de Miriam2",
   "place": "Calle Calama y San Martin, Cochabamba",
   "description": "Celebración del cumpleaños de Martha con amigos y familiares",
-  "start_datetime": "2026-03-27 19:00:00",
-  "end_datetime": "2026-03-27 23:00:00",
-  "is_all_day": true
+  "start_datetime": "2026-04-06 19:00:00",
+  "end_datetime": "2026-04-06 23:00:00",
+  "is_all_day": false
 }
 
 ### Post a new partial day event (without user_id - taken from token)

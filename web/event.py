@@ -60,7 +60,8 @@ def get_all(
     """
     Retrieve paginated and filtered events (table view).
 
-    Requires authentication. All authenticated users can view events.
+    Requires authentication. All authenticated users can view all events.
+    (But only edit their own events - enforced in PATCH endpoint)
 
     Query Parameters:
         - page: Page number (default: 1)
@@ -105,12 +106,13 @@ def get_calendar(
     """
     Retrieve events for a specific month (calendar view).
 
-    Requires authentication. All authenticated users can view events.
+    Requires authentication. All authenticated users can view all events.
+    (But only edit their own events - enforced in PATCH endpoint)
 
     Query Parameters:
         - year: Year (required)
         - month: Month (1-12, required)
-        - user_id: Filter by creator (optional)
+        - user_id: Filter by creator
 
     Returns:
         List of EventResponse objects for the specified month.
