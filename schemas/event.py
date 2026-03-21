@@ -24,7 +24,7 @@ class EventBase(BaseModel):
 
 class EventCreate(EventBase):
     """Schema for creating an event"""
-    pass
+    user_id: int | None = None  # Optional - will be set from current_user in the endpoint
 
 
 class EventResponse(EventBase):
