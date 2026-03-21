@@ -51,10 +51,19 @@ class TestEventServiceCreate:
 class TestEventServiceGet:
     """Tests for retrieving events in service layer"""
     
-    @patch('services.event.data.get_one')
-    def test_get_one_found(self, mock_data_get_one):
+    @patch('services.event.data.get_one_with_user')
+    def test_get_one_found(self, mock_data_get_one_with_user):
         """Test getting event by ID when it exists"""
         # Arrange
+        from models.user import User
+        mock_user = User(
+            id=1,
+            name="John",
+            lastname="Doe",
+            email="john@example.com",
+            password="hashed",
+            role_id=1
+        )
         mock_event = Event(
             id=1,
             name="Rock Concert",
@@ -66,7 +75,8 @@ class TestEventServiceGet:
             created_at=datetime(2026, 1, 1, 10, 0),
             updated_at=datetime(2026, 1, 1, 10, 0)
         )
-        mock_data_get_one.return_value = mock_event
+        mock_event.user = mock_user  # Set the relationship
+        mock_data_get_one_with_user.return_value = mock_event
         
         # Act
         result = event_service.get_one(1)
@@ -74,32 +84,48 @@ class TestEventServiceGet:
         # Assert
         assert result is not None
         assert result.id == 1
+        assert result.created_by is not None
+        assert result.created_by.name == "John"
 
-    @patch('services.event.data.get_one')
-    def test_get_one_not_found(self, mock_data_get_one):
+    @patch('services.event.data.get_one_with_user')
+    def test_get_one_not_found(self, mock_data_get_one_with_user):
         """Test getting event by ID when it doesn't exist"""
         # Arrange
-        mock_data_get_one.return_value = None
+        mock_data_get_one_with_user.return_value = None
         
         # Act & Assert
         with pytest.raises(NotFoundError):
             event_service.get_one(999)
 
-    @patch('services.event.data.get_all')
-    def test_get_all(self, mock_data_get_all):
+    @patch('services.event.data.get_all_with_users')
+    def test_get_all(self, mock_data_get_all_with_users):
         """Test getting all events"""
         # Arrange
+        from models.user import User
+        mock_user = User(
+            id=1,
+            name="John",
+            lastname="Doe",
+            email="john@example.com",
+            password="hashed",
+            role_id=1
+        )
         mock_events = [
             Event(id=1, name="Event 1", place="Place 1", start_datetime=datetime(2026, 3, 15, 20, 0), end_datetime=datetime(2026, 3, 15, 23, 0), user_id=1, status=EventStatus.PENDING, created_at=datetime(2026, 1, 1, 10, 0), updated_at=datetime(2026, 1, 1, 10, 0)),
             Event(id=2, name="Event 2", place="Place 2", start_datetime=datetime(2026, 3, 16, 20, 0), end_datetime=datetime(2026, 3, 16, 23, 0), user_id=1, status=EventStatus.PENDING, created_at=datetime(2026, 1, 1, 10, 0), updated_at=datetime(2026, 1, 1, 10, 0)),
         ]
-        mock_data_get_all.return_value = mock_events
+        # Set the user relationship for both events
+        mock_events[0].user = mock_user
+        mock_events[1].user = mock_user
+        mock_data_get_all_with_users.return_value = mock_events
         
         # Act
         result = event_service.get_all()
         
         # Assert
         assert len(result) == 2
+        assert result[0].created_by is not None
+        assert result[1].created_by is not None
 
 
 class TestEventServiceModify:

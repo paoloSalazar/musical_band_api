@@ -90,7 +90,8 @@ def get_one(event_id: int) -> EventResponse:
         DatabaseError: If database operation fails.
     """
     try:
-        event = data.get_one(event_id)
+        # Use JOIN query to get event with user in single query
+        event = data.get_one_with_user(event_id)
         if event is None:
             logger.warning(f"Event with id {event_id} not found")
             raise NotFoundError(f"Event with id {event_id} not found")
@@ -98,18 +99,16 @@ def get_one(event_id: int) -> EventResponse:
         # Map EventStatus to EventStatusEnum
         status = EventStatusEnum(event.status.value)
         
-        # Get user info
+        # Get user info from loaded relationship
         creator = None
-        if event.user_id:
-            user = user_data.get_one_by_id(event.user_id)
-            if user:
-                creator = EventCreator(
-                    user_id=user.id,
-                    name=user.name,
-                    lastname=user.lastname,
-                    email=user.email,
-                    phone_number=user.phone_number
-                )
+        if event.user:
+            creator = EventCreator(
+                user_id=event.user.id,
+                name=event.user.name,
+                lastname=event.user.lastname,
+                email=event.user.email,
+                phone_number=event.user.phone_number
+            )
         
         return EventResponse(
             id=event.id,
@@ -141,22 +140,22 @@ def get_all() -> list[EventResponse]:
         DatabaseError: If database operation fails.
     """
     try:
-        events = data.get_all()
+        # Use JOIN query to get all events with users in single query
+        events = data.get_all_with_users()
         result = []
         for event in events:
             status = EventStatusEnum(event.status.value)
             
-            # Get user info
+            # Get user info from loaded relationship
             creator = None
-            if event.user_id:
-                user = user_data.get_one_by_id(event.user_id)
-                if user:
-                    creator = EventCreator(
-                        user_id=user.id,
-                        name=user.name,
-                        lastname=user.lastname,
-                        email=user.email
-                    )
+            if event.user:
+                creator = EventCreator(
+                    user_id=event.user.id,
+                    name=event.user.name,
+                    lastname=event.user.lastname,
+                    email=event.user.email,
+                    phone_number=event.user.phone_number
+                )
             
             result.append(EventResponse(
                 id=event.id,

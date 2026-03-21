@@ -15,6 +15,7 @@ import logging
 from config.database import SessionLocal
 from models.event import Event
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
+from sqlalchemy.orm import joinedload
 from exceptions import DatabaseError, DatabaseConnectionError
 
 logger = logging.getLogger(__name__)
@@ -241,5 +242,56 @@ def get_events_in_date_range(start_date: str, end_date: str, user_id: int | None
     except ValueError as e:
         logger.error(f"Invalid date format: {str(e)}")
         raise DatabaseError("Invalid date format")
+    finally:
+        db.close()
+
+
+def get_one_with_user(event_id: int) -> Event | None:
+    """
+    Retrieve an event by its ID with user information loaded (JOIN).
+
+    Args:
+        event_id: The ID of the event to retrieve.
+
+    Returns:
+        The Event object with user loaded if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        return db.query(Event).options(joinedload(Event.user)).filter(Event.id == event_id).first()
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting event '{event_id}' with user")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting event '{event_id}' with user")
+        raise DatabaseError("Failed to get event with user")
+    finally:
+        db.close()
+
+
+def get_all_with_users() -> list[Event]:
+    """
+    Retrieve all events from the database with user information loaded (JOIN).
+
+    Returns:
+        List of Event objects with users loaded.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        return db.query(Event).options(joinedload(Event.user)).all()
+    except (OperationalError, InterfaceError) as e:
+        logger.error("Database connection error while getting all events with users")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error("Database error while getting all events with users")
+        raise DatabaseError("Failed to get events with users")
     finally:
         db.close()
