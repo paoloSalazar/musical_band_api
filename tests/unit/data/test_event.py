@@ -229,3 +229,8 @@ class TestEventDataDelete:
         
         # Assert
         assert result is False
+
+
+# Note: Pagination and calendar functionality is tested in service layer tests
+# See tests/unit/services/test_event.py::TestEventServicePaginated
+# and tests/unit/services/test_event.py::TestEventServiceCalendar

@@ -447,3 +447,153 @@ class TestEventConflictValidation:
         with pytest.raises(ConflictError) as exc_info:
             event_service.create(event_data)
         assert "End datetime must be after start datetime" in str(exc_info.value)
+
+
+class TestEventServicePaginated:
+    """Tests for paginated event queries in service layer"""
+    
+    @patch('services.event.data.get_paginated')
+    def test_get_paginated_success(self, mock_data_paginated):
+        """Test getting paginated events"""
+        # Arrange
+        from models.user import User
+        mock_user = User(
+            id=1,
+            name="John",
+            lastname="Doe",
+            email="john@example.com",
+            password="hashed",
+            role_id=1
+        )
+        mock_events = [
+            Event(id=1, name="Event 1", place="Place 1", start_datetime=datetime(2026, 3, 15, 20, 0), end_datetime=datetime(2026, 3, 15, 23, 0), user_id=1, status=EventStatus.PENDING, created_at=datetime(2026, 1, 1, 10, 0), updated_at=datetime(2026, 1, 1, 10, 0)),
+            Event(id=2, name="Event 2", place="Place 2", start_datetime=datetime(2026, 3, 16, 20, 0), end_datetime=datetime(2026, 3, 16, 23, 0), user_id=1, status=EventStatus.PENDING, created_at=datetime(2026, 1, 1, 10, 0), updated_at=datetime(2026, 1, 1, 10, 0)),
+        ]
+        mock_events[0].user = mock_user
+        mock_events[1].user = mock_user
+        mock_data_paginated.return_value = (mock_events, 2)
+        
+        # Act
+        result = event_service.get_paginated(page=1, limit=10)
+        
+        # Assert
+        assert result.total == 2
+        assert result.page == 1
+        assert result.limit == 10
+        assert result.total_pages == 1
+        assert len(result.items) == 2
+        
+    @patch('services.event.data.get_paginated')
+    def test_get_paginated_with_status_filter(self, mock_data_paginated):
+        """Test getting paginated events with status filter"""
+        # Arrange
+        from models.user import User
+        mock_user = User(
+            id=1,
+            name="John",
+            lastname="Doe",
+            email="john@example.com",
+            password="hashed",
+            role_id=1
+        )
+        mock_events = [
+            Event(id=1, name="Event 1", place="Place 1", start_datetime=datetime(2026, 3, 15, 20, 0), end_datetime=datetime(2026, 3, 15, 23, 0), user_id=1, status=EventStatus.CONFIRMED, created_at=datetime(2026, 1, 1, 10, 0), updated_at=datetime(2026, 1, 1, 10, 0)),
+        ]
+        mock_events[0].user = mock_user
+        mock_data_paginated.return_value = (mock_events, 1)
+        
+        # Act
+        result = event_service.get_paginated(page=1, limit=10, status="CONFIRMED")
+        
+        # Assert
+        assert result.total == 1
+        assert len(result.items) == 1
+        assert result.items[0].status.value == "CONFIRMED"
+        
+    @patch('services.event.data.get_paginated')
+    def test_get_paginated_calculates_total_pages(self, mock_data_paginated):
+        """Test total pages calculation"""
+        # Arrange
+        from models.user import User
+        mock_user = User(
+            id=1,
+            name="John",
+            lastname="Doe",
+            email="john@example.com",
+            password="hashed",
+            role_id=1
+        )
+        mock_events = [
+            Event(id=i, name=f"Event {i}", place="Place", start_datetime=datetime(2026, 3, 15, 20, 0), end_datetime=datetime(2026, 3, 15, 23, 0), user_id=1, status=EventStatus.PENDING, created_at=datetime(2026, 1, 1, 10, 0), updated_at=datetime(2026, 1, 1, 10, 0))
+            for i in range(1, 11)
+        ]
+        for event in mock_events:
+            event.user = mock_user
+        # 25 items, limit 10 = 3 pages
+        mock_data_paginated.return_value = (mock_events, 25)
+        
+        # Act
+        result = event_service.get_paginated(page=1, limit=10)
+        
+        # Assert
+        assert result.total == 25
+        assert result.total_pages == 3
+
+
+class TestEventServiceCalendar:
+    """Tests for calendar view (events by month) in service layer"""
+    
+    @patch('services.event.data.get_events_by_month')
+    def test_get_by_month_success(self, mock_data_by_month):
+        """Test getting events by month"""
+        # Arrange
+        from models.user import User
+        mock_user = User(
+            id=1,
+            name="John",
+            lastname="Doe",
+            email="john@example.com",
+            password="hashed",
+            role_id=1
+        )
+        mock_events = [
+            Event(id=1, name="Event 1", place="Place 1", start_datetime=datetime(2026, 3, 15, 20, 0), end_datetime=datetime(2026, 3, 15, 23, 0), user_id=1, status=EventStatus.PENDING, created_at=datetime(2026, 1, 1, 10, 0), updated_at=datetime(2026, 1, 1, 10, 0)),
+            Event(id=2, name="Event 2", place="Place 2", start_datetime=datetime(2026, 3, 20, 20, 0), end_datetime=datetime(2026, 3, 20, 23, 0), user_id=1, status=EventStatus.PENDING, created_at=datetime(2026, 1, 1, 10, 0), updated_at=datetime(2026, 1, 1, 10, 0)),
+        ]
+        mock_events[0].user = mock_user
+        mock_events[1].user = mock_user
+        mock_data_by_month.return_value = mock_events
+        
+        # Act
+        result = event_service.get_by_month(2026, 3)
+        
+        # Assert
+        assert len(result) == 2
+        assert result[0].name == "Event 1"
+        assert result[1].name == "Event 2"
+        
+    @patch('services.event.data.get_events_by_month')
+    def test_get_by_month_with_user_filter(self, mock_data_by_month):
+        """Test getting events by month with user filter"""
+        # Arrange
+        from models.user import User
+        mock_user = User(
+            id=1,
+            name="John",
+            lastname="Doe",
+            email="john@example.com",
+            password="hashed",
+            role_id=1
+        )
+        mock_events = [
+            Event(id=1, name="Event 1", place="Place 1", start_datetime=datetime(2026, 3, 15, 20, 0), end_datetime=datetime(2026, 3, 15, 23, 0), user_id=1, status=EventStatus.PENDING, created_at=datetime(2026, 1, 1, 10, 0), updated_at=datetime(2026, 1, 1, 10, 0)),
+        ]
+        mock_events[0].user = mock_user
+        mock_data_by_month.return_value = mock_events
+        
+        # Act
+        result = event_service.get_by_month(2026, 3, user_id=1)
+        
+        # Assert
+        assert len(result) == 1
+        mock_data_by_month.assert_called_once_with(2026, 3, 1)

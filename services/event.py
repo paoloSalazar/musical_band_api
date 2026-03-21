@@ -14,7 +14,7 @@ Functions:
 
 import logging
 from datetime import datetime
-from schemas.event import EventCreate, EventUpdate, EventResponse, EventStatusEnum, EventCreator
+from schemas.event import EventCreate, EventUpdate, EventResponse, EventStatusEnum, EventCreator, PaginatedEventResponse
 from models.event import Event, EventStatus
 import data.event as data
 import data.user as user_data
@@ -172,6 +172,149 @@ def get_all() -> list[EventResponse]:
         return result
     except DatabaseError:
         logger.error("Database error in get_all")
+        raise
+
+
+def get_paginated(
+    page: int = 1,
+    limit: int = 20,
+    status: str | None = None,
+    search: str | None = None,
+    user_id: int | None = None,
+    start_after: datetime | None = None,
+    end_before: datetime | None = None,
+    sort_by: str = "created_at",
+    order: str = "desc"
+) -> PaginatedEventResponse:
+    """
+    Retrieve paginated and filtered events from the database.
+
+    Args:
+        page: Page number (1-indexed).
+        limit: Number of items per page.
+        status: Filter by event status.
+        search: Search term for name and place fields.
+        user_id: Filter by user ID.
+        start_after: Filter events starting after this datetime.
+        end_before: Filter events ending before this datetime.
+        sort_by: Field to sort by (name, start_datetime, created_at).
+        order: Sort order (asc or desc).
+
+    Returns:
+        PaginatedEventResponse object.
+
+    Raises:
+        DatabaseError: If database operation fails.
+    """
+    try:
+        # Convert status string to EventStatus enum if provided
+        status_enum = None
+        if status:
+            status_enum = EventStatus(status)
+        
+        events, total = data.get_paginated(
+            page=page,
+            limit=limit,
+            status=status_enum,
+            search=search,
+            user_id=user_id,
+            start_after=start_after,
+            end_before=end_before,
+            sort_by=sort_by,
+            order=order
+        )
+        
+        result = []
+        for event in events:
+            event_status = EventStatusEnum(event.status.value)
+            
+            # Get user info from loaded relationship
+            creator = None
+            if event.user:
+                creator = EventCreator(
+                    user_id=event.user.id,
+                    name=event.user.name,
+                    lastname=event.user.lastname,
+                    email=event.user.email,
+                    phone_number=event.user.phone_number
+                )
+            
+            result.append(EventResponse(
+                id=event.id,
+                name=event.name,
+                place=event.place,
+                description=event.description,
+                start_datetime=event.start_datetime,
+                end_datetime=event.end_datetime,
+                is_all_day=event.is_all_day,
+                status=event_status,
+                user_id=event.user_id,
+                created_by=creator
+            ))
+        
+        total_pages = (total + limit - 1) // limit if limit > 0 else 0
+        
+        return PaginatedEventResponse(
+            items=result,
+            total=total,
+            page=page,
+            limit=limit,
+            total_pages=total_pages
+        )
+    except DatabaseError:
+        logger.error("Database error in get_paginated")
+        raise
+
+
+def get_by_month(year: int, month: int, user_id: int | None = None) -> list[EventResponse]:
+    """
+    Retrieve events for a specific month (calendar view).
+
+    Args:
+        year: Year (e.g., 2026).
+        month: Month (1-12).
+        user_id: Optional user ID to filter events by owner.
+
+    Returns:
+        List of EventResponse objects for the specified month.
+
+    Raises:
+        DatabaseError: If database operation fails.
+    """
+    try:
+        events = data.get_events_by_month(year, month, user_id)
+        
+        result = []
+        for event in events:
+            event_status = EventStatusEnum(event.status.value)
+            
+            # Get user info from loaded relationship
+            creator = None
+            if event.user:
+                creator = EventCreator(
+                    user_id=event.user.id,
+                    name=event.user.name,
+                    lastname=event.user.lastname,
+                    email=event.user.email,
+                    phone_number=event.user.phone_number
+                )
+            
+            result.append(EventResponse(
+                id=event.id,
+                name=event.name,
+                place=event.place,
+                description=event.description,
+                start_datetime=event.start_datetime,
+                end_datetime=event.end_datetime,
+                is_all_day=event.is_all_day,
+                status=event_status,
+                user_id=event.user_id,
+                created_by=creator
+            ))
+        
+        return result
+    except DatabaseError:
+        logger.error(f"Database error in get_by_month for {year}-{month}")
         raise
 
 

@@ -13,11 +13,12 @@ Endpoints:
 """
 
 import logging
-from typing import Annotated
-from fastapi import APIRouter, HTTPException, Depends, Request
+from typing import Annotated, Optional
+from datetime import datetime
+from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from auth.auth import decode_access_token
 from auth.roles import RoleAndPermissionChecker
-from schemas.event import EventCreate, EventResponse, EventUpdate, EventStatusEnum
+from schemas.event import EventCreate, EventResponse, EventUpdate, EventStatusEnum, PaginatedEventResponse
 import services.event as event_service
 from exceptions import NotFoundError, DatabaseError, ConflictError
 
@@ -44,21 +45,82 @@ async def get_current_user(request: Request) -> dict:
 
 
 @router.get("/")
-def get_all(current_user: Annotated[dict, Depends(get_current_user)]) -> list[EventResponse]:
+def get_all(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page (max: 100)"),
+    status: Optional[str] = Query(None, description="Filter by status: PENDING, CONFIRMED, CANCELLED, COMPLETED"),
+    search: Optional[str] = Query(None, description="Search in name and place fields"),
+    user_id: Optional[int] = Query(None, description="Filter by user ID"),
+    start_after: Optional[datetime] = Query(None, description="Filter events starting after this datetime"),
+    end_before: Optional[datetime] = Query(None, description="Filter events ending before this datetime"),
+    sort_by: str = Query("created_at", description="Sort by: name, start_datetime, created_at"),
+    order: str = Query("desc", description="Sort order: asc, desc")
+) -> PaginatedEventResponse:
     """
-    Retrieve all events.
+    Retrieve paginated and filtered events (table view).
 
-    Requires authentication. All authenticated users can view all events.
+    Requires authentication. All authenticated users can view events.
+
+    Query Parameters:
+        - page: Page number (default: 1)
+        - limit: Items per page (default: 20, max: 100)
+        - status: Filter by event status
+        - search: Search in name and place
+        - user_id: Filter by creator
+        - start_after: Filter events starting after this datetime
+        - end_before: Filter events ending before this datetime
+        - sort_by: Sort by field (name, start_datetime, created_at)
+        - order: Sort order (asc, desc)
 
     Returns:
-        List of EventResponse objects.
+        PaginatedEventResponse with items, total, page, limit, total_pages.
     """
     try:
-        events = event_service.get_all()
-        logger.info(f"API request: Retrieved {len(events)} events by {current_user.get('sub')}")
-        return events
+        result = event_service.get_paginated(
+            page=page,
+            limit=limit,
+            status=status,
+            search=search,
+            user_id=user_id,
+            start_after=start_after,
+            end_before=end_before,
+            sort_by=sort_by,
+            order=order
+        )
+        logger.info(f"API request: Retrieved page {page} ({len(result.items)} items) by {current_user.get('sub')}")
+        return result
     except DatabaseError as e:
         logger.error(f"Database error in get_all: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/calendar")
+def get_calendar(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    year: int = Query(..., ge=2000, le=2100, description="Year (e.g., 2026)"),
+    month: int = Query(..., ge=1, le=12, description="Month (1-12)"),
+    user_id: Optional[int] = Query(None, description="Filter by user ID")
+) -> list[EventResponse]:
+    """
+    Retrieve events for a specific month (calendar view).
+
+    Requires authentication. All authenticated users can view events.
+
+    Query Parameters:
+        - year: Year (required)
+        - month: Month (1-12, required)
+        - user_id: Filter by creator (optional)
+
+    Returns:
+        List of EventResponse objects for the specified month.
+    """
+    try:
+        events = event_service.get_by_month(year, month, user_id)
+        logger.info(f"API request: Retrieved {len(events)} events for {year}-{month:02d} by {current_user.get('sub')}")
+        return events
+    except DatabaseError as e:
+        logger.error(f"Database error in get_calendar: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

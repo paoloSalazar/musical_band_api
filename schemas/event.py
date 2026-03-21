@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 
 class EventCreator(BaseModel):
@@ -56,3 +57,23 @@ class EventUpdate(BaseModel):
     start_datetime: datetime | None = None
     end_datetime: datetime | None = None
     is_all_day: bool | None = None
+
+
+class EventFilter(BaseModel):
+    """Schema for filtering events in list/table view"""
+    status: Optional[EventStatusEnum] = None
+    search: Optional[str] = None
+    user_id: Optional[int] = None
+    start_after: Optional[datetime] = None
+    end_before: Optional[datetime] = None
+    sort_by: Optional[str] = "created_at"
+    order: Optional[str] = "desc"
+
+
+class PaginatedEventResponse(BaseModel):
+    """Schema for paginated event response"""
+    items: list[EventResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
