@@ -3,6 +3,17 @@ from datetime import datetime
 from enum import Enum
 
 
+class EventCreator(BaseModel):
+    """Schema for event creator user info (embedded in event response)"""
+    user_id: int
+    name: str
+    lastname: str
+    email: str
+    phone_number: str | None = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
 class EventStatusEnum(str, Enum):
     """Enum for event status values"""
     PENDING = "PENDING"
@@ -28,9 +39,10 @@ class EventCreate(EventBase):
 
 
 class EventResponse(EventBase):
-    """Schema for event responses (includes id, status)"""
+    """Schema for event responses (includes id, status, created_by)"""
     id: int
     status: EventStatusEnum
+    created_by: EventCreator | None = None
     # Note: created_at and updated_at are excluded as they are for database tracking only
 
     model_config = ConfigDict(from_attributes=True)

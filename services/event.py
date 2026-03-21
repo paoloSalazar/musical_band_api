@@ -14,9 +14,10 @@ Functions:
 
 import logging
 from datetime import datetime
-from schemas.event import EventCreate, EventUpdate, EventResponse, EventStatusEnum
+from schemas.event import EventCreate, EventUpdate, EventResponse, EventStatusEnum, EventCreator
 from models.event import Event, EventStatus
 import data.event as data
+import data.user as user_data
 from exceptions import NotFoundError, DatabaseError, ConflictError
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,19 @@ def get_one(event_id: int) -> EventResponse:
         # Map EventStatus to EventStatusEnum
         status = EventStatusEnum(event.status.value)
         
+        # Get user info
+        creator = None
+        if event.user_id:
+            user = user_data.get_one_by_id(event.user_id)
+            if user:
+                creator = EventCreator(
+                    user_id=user.id,
+                    name=user.name,
+                    lastname=user.lastname,
+                    email=user.email,
+                    phone_number=user.phone_number
+                )
+        
         return EventResponse(
             id=event.id,
             name=event.name,
@@ -106,7 +120,8 @@ def get_one(event_id: int) -> EventResponse:
             end_datetime=event.end_datetime,
             is_all_day=event.is_all_day,
             status=status,
-            user_id=event.user_id
+            user_id=event.user_id,
+            created_by=creator
         )
     except NotFoundError:
         raise
@@ -130,6 +145,19 @@ def get_all() -> list[EventResponse]:
         result = []
         for event in events:
             status = EventStatusEnum(event.status.value)
+            
+            # Get user info
+            creator = None
+            if event.user_id:
+                user = user_data.get_one_by_id(event.user_id)
+                if user:
+                    creator = EventCreator(
+                        user_id=user.id,
+                        name=user.name,
+                        lastname=user.lastname,
+                        email=user.email
+                    )
+            
             result.append(EventResponse(
                 id=event.id,
                 name=event.name,
@@ -139,7 +167,8 @@ def get_all() -> list[EventResponse]:
                 end_datetime=event.end_datetime,
                 is_all_day=event.is_all_day,
                 status=status,
-                user_id=event.user_id
+                user_id=event.user_id,
+                created_by=creator
             ))
         return result
     except DatabaseError:
@@ -191,6 +220,19 @@ def create(event_create: EventCreate) -> EventResponse:
         
         status = EventStatusEnum(created_event.status.value)
         
+        # Get user info
+        creator = None
+        if created_event.user_id:
+            user = user_data.get_one_by_id(created_event.user_id)
+            if user:
+                creator = EventCreator(
+                    user_id=user.id,
+                    name=user.name,
+                    lastname=user.lastname,
+                    email=user.email,
+                    phone_number=user.phone_number
+                )
+        
         return EventResponse(
             id=created_event.id,
             name=created_event.name,
@@ -200,7 +242,8 @@ def create(event_create: EventCreate) -> EventResponse:
             end_datetime=created_event.end_datetime,
             is_all_day=created_event.is_all_day,
             status=status,
-            user_id=created_event.user_id
+            user_id=created_event.user_id,
+            created_by=creator
         )
     except ConflictError:
         raise
@@ -268,6 +311,18 @@ def modify(event_id: int, event_update: EventUpdate) -> EventResponse:
         if modified_event:
             logger.info(f"Modified event with id {event_id}")
             status = EventStatusEnum(modified_event.status.value)
+            # Get user info
+            creator = None
+            if modified_event.user_id:
+                user = user_data.get_one_by_id(modified_event.user_id)
+                if user:
+                    creator = EventCreator(
+                        user_id=user.id,
+                        name=user.name,
+                        lastname=user.lastname,
+                        email=user.email
+                    )
+            
             return EventResponse(
                 id=modified_event.id,
                 name=modified_event.name,
@@ -277,7 +332,8 @@ def modify(event_id: int, event_update: EventUpdate) -> EventResponse:
                 end_datetime=modified_event.end_datetime,
                 is_all_day=modified_event.is_all_day,
                 status=status,
-                user_id=modified_event.user_id
+                user_id=modified_event.user_id,
+                created_by=creator
             )
         else:
             raise NotFoundError(f"Event with id {event_id} not found")
@@ -352,6 +408,18 @@ def change_status(event_id: int, new_status: EventStatusEnum) -> EventResponse:
         if modified_event:
             logger.info(f"Changed status of event {event_id} to {new_status}")
             status = EventStatusEnum(modified_event.status.value)
+            # Get user info
+            creator = None
+            if modified_event.user_id:
+                user = user_data.get_one_by_id(modified_event.user_id)
+                if user:
+                    creator = EventCreator(
+                        user_id=user.id,
+                        name=user.name,
+                        lastname=user.lastname,
+                        email=user.email
+                    )
+            
             return EventResponse(
                 id=modified_event.id,
                 name=modified_event.name,
@@ -361,7 +429,8 @@ def change_status(event_id: int, new_status: EventStatusEnum) -> EventResponse:
                 end_datetime=modified_event.end_datetime,
                 is_all_day=modified_event.is_all_day,
                 status=status,
-                user_id=modified_event.user_id
+                user_id=modified_event.user_id,
+                created_by=creator
             )
         else:
             raise NotFoundError(f"Event with id {event_id} not found")
