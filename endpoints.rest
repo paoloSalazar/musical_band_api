@@ -1,8 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzczMjkxMjE1fQ.jLjaYthUaRLxInHnuB755kKPwztnJKOwtBpLTil9WSY
-### Permissions Endpoints ###
-GET {{api}}/permissions
-Authorization: Bearer {{user_token}}
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYXJpYS5nYXJjaWFAZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjozLCJyb2xlX2lkIjoyLCJleHAiOjE3NzQwODMzMDF9.-0XPjRux7eWRaWJeHRFC-uFu1KovRz_umtVqv5Pnttk
 
 ###
 GET {{api}}/permissions?skip=0&limit=8
@@ -188,10 +185,71 @@ POST {{api}}/users/login
 Content-Type: application/json
 
 {
-  "email": "paolo.salazar@example.com",
-  "password": "salazar"
+  "email": "maria.garcia@example.com",
+  "password": "garcia"
 }
 
 ### Get Current User Info
 GET {{api}}/users/me
 Authorization: Bearer {{user_token}}
+###
+### USER DETAILS ENDPOINTS ###
+
+### Get all details for a user
+GET {{api}}/users/1/details
+Authorization: Bearer {{user_token}}
+
+###
+
+### Get a specific user detail
+GET {{api}}/users/1/details/1
+Authorization: Bearer {{user_token}}
+
+###
+
+### Create a new user detail
+POST {{api}}/users/1/details
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "user_id": 1,
+  "detail_type": "address1",
+  "detail_value": "Cochabamba, Bolivia"
+}
+
+###
+
+### Update a user detail
+PATCH {{api}}/users/1/details/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "detail_value": "calle calama sn"
+}
+
+###
+
+### Delete a user detail
+DELETE {{api}}/users/1/details/1
+Authorization: Bearer {{user_token}}
+
+### EVENTS ENDPOINTS ###
+### Get all events
+GET {{api}}/events/
+Authorization: Bearer {{user_token}}
+
+### Post a new event
+POST {{api}}/events/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Cumpleaños de Martha",
+  "place": "Calle Calama y San Martin, Cochabamba",
+  "description": "Celebración del cumpleaños de Juan con amigos y familiares",
+  "start_datetime": "2026-03-27 19:00:00",
+  "end_datetime": "2026-03-27 23:00:00",
+  "is_all_day": true
+}

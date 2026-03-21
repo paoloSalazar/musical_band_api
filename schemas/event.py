@@ -28,11 +28,10 @@ class EventCreate(EventBase):
 
 
 class EventResponse(EventBase):
-    """Schema for event responses (includes id, status, timestamps)"""
+    """Schema for event responses (includes id, status)"""
     id: int
     status: EventStatusEnum
-    created_at: datetime
-    updated_at: datetime
+    # Note: created_at and updated_at are excluded as they are for database tracking only
 
     model_config = ConfigDict(from_attributes=True)
 

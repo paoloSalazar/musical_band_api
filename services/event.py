@@ -13,12 +13,65 @@ Functions:
 """
 
 import logging
+from datetime import datetime
 from schemas.event import EventCreate, EventUpdate, EventResponse, EventStatusEnum
 from models.event import Event, EventStatus
 import data.event as data
-from exceptions import NotFoundError, DatabaseError
+from exceptions import NotFoundError, DatabaseError, ConflictError
 
 logger = logging.getLogger(__name__)
+
+
+def check_event_conflict(
+    start_datetime: datetime,
+    end_datetime: datetime,
+    is_all_day: bool,
+    user_id: int,
+    exclude_event_id: int | None = None
+) -> bool:
+    """
+    Check if there's a conflicting event for the given time range.
+    
+    Args:
+        start_datetime: Start datetime of the new event.
+        end_datetime: End datetime of the new event.
+        is_all_day: Whether the event is all-day.
+        user_id: ID of the user creating the event.
+        exclude_event_id: Optional event ID to exclude from conflict check (for updates).
+    
+    Returns:
+        True if there's a conflict, False otherwise.
+    
+    Raises:
+        ConflictError: If there's a conflicting event.
+    """
+    # Get events on the same date(s)
+    start_date = start_datetime.strftime("%Y-%m-%d")
+    end_date = end_datetime.strftime("%Y-%m-%d")
+    
+    existing_events = data.get_events_in_date_range(start_date, end_date, user_id)
+    
+    for event in existing_events:
+        # Skip the event being updated
+        if exclude_event_id and event.id == exclude_event_id:
+            continue
+        
+        # All-day events conflict with any event on the same date
+        if is_all_day or event.is_all_day:
+            raise ConflictError(
+                f"Event conflicts with existing event '{event.name}' on {start_date}"
+            )
+        
+        # For partial day events, check time overlap
+        # Two events overlap if: (new_start < existing_end) AND (new_end > existing_start)
+        if start_datetime < event.end_datetime and end_datetime > event.start_datetime:
+            raise ConflictError(
+                f"Event conflicts with existing event '{event.name}' "
+                f"({event.start_datetime.strftime('%H:%M')} - {event.end_datetime.strftime('%H:%M')}) "
+                f"on {start_date}"
+            )
+    
+    return False
 
 
 def get_one(event_id: int) -> EventResponse:
@@ -53,9 +106,7 @@ def get_one(event_id: int) -> EventResponse:
             end_datetime=event.end_datetime,
             is_all_day=event.is_all_day,
             status=status,
-            user_id=event.user_id,
-            created_at=event.created_at,
-            updated_at=event.updated_at
+            user_id=event.user_id
         )
     except NotFoundError:
         raise
@@ -88,9 +139,7 @@ def get_all() -> list[EventResponse]:
                 end_datetime=event.end_datetime,
                 is_all_day=event.is_all_day,
                 status=status,
-                user_id=event.user_id,
-                created_at=event.created_at,
-                updated_at=event.updated_at
+                user_id=event.user_id
             ))
         return result
     except DatabaseError:
@@ -109,9 +158,23 @@ def create(event_create: EventCreate) -> EventResponse:
         Created EventResponse object.
 
     Raises:
+        ConflictError: If there's a conflicting event.
         DatabaseError: If database operation fails.
     """
     try:
+        # Validate event dates
+        if event_create.start_datetime >= event_create.end_datetime:
+            raise ConflictError("End datetime must be after start datetime")
+        
+        # Check for conflicting events
+        if event_create.user_id is not None:
+            check_event_conflict(
+                start_datetime=event_create.start_datetime,
+                end_datetime=event_create.end_datetime,
+                is_all_day=event_create.is_all_day,
+                user_id=event_create.user_id
+            )
+        
         event = Event(
             name=event_create.name,
             place=event_create.place,
@@ -137,10 +200,10 @@ def create(event_create: EventCreate) -> EventResponse:
             end_datetime=created_event.end_datetime,
             is_all_day=created_event.is_all_day,
             status=status,
-            user_id=created_event.user_id,
-            created_at=created_event.created_at,
-            updated_at=created_event.updated_at
+            user_id=created_event.user_id
         )
+    except ConflictError:
+        raise
     except DatabaseError:
         logger.error("Database error in create")
         raise
@@ -159,6 +222,7 @@ def modify(event_id: int, event_update: EventUpdate) -> EventResponse:
 
     Raises:
         NotFoundError: If event is not found.
+        ConflictError: If there's a conflicting event.
         DatabaseError: If database operation fails.
     """
     try:
@@ -174,6 +238,25 @@ def modify(event_id: int, event_update: EventUpdate) -> EventResponse:
             existing_event.place = event_update.place
         if event_update.description is not None:
             existing_event.description = event_update.description
+        
+        # Check for conflicts if datetime or is_all_day is being updated
+        new_start = event_update.start_datetime if event_update.start_datetime is not None else existing_event.start_datetime
+        new_end = event_update.end_datetime if event_update.end_datetime is not None else existing_event.end_datetime
+        new_is_all_day = event_update.is_all_day if event_update.is_all_day is not None else existing_event.is_all_day
+        
+        # Validate event dates
+        if new_start >= new_end:
+            raise ConflictError("End datetime must be after start datetime")
+        
+        # Check for conflicting events (excluding the current event)
+        check_event_conflict(
+            start_datetime=new_start,
+            end_datetime=new_end,
+            is_all_day=new_is_all_day,
+            user_id=existing_event.user_id,
+            exclude_event_id=event_id
+        )
+        
         if event_update.start_datetime is not None:
             existing_event.start_datetime = event_update.start_datetime
         if event_update.end_datetime is not None:
@@ -194,13 +277,13 @@ def modify(event_id: int, event_update: EventUpdate) -> EventResponse:
                 end_datetime=modified_event.end_datetime,
                 is_all_day=modified_event.is_all_day,
                 status=status,
-                user_id=modified_event.user_id,
-                created_at=modified_event.created_at,
-                updated_at=modified_event.updated_at
+                user_id=modified_event.user_id
             )
         else:
             raise NotFoundError(f"Event with id {event_id} not found")
     except NotFoundError:
+        raise
+    except ConflictError:
         raise
     except DatabaseError:
         logger.error(f"Database error in modify for event {event_id}")
@@ -278,9 +361,7 @@ def change_status(event_id: int, new_status: EventStatusEnum) -> EventResponse:
                 end_datetime=modified_event.end_datetime,
                 is_all_day=modified_event.is_all_day,
                 status=status,
-                user_id=modified_event.user_id,
-                created_at=modified_event.created_at,
-                updated_at=modified_event.updated_at
+                user_id=modified_event.user_id
             )
         else:
             raise NotFoundError(f"Event with id {event_id} not found")

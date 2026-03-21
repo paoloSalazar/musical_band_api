@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 from datetime import datetime
 from models.event import Event, EventStatus
 import services.event as event_service
-from exceptions import NotFoundError, DatabaseError
+from exceptions import NotFoundError, DatabaseError, ConflictError
 
 
 class TestEventServiceCreate:
@@ -244,3 +244,180 @@ class TestEventServiceModifyStatus:
         # Assert
         assert result is not None
         assert result.status == EventStatusEnum.CONFIRMED
+
+
+class TestEventConflictValidation:
+    """Tests for event conflict validation"""
+    
+    @patch('services.event.data.get_events_in_date_range')
+    def test_create_event_conflict_all_day_with_all_day(self, mock_get_events):
+        """Test creating an all-day event conflicts with existing all-day event on same date"""
+        # Arrange
+        from schemas.event import EventCreate
+        
+        # Existing all-day event on the same date
+        existing_event = Event(
+            id=1,
+            name="Existing Event",
+            place="Place",
+            start_datetime=datetime(2026, 3, 22, 0, 0),
+            end_datetime=datetime(2026, 3, 22, 23, 59),
+            is_all_day=True,
+            user_id=1,
+            status=EventStatus.PENDING,
+            created_at=datetime(2026, 1, 1, 10, 0),
+            updated_at=datetime(2026, 1, 1, 10, 0)
+        )
+        mock_get_events.return_value = [existing_event]
+        
+        event_data = EventCreate(
+            name="New All-Day Event",
+            place="New Place",
+            start_datetime=datetime(2026, 3, 22, 0, 0),
+            end_datetime=datetime(2026, 3, 22, 23, 59),
+            is_all_day=True,
+            user_id=1
+        )
+        
+        # Act & Assert
+        with pytest.raises(ConflictError) as exc_info:
+            event_service.create(event_data)
+        assert "conflicts with existing event" in str(exc_info.value)
+    
+    @patch('services.event.data.get_events_in_date_range')
+    def test_create_event_conflict_all_day_with_partial(self, mock_get_events):
+        """Test creating an all-day event conflicts with existing partial day event on same date"""
+        # Arrange
+        from schemas.event import EventCreate
+        
+        existing_event = Event(
+            id=1,
+            name="Existing Partial Event",
+            place="Place",
+            start_datetime=datetime(2026, 3, 22, 14, 0),
+            end_datetime=datetime(2026, 3, 22, 18, 0),
+            is_all_day=False,
+            user_id=1,
+            status=EventStatus.PENDING,
+            created_at=datetime(2026, 1, 1, 10, 0),
+            updated_at=datetime(2026, 1, 1, 10, 0)
+        )
+        mock_get_events.return_value = [existing_event]
+        
+        event_data = EventCreate(
+            name="New All-Day Event",
+            place="New Place",
+            start_datetime=datetime(2026, 3, 22, 0, 0),
+            end_datetime=datetime(2026, 3, 22, 23, 59),
+            is_all_day=True,
+            user_id=1
+        )
+        
+        # Act & Assert
+        with pytest.raises(ConflictError) as exc_info:
+            event_service.create(event_data)
+        assert "conflicts with existing event" in str(exc_info.value)
+    
+    @patch('services.event.data.get_events_in_date_range')
+    def test_create_event_conflict_partial_with_partial_overlap(self, mock_get_events):
+        """Test creating a partial day event that overlaps with existing partial day event"""
+        # Arrange
+        from schemas.event import EventCreate
+        
+        existing_event = Event(
+            id=1,
+            name="Existing Event",
+            place="Place",
+            start_datetime=datetime(2026, 3, 22, 19, 0),
+            end_datetime=datetime(2026, 3, 22, 23, 0),
+            is_all_day=False,
+            user_id=1,
+            status=EventStatus.PENDING,
+            created_at=datetime(2026, 1, 1, 10, 0),
+            updated_at=datetime(2026, 1, 1, 10, 0)
+        )
+        mock_get_events.return_value = [existing_event]
+        
+        # New event that overlaps: 18:00-22:00 overlaps with 19:00-23:00
+        event_data = EventCreate(
+            name="Overlapping Event",
+            place="New Place",
+            start_datetime=datetime(2026, 3, 22, 18, 0),
+            end_datetime=datetime(2026, 3, 22, 22, 0),
+            is_all_day=False,
+            user_id=1
+        )
+        
+        # Act & Assert
+        with pytest.raises(ConflictError) as exc_info:
+            event_service.create(event_data)
+        assert "conflicts with existing event" in str(exc_info.value)
+    
+    @patch('services.event.data.get_events_in_date_range')
+    def test_create_event_no_conflict_different_dates(self, mock_get_events):
+        """Test creating event on different date doesn't conflict"""
+        # Arrange
+        from schemas.event import EventCreate
+        
+        # Existing event on a different date
+        existing_event = Event(
+            id=1,
+            name="Existing Event",
+            place="Place",
+            start_datetime=datetime(2026, 3, 20, 19, 0),
+            end_datetime=datetime(2026, 3, 20, 23, 0),
+            is_all_day=False,
+            user_id=1,
+            status=EventStatus.PENDING,
+            created_at=datetime(2026, 1, 1, 10, 0),
+            updated_at=datetime(2026, 1, 1, 10, 0)
+        )
+        mock_get_events.return_value = [existing_event]
+        
+        event_data = EventCreate(
+            name="New Event",
+            place="New Place",
+            start_datetime=datetime(2026, 3, 22, 19, 0),
+            end_datetime=datetime(2026, 3, 22, 23, 0),
+            is_all_day=False,
+            user_id=1
+        )
+        
+        # Mock the create function
+        with patch('services.event.data.create') as mock_create:
+            mock_event = Event(
+                id=2,
+                name="New Event",
+                place="New Place",
+                start_datetime=datetime(2026, 3, 22, 19, 0),
+                end_datetime=datetime(2026, 3, 22, 23, 0),
+                is_all_day=False,
+                user_id=1,
+                status=EventStatus.PENDING,
+                created_at=datetime(2026, 1, 1, 10, 0),
+                updated_at=datetime(2026, 1, 1, 10, 0)
+            )
+            mock_create.return_value = mock_event
+            
+            # Act & Assert - should not raise
+            result = event_service.create(event_data)
+            assert result is not None
+    
+    def test_create_event_end_before_start(self):
+        """Test creating event with end datetime before start datetime raises error"""
+        # Arrange
+        from schemas.event import EventCreate
+        
+        event_data = EventCreate(
+            name="Invalid Event",
+            place="Place",
+            start_datetime=datetime(2026, 3, 22, 23, 0),
+            end_datetime=datetime(2026, 3, 22, 19, 0),  # End before start!
+            is_all_day=False,
+            user_id=1
+        )
+        
+        # Act & Assert
+        with pytest.raises(ConflictError) as exc_info:
+            event_service.create(event_data)
+        assert "End datetime must be after start datetime" in str(exc_info.value)

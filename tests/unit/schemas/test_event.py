@@ -154,9 +154,7 @@ def test_event_to_dict():
         end_datetime=datetime(2026, 6, 15, 23, 0),
         is_all_day=False,
         status=EventStatusEnum.CONFIRMED,
-        user_id=6,
-        created_at=datetime(2026, 1, 1, 10, 0),
-        updated_at=datetime(2026, 1, 1, 10, 0)
+        user_id=6
     )
     data = event.model_dump()
     expected = {
@@ -168,9 +166,7 @@ def test_event_to_dict():
         "end_datetime": datetime(2026, 6, 15, 23, 0),
         "is_all_day": False,
         "status": EventStatusEnum.CONFIRMED,
-        "user_id": 6,
-        "created_at": datetime(2026, 1, 1, 10, 0),
-        "updated_at": datetime(2026, 1, 1, 10, 0)
+        "user_id": 6
     }
     assert data == expected
 

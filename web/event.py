@@ -19,7 +19,7 @@ from auth.auth import decode_access_token
 from auth.roles import RoleAndPermissionChecker
 from schemas.event import EventCreate, EventResponse, EventUpdate, EventStatusEnum
 import services.event as event_service
-from exceptions import NotFoundError, DatabaseError
+from exceptions import NotFoundError, DatabaseError, ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +114,9 @@ def create(current_user: Annotated[dict, Depends(get_current_user)], event: Even
         created_event = event_service.create(event_data)
         logger.info(f"API request: Created event {created_event.id} by {current_user.get('sub')}")
         return created_event
+    except ConflictError as e:
+        logger.warning(f"Conflict error in create: {str(e)}")
+        raise HTTPException(status_code=409, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error in create: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -153,6 +156,9 @@ def modify(
         return updated_event
     except NotFoundError:
         raise HTTPException(status_code=404, detail="Event not found")
+    except ConflictError as e:
+        logger.warning(f"Conflict error in modify: {str(e)}")
+        raise HTTPException(status_code=409, detail=str(e))
     except HTTPException:
         raise
     except DatabaseError as e:
