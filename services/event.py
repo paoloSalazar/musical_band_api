@@ -50,27 +50,54 @@ def check_event_conflict(
     start_date = start_datetime.strftime("%Y-%m-%d")
     end_date = end_datetime.strftime("%Y-%m-%d")
     
-    existing_events = data.get_events_in_date_range(start_date, end_date, user_id)
-    
-    for event in existing_events:
-        # Skip the event being updated
+    # First check: any all-day event on this date (regardless of user)
+    # All-day events block any other event on that date
+    all_day_events = data.get_events_in_date_range(start_date, end_date, user_id=None)
+    for event in all_day_events:
         if exclude_event_id and event.id == exclude_event_id:
             continue
-        
-        # All-day events conflict with any event on the same date
-        if is_all_day or event.is_all_day:
+        if event.is_all_day:
             raise ConflictError(
                 f"Event conflicts with existing event '{event.name}' on {start_date}"
             )
-        
-        # For partial day events, check time overlap
-        # Two events overlap if: (new_start < existing_end) AND (new_end > existing_start)
-        if start_datetime < event.end_datetime and end_datetime > event.start_datetime:
-            raise ConflictError(
-                f"Event conflicts with existing event '{event.name}' "
-                f"({event.start_datetime.strftime('%H:%M')} - {event.end_datetime.strftime('%H:%M')}) "
-                f"on {start_date}"
-            )
+    
+    # Second check: for all-day events, also check for partial events on same date
+    # All-day events block partial events on that date
+    if is_all_day:
+        # Get all events on this date (no user filter for all-day events)
+        partial_events = data.get_events_in_date_range(start_date, end_date, user_id=None)
+        for event in partial_events:
+            if exclude_event_id and event.id == exclude_event_id:
+                continue
+            if not event.is_all_day:
+                raise ConflictError(
+                    f"Event conflicts with existing event '{event.name}' on {start_date}"
+                )
+    else:
+        # Third check: for partial day events, check conflicts with same user's events
+        existing_events = data.get_events_in_date_range(start_date, end_date, user_id)
+        for event in existing_events:
+            if exclude_event_id and event.id == exclude_event_id:
+                continue
+            
+            # All-day events conflict with partial day events on same date
+            if event.is_all_day:
+                raise ConflictError(
+                    f"Event conflicts with existing event '{event.name}' on {start_date}"
+                )
+            
+            # For partial day events, check time overlap
+            new_start = start_datetime if start_datetime.tzinfo is None else start_datetime.replace(tzinfo=None)
+            new_end = end_datetime if end_datetime.tzinfo is None else end_datetime.replace(tzinfo=None)
+            existing_start = event.start_datetime if event.start_datetime.tzinfo is None else event.start_datetime.replace(tzinfo=None)
+            existing_end = event.end_datetime if event.end_datetime.tzinfo is None else event.end_datetime.replace(tzinfo=None)
+            
+            if new_start < existing_end and new_end > existing_start:
+                raise ConflictError(
+                    f"Event conflicts with existing event '{event.name}' "
+                    f"({event.start_datetime.strftime('%H:%M')} - {event.end_datetime.strftime('%H:%M')}) "
+                    f"on {start_date}"
+                )
     
     return False
 
