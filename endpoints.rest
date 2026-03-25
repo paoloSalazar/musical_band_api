@@ -1,5 +1,8 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYXJpYS5nYXJjaWFAZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoyLCJyb2xlX2lkIjoyLCJleHAiOjE3NzQyNjY3NDl9.-oKpKsK1Fz8zKAxxqv0Ae6qiGw6LUSFQiPYxzodP-Oo
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYW5pZWwucGVyZWRvQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Mywicm9sZV9pZCI6MiwiZXhwIjoxNzc0MDAyMDc5fQ.FhZstJTAGcNTfTK9LCptV-Zdg76jKGJ9m7naYR_Qa7M
+### Permissions Endpoints ###
+GET {{api}}/permissions
+Authorization: Bearer {{user_token}}
 
 ###
 GET {{api}}/permissions?skip=0&limit=8
@@ -140,15 +143,15 @@ GET {{api}}/users/1
 Authorization: Bearer {{user_token}}
 
 ### Update an existing user by ID (PATCH)
-PATCH {{api}}/users/2
+PATCH {{api}}/users/me
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "Updated Name",
-  "lastname": "Updated Lastname",
-  "second_lastname": "Updated Second Lastname",
-  "role_id": 3
+  "name": "juan",
+  "lastname": "perez",
+  "second_lastname": "garcia",
+  "phone_number": "+1234567891"
 }
 
 ### Update an existing user (PATCH)
@@ -167,13 +170,13 @@ Content-Type: application/json
 ###
 
 ### Update user password (PATCH)
-PATCH {{api}}/users/jane.smith@example.com/password
+PATCH {{api}}/users/daniel.peredo@example.com/password
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "current_password": "newsecurepassword456",
-  "new_password": "newsecurepassword123"
+  "current_password": "peredo",
+  "new_password": "peredo123"
 }
 
 ###
