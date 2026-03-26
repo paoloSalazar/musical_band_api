@@ -1,7 +1,7 @@
 import pytest
 from models.event import Event, EventStatus
 from datetime import datetime
-
+from sqlalchemy import inspect
 
 def test_event_status_enum_values():
     """Test EventStatus enum has correct values"""
@@ -142,3 +142,40 @@ def test_event_user_id_can_be_set():
         user_id=42
     )
     assert event.user_id == 42
+
+
+def test_event_setup_price():
+    """Test that price can be set and is stored correctly"""
+    
+    # Verify the Event model has a 'price' column defined
+    mapper = inspect(Event)
+    columns = {col.key for col in mapper.columns}
+    
+    assert 'price' in columns, f"Event model should have 'price' column. Found columns: {columns}"
+    
+    # Test that price can be set via constructor
+    event = Event(
+        name="VIP Concert",
+        place="Exclusive Venue",
+        description="A concert with VIP access",
+        start_datetime=datetime(2026, 9, 1, 20, 0),
+        end_datetime=datetime(2026, 9, 1, 23, 0),
+        is_all_day=False,
+        user_id=6
+    )
+    event.price = 3000.00
+    assert event.price == 3000.00
+
+
+def test_event_price_optional():
+    """Test that price is optional and can be None"""
+    event = Event(
+        name="Free Event",
+        place="Community Center",
+        description="An event with no cost",
+        start_datetime=datetime(2026, 10, 1, 18, 0),
+        end_datetime=datetime(2026, 10, 1, 21, 0),
+        is_all_day=False,
+        user_id=7
+    )
+    assert event.price == 0.00 or event.price is None  # Depending on how default is handled, it could be 0.00 or None

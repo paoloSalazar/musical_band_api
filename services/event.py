@@ -14,6 +14,7 @@ Functions:
 
 import logging
 from datetime import datetime
+from decimal import Decimal
 from schemas.event import EventCreate, EventUpdate, EventResponse, EventStatusEnum, EventCreator, PaginatedEventResponse
 from models.event import Event, EventStatus
 import data.event as data
@@ -147,7 +148,8 @@ def get_one(event_id: int) -> EventResponse:
             is_all_day=event.is_all_day,
             status=status,
             user_id=event.user_id,
-            created_by=creator
+            created_by=creator,
+            price=float(event.price) if event.price else None
         )
     except NotFoundError:
         raise
@@ -194,7 +196,8 @@ def get_all() -> list[EventResponse]:
                 is_all_day=event.is_all_day,
                 status=status,
                 user_id=event.user_id,
-                created_by=creator
+                created_by=creator,
+                price=float(event.price) if event.price else None
             ))
         return result
     except DatabaseError:
@@ -276,7 +279,8 @@ def get_paginated(
                 is_all_day=event.is_all_day,
                 status=event_status,
                 user_id=event.user_id,
-                created_by=creator
+                created_by=creator,
+                price=float(event.price) if event.price else None
             ))
         
         total_pages = (total + limit - 1) // limit if limit > 0 else 0
@@ -336,7 +340,8 @@ def get_by_month(year: int, month: int, user_id: int | None = None) -> list[Even
                 is_all_day=event.is_all_day,
                 status=event_status,
                 user_id=event.user_id,
-                created_by=creator
+                created_by=creator,
+                price=float(event.price) if event.price else None
             ))
         
         return result
@@ -381,7 +386,8 @@ def create(event_create: EventCreate) -> EventResponse:
             end_datetime=event_create.end_datetime,
             is_all_day=event_create.is_all_day,
             user_id=event_create.user_id,
-            status=EventStatus.PENDING
+            status=EventStatus.PENDING,
+            price=Decimal(str(event_create.price)) if event_create.price is not None else Decimal("0.00")
         )
         
         created_event = data.create(event)
@@ -412,7 +418,8 @@ def create(event_create: EventCreate) -> EventResponse:
             is_all_day=created_event.is_all_day,
             status=status,
             user_id=created_event.user_id,
-            created_by=creator
+            created_by=creator,
+            price=float(created_event.price) if created_event.price else None
         )
     except ConflictError:
         raise
@@ -502,7 +509,8 @@ def modify(event_id: int, event_update: EventUpdate) -> EventResponse:
                 is_all_day=modified_event.is_all_day,
                 status=status,
                 user_id=modified_event.user_id,
-                created_by=creator
+                created_by=creator,
+                price=float(modified_event.price) if modified_event.price else None
             )
         else:
             raise NotFoundError(f"Event with id {event_id} not found")
@@ -599,7 +607,8 @@ def change_status(event_id: int, new_status: EventStatusEnum) -> EventResponse:
                 is_all_day=modified_event.is_all_day,
                 status=status,
                 user_id=modified_event.user_id,
-                created_by=creator
+                created_by=creator,
+                price=float(modified_event.price) if modified_event.price else None
             )
         else:
             raise NotFoundError(f"Event with id {event_id} not found")
@@ -607,4 +616,92 @@ def change_status(event_id: int, new_status: EventStatusEnum) -> EventResponse:
         raise
     except DatabaseError:
         logger.error(f"Database error in change_status for event {event_id}")
+        raise
+
+
+def set_price(event_id: int, price: Decimal) -> EventResponse:
+    """
+    Set the price of an event.
+
+    Args:
+        event_id: The ID of the event.
+        price: The new price to set.
+
+    Returns:
+        Updated EventResponse object.
+
+    Raises:
+        NotFoundError: If event is not found.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        existing_event = data.get_one(event_id)
+        if existing_event is None:
+            logger.warning(f"Event with id {event_id} not found")
+            raise NotFoundError(f"Event with id {event_id} not found")
+
+        modified_event = data.set_price(event_id, price)
+        if modified_event:
+            logger.info(f"Set price {price} on event {event_id}")
+            status = EventStatusEnum(modified_event.status.value)
+            # Get user info
+            creator = None
+            if modified_event.user_id:
+                user = user_data.get_one_by_id(modified_event.user_id)
+                if user:
+                    creator = EventCreator(
+                        user_id=user.id,
+                        name=user.name,
+                        lastname=user.lastname,
+                        email=user.email
+                    )
+            
+            return EventResponse(
+                id=modified_event.id,
+                name=modified_event.name,
+                place=modified_event.place,
+                description=modified_event.description,
+                start_datetime=modified_event.start_datetime,
+                end_datetime=modified_event.end_datetime,
+                is_all_day=modified_event.is_all_day,
+                status=status,
+                user_id=modified_event.user_id,
+                created_by=creator,
+                price=float(modified_event.price) if modified_event.price else None
+            )
+        else:
+            raise NotFoundError(f"Event with id {event_id} not found")
+    except NotFoundError:
+        raise
+    except DatabaseError:
+        logger.error(f"Database error in set_price for event {event_id}")
+        raise
+
+
+def get_price(event_id: int) -> Decimal | None:
+    """
+    Get the price of an event.
+
+    Args:
+        event_id: The ID of the event.
+
+    Returns:
+        The price as Decimal, or None if not set.
+
+    Raises:
+        NotFoundError: If event is not found.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        existing_event = data.get_one(event_id)
+        if existing_event is None:
+            logger.warning(f"Event with id {event_id} not found")
+            raise NotFoundError(f"Event with id {event_id} not found")
+
+        price = data.get_price(event_id)
+        return price
+    except NotFoundError:
+        raise
+    except DatabaseError:
+        logger.error(f"Database error in get_price for event {event_id}")
         raise

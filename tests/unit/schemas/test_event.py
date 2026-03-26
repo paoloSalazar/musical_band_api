@@ -159,7 +159,8 @@ def test_event_to_dict():
         is_all_day=False,
         status=EventStatusEnum.CONFIRMED,
         user_id=6,
-        created_by=None
+        created_by=None,
+        price=29.99
     )
     data = event.model_dump()
     expected = {
@@ -172,7 +173,8 @@ def test_event_to_dict():
         "is_all_day": False,
         "status": EventStatusEnum.CONFIRMED,
         "user_id": 6,
-        "created_by": None
+        "created_by": None,
+        "price": 29.99
     }
     assert data == expected
 
@@ -186,6 +188,7 @@ def test_event_update_all_fields_optional():
     assert event.start_datetime is None
     assert event.end_datetime is None
     assert event.is_all_day is None
+    assert event.price is None
 
 
 def test_event_update_partial():
@@ -219,3 +222,23 @@ def test_event_response_config_from_attributes():
     )
     # Verify the config is set
     assert event.model_config.get('from_attributes') is True
+
+
+def test_event_set_price():
+    """Test that price can be set and is stored correctly"""
+    event = EventResponse(
+        id=1,
+        name="Paid Event",
+        place="Venue",
+        description="Event with price",
+        start_datetime=datetime(2026, 3, 15, 20, 0),
+        end_datetime=datetime(2026, 3, 15, 23, 0),
+        is_all_day=False,
+        status=EventStatusEnum.PENDING,
+        user_id=1,
+        created_at=datetime(2026, 1, 1, 10, 0),
+        updated_at=datetime(2026, 1, 1, 10, 0)
+    )
+    # Set price
+    event.price = 49.99
+    assert event.price == 49.99

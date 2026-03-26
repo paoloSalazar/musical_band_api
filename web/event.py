@@ -296,3 +296,59 @@ def change_status(
     except DatabaseError as e:
         logger.error(f"Database error in change_status: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/{event_id}/price", dependencies=[Depends(RoleAndPermissionChecker(required_roles=["admin"], required_permissions=["write:events"]))])
+def set_price(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    event_id: int,
+    price: float
+) -> EventResponse:
+    """
+    Set the price of an event.
+
+    Requires admin role AND write:events permission.
+
+    Args:
+        event_id: The ID of the event.
+        price: The new price to set.
+
+    Returns:
+        Updated EventResponse object.
+    """
+    from decimal import Decimal
+    try:
+        updated_event = event_service.set_price(event_id, Decimal(str(price)))
+        logger.info(f"API request: Set price {price} on event {event_id} by {current_user.get('sub')}")
+        return updated_event
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="Event not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in set_price: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{event_id}/price")
+def get_price(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    event_id: int
+) -> float | None:
+    """
+    Get the price of an event.
+
+    Requires authentication (any user can view prices).
+
+    Args:
+        event_id: The ID of the event.
+
+    Returns:
+        The price as float, or None if not set.
+    """
+    try:
+        price = event_service.get_price(event_id)
+        return float(price) if price else None
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="Event not found")
+    except DatabaseError as e:
+        logger.error(f"Database error in get_price: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")

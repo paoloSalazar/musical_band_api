@@ -13,6 +13,7 @@ Functions:
 
 import logging
 from datetime import datetime
+from decimal import Decimal
 from config.database import SessionLocal
 from models.event import Event
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
@@ -426,5 +427,76 @@ def get_events_by_month(year: int, month: int, user_id: int | None = None) -> li
     except ValueError as e:
         logger.error(f"Invalid year/month values: {str(e)}")
         raise DatabaseError("Invalid year or month values")
+    finally:
+        db.close()
+
+
+def set_price(event_id: int, price: Decimal) -> Event | None:
+    """
+    Set the price of an event.
+
+    Args:
+        event_id: The ID of the event to update.
+        price: The new price value.
+
+    Returns:
+        The updated Event object if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    from decimal import Decimal
+    db = SessionLocal()
+    try:
+        existing_event = db.query(Event).filter(Event.id == event_id).first()
+        if existing_event is None:
+            return None
+
+        existing_event.price = price
+
+        db.commit()
+        db.refresh(existing_event)
+        logger.info(f"Set price {price} on event with id {event_id}")
+        return existing_event
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while setting price on event '{event_id}'")
+        db.rollback()
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while setting price on event '{event_id}': {str(e)}")
+        db.rollback()
+        raise DatabaseError("Failed to set event price")
+    finally:
+        db.close()
+
+
+def get_price(event_id: int) -> Decimal | None:
+    """
+    Get the price of an event.
+
+    Args:
+        event_id: The ID of the event.
+
+    Returns:
+        The price as Decimal if found and set, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        event = db.query(Event).filter(Event.id == event_id).first()
+        if event is None:
+            return None
+
+        return event.price
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting price for event '{event_id}'")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting price for event '{event_id}': {str(e)}")
+        raise DatabaseError("Failed to get event price")
     finally:
         db.close()

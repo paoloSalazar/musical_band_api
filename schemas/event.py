@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict, model_validator, model_serializer
 from datetime import datetime, time, timedelta, timezone
 from enum import Enum
 from typing import Optional, Any
+from decimal import Decimal
 import os
 
 
@@ -33,6 +34,7 @@ class EventBase(BaseModel):
     end_datetime: datetime
     is_all_day: bool = False
     user_id: int
+    price: float | None = None  # Price in dollars, optional (can be set via separate endpoint)
 
 
 class EventCreate(EventBase):
@@ -104,6 +106,7 @@ class EventResponse(EventBase):
     id: int
     status: EventStatusEnum
     created_by: EventCreator | None = None
+    price: float | None = None  # Price in dollars, optional
     # Note: created_at and updated_at are excluded as they are for database tracking only
 
     model_config = ConfigDict(from_attributes=True)
@@ -117,6 +120,7 @@ class EventUpdate(BaseModel):
     start_datetime: datetime | None = None
     end_datetime: datetime | None = None
     is_all_day: bool | None = None
+    price: float | None = None  # Price in dollars, optional
     
     @model_validator(mode='before')
     @classmethod
