@@ -18,7 +18,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from auth.auth import decode_access_token
 from auth.roles import RoleAndPermissionChecker
-from schemas.event import EventCreate, EventResponse, EventUpdate, EventStatusEnum, PaginatedEventResponse
+from schemas.event import EventCreate, EventResponse, EventUpdate, EventStatusEnum, PaginatedEventResponse, EventSetPrice
 import services.event as event_service
 from exceptions import NotFoundError, DatabaseError, ConflictError
 
@@ -302,7 +302,7 @@ def change_status(
 def set_price(
     current_user: Annotated[dict, Depends(get_current_user)],
     event_id: int,
-    price: float
+    price_data: EventSetPrice
 ) -> EventResponse:
     """
     Set the price of an event.
@@ -311,15 +311,15 @@ def set_price(
 
     Args:
         event_id: The ID of the event.
-        price: The new price to set.
+        price_data: EventSetPrice schema with the new price.
 
     Returns:
         Updated EventResponse object.
     """
     from decimal import Decimal
     try:
-        updated_event = event_service.set_price(event_id, Decimal(str(price)))
-        logger.info(f"API request: Set price {price} on event {event_id} by {current_user.get('sub')}")
+        updated_event = event_service.set_price(event_id, Decimal(str(price_data.price)))
+        logger.info(f"API request: Set price {price_data.price} on event {event_id} by {current_user.get('sub')}")
         return updated_event
     except NotFoundError:
         raise HTTPException(status_code=404, detail="Event not found")

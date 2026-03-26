@@ -112,6 +112,11 @@ class EventResponse(EventBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class EventSetPrice(BaseModel):
+    """Schema for setting event price"""
+    price: float
+
+
 class EventUpdate(BaseModel):
     """Schema for updating an event (all fields optional for PATCH)"""
     name: str | None = None

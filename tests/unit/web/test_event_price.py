@@ -5,7 +5,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from datetime import datetime
 from models.event import Event, EventStatus
-from schemas.event import EventResponse
+from schemas.event import EventResponse, EventSetPrice
 import services.event as event_service
 import web.event as event_web
 from exceptions import NotFoundError, DatabaseError
@@ -41,12 +41,13 @@ class TestEventWebSetPrice:
         )
         
         mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+        price_data = EventSetPrice(price=5000.00)
         
         # Act
         result = event_web.set_price(
             current_user=mock_current_user,
             event_id=1,
-            price=5000.00
+            price_data=price_data
         )
         
         # Assert
@@ -60,13 +61,14 @@ class TestEventWebSetPrice:
         mock_service.side_effect = NotFoundError("Event not found")
         
         mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+        price_data = EventSetPrice(price=5000.00)
         
         # Act & Assert
         with pytest.raises(HTTPException) as exc_info:
             event_web.set_price(
                 current_user=mock_current_user,
                 event_id=999,
-                price=5000.00
+                price_data=price_data
             )
         assert exc_info.value.status_code == 404
 
@@ -77,13 +79,14 @@ class TestEventWebSetPrice:
         mock_service.side_effect = DatabaseError("Database error")
         
         mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+        price_data = EventSetPrice(price=5000.00)
         
         # Act & Assert
         with pytest.raises(HTTPException) as exc_info:
             event_web.set_price(
                 current_user=mock_current_user,
                 event_id=1,
-                price=5000.00
+                price_data=price_data
             )
         assert exc_info.value.status_code == 500
 

@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYW5pZWwucGVyZWRvQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Mywicm9sZV9pZCI6MiwiZXhwIjoxNzc0MDAyMDc5fQ.FhZstJTAGcNTfTK9LCptV-Zdg76jKGJ9m7naYR_Qa7M
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzc0NTI5OTA1fQ.t-qsJsh7kGDtNVixSQozSEkCQ6DfG03ykykYTBRqDoc
 ### Permissions Endpoints ###
 GET {{api}}/permissions
 Authorization: Bearer {{user_token}}
@@ -188,8 +188,8 @@ POST {{api}}/users/login
 Content-Type: application/json
 
 {
-  "email": "maria.garcia@example.com",
-  "password": "garcia"
+  "email": "paolo.salazar@example.com",
+  "password": "salazar"
 }
 
 ### Get Current User Info
@@ -358,4 +358,17 @@ Content-Type: application/json
 
 {
   "status": "CANCELLED"
+}
+
+### Get event price
+GET {{api}}/events/1/price
+Authorization: Bearer {{user_token}}
+
+### Set event price
+PATCH {{api}}/events/1/price
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "price": 150.00
 }
