@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Enum, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Enum, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from config.database import Base
@@ -25,6 +25,7 @@ class Event(Base):
     is_all_day = Column(Boolean, default=False, server_default='false', nullable=False)
     status = Column(Enum(EventStatus), default=EventStatus.PENDING, server_default=EventStatus.PENDING, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    price = Column(Numeric(10, 2), nullable=True, default=Numeric("0.00"))
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
