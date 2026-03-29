@@ -18,6 +18,7 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     role = relationship("UserRole", back_populates="users")
+    events = relationship("Event", back_populates="user")
     details = relationship("UserDetail", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):

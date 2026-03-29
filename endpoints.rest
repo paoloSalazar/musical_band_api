@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYW5pZWwucGVyZWRvQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6Mywicm9sZV9pZCI6MiwiZXhwIjoxNzc0MDAyMDc5fQ.FhZstJTAGcNTfTK9LCptV-Zdg76jKGJ9m7naYR_Qa7M
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzc0NTI5OTA1fQ.t-qsJsh7kGDtNVixSQozSEkCQ6DfG03ykykYTBRqDoc
 ### Permissions Endpoints ###
 GET {{api}}/permissions
 Authorization: Bearer {{user_token}}
@@ -188,8 +188,8 @@ POST {{api}}/users/login
 Content-Type: application/json
 
 {
-  "email": "juan.perez@example.com",
-  "password": "perez"
+  "email": "paolo.salazar@example.com",
+  "password": "salazar"
 }
 
 ### Get Current User Info
@@ -237,3 +237,138 @@ Content-Type: application/json
 ### Delete a user detail
 DELETE {{api}}/users/1/details/1
 Authorization: Bearer {{user_token}}
+
+### EVENTS ENDPOINTS ###
+
+### Get all events (with pagination - table view)
+GET {{api}}/events/?page=1&limit=10
+Authorization: Bearer {{user_token}}
+
+### Get events with filters
+GET {{api}}/events/?page=1&limit=20&status=PENDING&search=rock
+Authorization: Bearer {{user_token}}
+
+### Get events sorted
+GET {{api}}/events/?page=1&limit=20&sort_by=start_datetime&order=desc
+Authorization: Bearer {{user_token}}
+
+### Get events for calendar view (by month)
+GET {{api}}/events/calendar?year=2026&month=3
+Authorization: Bearer {{user_token}}
+
+### Get events for calendar view with user filter
+GET {{api}}/events/calendar?year=2026&month=3&user_id=3
+Authorization: Bearer {{user_token}}
+
+### Get a single event by ID
+GET {{api}}/events/1
+Authorization: Bearer {{user_token}}
+
+### Post a new event (without user_id - taken from token)
+POST {{api}}/events/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Cumpleaños de Miriam2",
+  "place": "Calle Calama y San Martin, Cochabamba",
+  "description": "Celebración del cumpleaños de Martha con amigos y familiares",
+  "start_datetime": "2026-04-02 08:00:00",
+  "end_datetime": "2026-04-02 13:00:00",
+  "is_all_day": true
+}
+
+### Post a new partial day event (without user_id - taken from token)
+POST {{api}}/events/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Reunión de trabajo",
+  "place": "Oficina Central",
+  "description": "Reunión semanal del equipo",
+  "start_datetime": "2026-03-28 14:00:00",
+  "end_datetime": "2026-03-28 16:00:00",
+  "is_all_day": false
+}
+
+### Try to create conflicting event (should fail with 409 Conflict)
+POST {{api}}/events/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Conflicting Event",
+  "place": "Some Place",
+  "start_datetime": "2026-03-27 20:00:00",
+  "end_datetime": "2026-03-27 22:00:00",
+  "is_all_day": false
+}
+
+### Try to create event with end before start (should fail)
+POST {{api}}/events/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Invalid Event",
+  "place": "Some Place",
+  "start_datetime": "2026-03-29 23:00:00",
+  "end_datetime": "2026-03-29 19:00:00",
+  "is_all_day": false
+}
+
+### Update an existing event (PATCH)
+PATCH {{api}}/events/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Cumpleaños de Martha - Actualizado",
+  "place": "Nueva Ubicación"
+}
+
+### Update event datetime (PATCH) - should check for conflicts
+PATCH {{api}}/events/2
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "start_datetime": "2026-03-27 18:00:00",
+  "end_datetime": "2026-03-27 22:00:00"
+}
+
+### Delete an event
+DELETE {{api}}/events/10
+Authorization: Bearer {{user_token}}
+
+### Change event status (admin only)
+PATCH {{api}}/events/1/status
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "status": "CONFIRMED"
+}
+
+### Change event status to cancelled
+PATCH {{api}}/events/2/status
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "status": "CANCELLED"
+}
+
+### Get event price
+GET {{api}}/events/1/price
+Authorization: Bearer {{user_token}}
+
+### Set event price
+PATCH {{api}}/events/1/price
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "price": 150.00
+}
