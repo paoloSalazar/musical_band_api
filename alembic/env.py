@@ -22,6 +22,7 @@ from models.user_role import UserRole
 from models.user_detail import UserDetail
 from models.permission import Permission
 from models.event import Event
+from models.event_payment import EventPayment
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
