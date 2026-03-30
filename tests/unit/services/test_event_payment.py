@@ -8,6 +8,7 @@ import pytest
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from datetime import datetime, timedelta
+from models.event import EventStatus
 from schemas.event_payment import EventPaymentCreate, PaymentType
 import services.event_payment as payment_service
 

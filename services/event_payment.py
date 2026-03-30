@@ -15,6 +15,7 @@ from decimal import Decimal
 from datetime import datetime, timedelta
 
 from models.event_payment import EventPayment, PaymentType
+from models.event import EventStatus
 from schemas.event_payment import (
     EventPaymentCreate,
     EventPaymentResponse,
@@ -23,6 +24,7 @@ from schemas.event_payment import (
 )
 import data.event_payment as payment_data
 import data.event as event_data
+import services.event as event_service
 from exceptions import NotFoundError, ValidationError
 
 logger = logging.getLogger(__name__)
@@ -102,6 +104,10 @@ def create_payment(
     )
     
     created = create_payment_data(payment)
+    
+    # Auto-confirm event if status is PENDING
+    if event.status == EventStatus.PENDING:
+        event_service.change_status(event_id, EventStatus.CONFIRMED)
     
     # Convert to response schema
     return EventPaymentResponse(
