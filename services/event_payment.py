@@ -115,7 +115,7 @@ def create_payment(
         event_id=created.event_id,
         user_id=created.user_id,
         amount=created.amount,
-        payment_type=SchemaPaymentType(created.payment_type.value),
+        payment_type=SchemaPaymentType(created.payment_type) if isinstance(created.payment_type, str) else SchemaPaymentType(created.payment_type.value),
         payment_date=created.payment_date,
         notes=created.notes,
         created_at=created.created_at

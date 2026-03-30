@@ -12,7 +12,7 @@ Endpoints:
 import logging
 from typing import Annotated
 from decimal import Decimal
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from auth.auth import decode_access_token
 from schemas.event_payment import (
     EventPaymentCreate,
@@ -30,16 +30,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/events")
 
 
-async def get_current_user(token_data: dict) -> dict:
+async def get_current_user(request: Request) -> dict:
     """
-    Return current user information from token data.
+    Verify JWT token and return current user information.
     """
-    return token_data
+    authorization = request.headers.get("Authorization")
+    if authorization is None:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+
+    token = authorization.replace("Bearer ", "")
+    payload = decode_access_token(token)
+
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    return payload
 
 
 @router.post("/{event_id}/payments", response_model=EventPaymentResponse, status_code=201)
 def add_payment(
-    current_user: dict,
+    current_user: Annotated[dict, Depends(get_current_user)],
     event_id: int,
     payment_data: EventPaymentCreate
 ) -> EventPaymentResponse:
@@ -88,10 +98,10 @@ def add_payment(
 
 @router.get("/{event_id}/payments", response_model=list[EventPaymentResponse])
 def list_payments(
-    current_user: dict,
+    current_user: Annotated[dict, Depends(get_current_user)],
     event_id: int,
-    page: int = 1,
-    limit: int = 20
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page (max: 100)")
 ) -> list[EventPaymentResponse]:
     """
     List all payments for an event.
@@ -145,7 +155,7 @@ def list_payments(
 
 @router.get("/{event_id}/payments/summary", response_model=EventPaymentSummary)
 def get_payment_summary(
-    current_user: dict,
+    current_user: Annotated[dict, Depends(get_current_user)],
     event_id: int
 ) -> EventPaymentSummary:
     """
