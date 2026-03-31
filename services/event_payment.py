@@ -81,6 +81,10 @@ def create_payment(
     
     final_price = Decimal(str(event.price))
     
+    # Validate payment amount is positive
+    if amount <= Decimal("0"):
+        raise ValidationError("Payment amount must be greater than zero.")
+    
     # Check if TOTAL payment already exists for this event
     existing_payments = payment_data.get_payments_by_event(event_id)
     has_total_payment = any(
@@ -88,6 +92,13 @@ def create_payment(
     )
     if has_total_payment:
         raise ValidationError("A TOTAL payment has already been made for this event. No further payments are allowed.")
+    
+    # TOTAL payment is not allowed if there are already ADVANCE or REMAINING payments
+    if payment_type == SchemaPaymentType.TOTAL and existing_payments:
+        raise ValidationError(
+            "Cannot create TOTAL payment when there are existing ADVANCE or REMAINING payments. "
+            "Use REMAINING payment type to complete the balance."
+        )
     
     # Calculate remaining balance and validate ADVANCE/REMAINING don't exceed it
     total_paid = sum(p.amount for p in existing_payments)

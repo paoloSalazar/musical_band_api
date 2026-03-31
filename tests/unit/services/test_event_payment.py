@@ -162,6 +162,67 @@ class TestCreatePayment:
                 payment_type=PaymentType.REMAINING
             )
         assert "must equal exactly the remaining balance" in str(exc_info.value)
+    
+    @patch('data.event.get_one')
+    @patch('data.event_payment.get_payments_by_event')
+    def test_total_payment_fails_when_advance_or_remaining_exist(self, mock_get_payments, mock_get_event):
+        """Test TOTAL payment fails when ADVANCE or REMAINING payments exist"""
+        # Arrange
+        mock_event = MagicMock()
+        mock_event.id = 1
+        mock_event.price = Decimal("2500.00")
+        mock_event.start_datetime = datetime.now() + timedelta(days=7)
+        mock_get_event.return_value = mock_event
+        
+        # Existing ADVANCE payment
+        mock_existing_payment = MagicMock()
+        mock_existing_payment.amount = Decimal("800.00")
+        mock_existing_payment.payment_type = PaymentType.ADVANCE
+        mock_get_payments.return_value = [mock_existing_payment]
+        
+        # Act & Assert
+        from exceptions import ValidationError
+        with pytest.raises(ValidationError) as exc_info:
+            payment_service.create_payment(
+                event_id=1,
+                user_id=1,
+                amount=Decimal("2500.00"),
+                payment_type=PaymentType.TOTAL
+            )
+        assert "existing ADVANCE or REMAINING payments" in str(exc_info.value)
+    
+    @patch('data.event.get_one')
+    @patch('data.event_payment.get_payments_by_event')
+    def test_payment_amount_must_be_positive(self, mock_get_payments, mock_get_event):
+        """Test payment fails when amount is zero or negative"""
+        # Arrange
+        mock_event = MagicMock()
+        mock_event.id = 1
+        mock_event.price = Decimal("1000.00")
+        mock_event.start_datetime = datetime.now() + timedelta(days=7)
+        mock_get_event.return_value = mock_event
+        mock_get_payments.return_value = []
+        
+        # Act & Assert - zero amount
+        from exceptions import ValidationError
+        with pytest.raises(ValidationError) as exc_info:
+            payment_service.create_payment(
+                event_id=1,
+                user_id=1,
+                amount=Decimal("0"),
+                payment_type=PaymentType.ADVANCE
+            )
+        assert "must be greater than zero" in str(exc_info.value)
+        
+        # Act & Assert - negative amount
+        with pytest.raises(ValidationError) as exc_info:
+            payment_service.create_payment(
+                event_id=1,
+                user_id=1,
+                amount=Decimal("-100.00"),
+                payment_type=PaymentType.ADVANCE
+            )
+        assert "must be greater than zero" in str(exc_info.value)
 
 
 class TestGetPaymentSummary:
