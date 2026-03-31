@@ -104,14 +104,26 @@ class TestValidatePayment:
             )
     
     def test_total_payment_no_minimum(self):
-        """Test TOTAL payment has no minimum requirement"""
+        """Test TOTAL payment must equal final price"""
         from services.event_payment import validate_payment_amount
+        # TOTAL payment equal to final price should pass
         result = validate_payment_amount(
-            amount=Decimal("500.00"),
+            amount=Decimal("1000.00"),
             payment_type=PaymentType.TOTAL,
             final_price=Decimal("1000.00")
         )
         assert result is True
+    
+    def test_total_payment_must_equal_final_price(self):
+        """Test TOTAL payment fails when amount doesn't equal final price"""
+        from services.event_payment import validate_payment_amount
+        with pytest.raises(ValueError) as exc_info:
+            validate_payment_amount(
+                amount=Decimal("500.00"),
+                payment_type=PaymentType.TOTAL,
+                final_price=Decimal("1000.00")
+            )
+        assert "must equal the event's final price" in str(exc_info.value)
     
     def test_validate_payment_deadline(self):
         """Test payment validates event deadline"""

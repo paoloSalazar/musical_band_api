@@ -176,7 +176,14 @@ def validate_payment_amount(
                 f"({minimum} of {final_decimal})"
             )
     
-    # TOTAL and REMAINING have no minimum, but can't exceed remaining
+    if payment_type == SchemaPaymentType.TOTAL:
+        if amount_decimal != final_decimal:
+            raise ValueError(
+                f"TOTAL payment must equal the event's final price ({final_decimal}), "
+                f"but got {amount_decimal}"
+            )
+    
+    # REMAINING has no minimum, but can't exceed remaining
     return True
 
 
