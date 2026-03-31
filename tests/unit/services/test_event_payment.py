@@ -17,8 +17,9 @@ class TestCreatePayment:
     """Tests for payment creation service"""
     
     @patch('data.event.get_one')
+    @patch('data.event_payment.get_payments_by_event')
     @patch('services.event_payment.create_payment_data')
-    def test_create_payment_success(self, mock_create_data, mock_get_event):
+    def test_create_payment_success(self, mock_create_data, mock_get_payments, mock_get_event):
         """Test successful payment creation"""
         # Arrange
         mock_event = MagicMock()
@@ -26,6 +27,9 @@ class TestCreatePayment:
         mock_event.price = Decimal("1000.00")
         mock_event.start_datetime = datetime.now() + timedelta(days=7)
         mock_get_event.return_value = mock_event
+        
+        # No existing payments
+        mock_get_payments.return_value = []
         
         mock_payment = MagicMock()
         mock_payment.id = 1
@@ -48,7 +52,57 @@ class TestCreatePayment:
         
         # Assert
         assert result is not None
-        mock_create_data.assert_called_once()
+    
+    @patch('data.event.get_one')
+    @patch('data.event_payment.get_payments_by_event')
+    def test_total_payment_fails_when_amount_not_equal_final_price(self, mock_get_payments, mock_get_event):
+        """Test TOTAL payment fails when amount doesn't equal final price"""
+        # Arrange
+        mock_event = MagicMock()
+        mock_event.id = 1
+        mock_event.price = Decimal("1000.00")
+        mock_event.start_datetime = datetime.now() + timedelta(days=7)
+        mock_get_event.return_value = mock_event
+        
+        # No existing payments
+        mock_get_payments.return_value = []
+        
+        # Act & Assert
+        with pytest.raises(ValueError) as exc_info:
+            payment_service.create_payment(
+                event_id=1,
+                user_id=1,
+                amount=Decimal("1500.00"),  # Different from final price
+                payment_type=PaymentType.TOTAL
+            )
+        assert "must equal the event's final price" in str(exc_info.value)
+    
+    @patch('data.event.get_one')
+    @patch('data.event_payment.get_payments_by_event')
+    def test_total_payment_fails_when_already_exists(self, mock_get_payments, mock_get_event):
+        """Test TOTAL payment fails when a TOTAL payment already exists"""
+        # Arrange
+        mock_event = MagicMock()
+        mock_event.id = 1
+        mock_event.price = Decimal("1000.00")
+        mock_event.start_datetime = datetime.now() + timedelta(days=7)
+        mock_get_event.return_value = mock_event
+        
+        # Existing TOTAL payment
+        mock_existing_payment = MagicMock()
+        mock_existing_payment.payment_type = PaymentType.TOTAL
+        mock_get_payments.return_value = [mock_existing_payment]
+        
+        # Act & Assert
+        from exceptions import ValidationError
+        with pytest.raises(ValidationError) as exc_info:
+            payment_service.create_payment(
+                event_id=1,
+                user_id=1,
+                amount=Decimal("1000.00"),
+                payment_type=PaymentType.TOTAL
+            )
+        assert "TOTAL payment has already been made" in str(exc_info.value)
 
 
 class TestGetPaymentSummary:

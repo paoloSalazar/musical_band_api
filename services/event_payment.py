@@ -81,6 +81,14 @@ def create_payment(
     
     final_price = Decimal(str(event.price))
     
+    # Check if TOTAL payment already exists for this event
+    existing_payments = payment_data.get_payments_by_event(event_id)
+    has_total_payment = any(
+        p.payment_type == PaymentType.TOTAL for p in existing_payments
+    )
+    if has_total_payment:
+        raise ValidationError("A TOTAL payment has already been made for this event. No further payments are allowed.")
+    
     # Validate payment amount
     validate_payment_amount(
         amount=amount,
