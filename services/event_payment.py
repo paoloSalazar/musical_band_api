@@ -99,6 +99,12 @@ def create_payment(
                 f"Payment amount ({amount}) exceeds remaining balance ({remaining_balance}). "
                 f"Final price: {final_price}, Already paid: {total_paid}"
             )
+        # REMAINING payment must equal exactly the remaining balance
+        if payment_type == SchemaPaymentType.REMAINING and amount != remaining_balance:
+            raise ValidationError(
+                f"REMAINING payment must equal exactly the remaining balance ({remaining_balance}), "
+                f"but got {amount}"
+            )
     
     # Validate payment amount
     validate_payment_amount(

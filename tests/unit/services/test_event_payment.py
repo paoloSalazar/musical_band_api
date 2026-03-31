@@ -131,6 +131,37 @@ class TestCreatePayment:
                 payment_type=PaymentType.ADVANCE
             )
         assert "exceeds remaining balance" in str(exc_info.value)
+    
+    @patch('data.event.get_one')
+    @patch('data.event_payment.get_payments_by_event')
+    def test_remaining_payment_must_equal_remaining_balance(self, mock_get_payments, mock_get_event):
+        """Test REMAINING payment must equal exactly the remaining balance"""
+        # Arrange
+        mock_event = MagicMock()
+        mock_event.id = 1
+        mock_event.price = Decimal("2000.00")
+        mock_event.start_datetime = datetime.now() + timedelta(days=7)
+        mock_get_event.return_value = mock_event
+        
+        # Existing payments totaling 1100 (remaining is 900)
+        mock_existing_1 = MagicMock()
+        mock_existing_1.amount = Decimal("800.00")
+        mock_existing_1.payment_type = PaymentType.ADVANCE
+        mock_existing_2 = MagicMock()
+        mock_existing_2.amount = Decimal("300.00")
+        mock_existing_2.payment_type = PaymentType.REMAINING
+        mock_get_payments.return_value = [mock_existing_1, mock_existing_2]
+        
+        # Act & Assert
+        from exceptions import ValidationError
+        with pytest.raises(ValidationError) as exc_info:
+            payment_service.create_payment(
+                event_id=1,
+                user_id=1,
+                amount=Decimal("500.00"),  # Not equal to remaining 900
+                payment_type=PaymentType.REMAINING
+            )
+        assert "must equal exactly the remaining balance" in str(exc_info.value)
 
 
 class TestGetPaymentSummary:
