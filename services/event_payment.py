@@ -89,6 +89,17 @@ def create_payment(
     if has_total_payment:
         raise ValidationError("A TOTAL payment has already been made for this event. No further payments are allowed.")
     
+    # Calculate remaining balance and validate ADVANCE/REMAINING don't exceed it
+    total_paid = sum(p.amount for p in existing_payments)
+    remaining_balance = final_price - total_paid
+    
+    if payment_type in (SchemaPaymentType.ADVANCE, SchemaPaymentType.REMAINING):
+        if amount > remaining_balance:
+            raise ValidationError(
+                f"Payment amount ({amount}) exceeds remaining balance ({remaining_balance}). "
+                f"Final price: {final_price}, Already paid: {total_paid}"
+            )
+    
     # Validate payment amount
     validate_payment_amount(
         amount=amount,
