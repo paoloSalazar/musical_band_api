@@ -14,6 +14,14 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+# Override sqlalchemy.url with environment variable
+import os
+config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+
 # add your model's MetaData object here
 # for 'autogenerate' support
 from config.database import Base
