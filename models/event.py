@@ -31,6 +31,9 @@ class Event(Base):
 
     # Relationship to User
     user = relationship("User", back_populates="events")
+    
+    # Relationship to Payments
+    payments = relationship("EventPayment", back_populates="event")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

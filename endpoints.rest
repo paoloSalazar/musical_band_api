@@ -1,7 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYW9sby5zYWxhemFyQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzc0NTI5OTA1fQ.t-qsJsh7kGDtNVixSQozSEkCQ6DfG03ykykYTBRqDoc
-### Permissions Endpoints ###
-GET {{api}}/permissions
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYXJpYS5nYXJjaWFAZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjo0LCJyb2xlX2lkIjozLCJleHAiOjE3NzQ4NzgxNzN9.9-HjTStVi5rI1vLzuoeF9oh4nBpjCMfXxcfUoN3MRZQ
 Authorization: Bearer {{user_token}}
 
 ###
@@ -372,3 +370,38 @@ Content-Type: application/json
 {
   "price": 150.00
 }
+
+### Payment Endpoints ###
+### Get event payments
+GET {{api}}/events/3/payments
+Authorization: Bearer {{user_token}}
+
+### Add payment (ADVANCE)
+POST {{api}}/events/3/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 3,
+  "user_id": 4,
+  "amount": 800.00,
+  "payment_type": "ADVANCE",
+  "notes": "First advance payment"
+}
+
+### Add payment (TOTAL)
+POST {{api}}/events/3/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 3,
+  "user_id": 4,
+  "amount": 1500.00,
+  "payment_type": "TOTAL",
+  "notes": "Full payment"
+}
+
+### Get payment summary
+GET {{api}}/events/1/payments/summary
+Authorization: Bearer {{user_token}}
