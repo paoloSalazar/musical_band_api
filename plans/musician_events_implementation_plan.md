@@ -12,63 +12,34 @@ This plan outlines a comprehensive implementation of the musician events feature
 - **Tests**: TDD approach with unit tests in `tests/unit/`
 - **Auth**: JWT-based with role-based permissions
 
-## Phase 1: Database Schema Updates
+## Phase 1: Model Updates
 ### Tasks:
-1. Create Alembic migration for `event_musicians` table:
-   ```sql
-   CREATE TABLE public.event_musicians (
-       id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-       event_id bigint NOT NULL REFERENCES public.events(id),
-       musician_id bigint NOT NULL REFERENCES public.users(id),
-       role text,
-       payment_status text DEFAULT 'PENDING',
-       salary numeric NOT NULL,
-       created_at timestamp with time zone DEFAULT now() NOT NULL,
-       updated_at timestamp with time zone DEFAULT now() NOT NULL
-   );
-   ```
-   - Add unique constraint on (event_id, musician_id) to prevent duplicates
-   - Add indexes on event_id and musician_id for performance
+1. Create `models/event_musician.py`:
+    - EventMusician model with SQLAlchemy fields matching the schema
+    - Relationships: Many-to-One with Event and User
+    - Enum for payment_status (PENDING, COMPLETED, etc.)
+    - Type hints and validation
 
-2. Create Alembic migration for `musician_event_payments` table:
-   ```sql
-   CREATE TABLE public.musician_event_payments (
-       id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-       event_id bigint NOT NULL REFERENCES public.events(id),
-       user_id bigint NOT NULL REFERENCES public.users(id),
-       payment_date timestamp with time zone DEFAULT now() NOT NULL,
-       amount numeric NOT NULL,
-       payment_type text NOT NULL,
-       created_at timestamp with time zone DEFAULT now() NOT NULL,
-       updated_at timestamp with time zone DEFAULT now() NOT NULL
-   );
-   ```
-   - Add foreign key constraints
-   - Add indexes for performance
+2. Create `models/musician_event_payment.py`:
+    - MusicianEventPayment model
+    - PaymentType enum (ADVANCE, REMAINING, TOTAL) - reuse existing if possible
+    - Relationships with Event and User
+    - Timestamps
 
-3. Create Alembic migration for `musician_availability` table:
-   ```sql
-   CREATE TABLE public.musician_availability (
-       id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-       musician_id bigint NOT NULL REFERENCES public.users(id),
-       unavailable_date date NOT NULL,
-       reason text,
-       created_at timestamp with time zone DEFAULT now() NOT NULL,
-       updated_at timestamp with time zone DEFAULT now() NOT NULL
-   );
-   ```
-   - Add unique constraint on (musician_id, unavailable_date) to prevent duplicate dates
-   - Add index on musician_id for performance
-   - Add index on unavailable_date for availability queries
+3. Create `models/musician_availability.py`:
+    - MusicianAvailability model
+    - Fields: id, musician_id, unavailable_date, reason, created_at, updated_at
+    - Relationships: Many-to-One with User
+    - Validation for date fields
 
-4. Update existing `event_payment` table if needed (add musician-specific fields if extending)
+4. Update `models/__init__.py` to import new models
 
-5. Run migrations and verify schema integrity
+5. Update `conftest.py` to register new models with SQLAlchemy
 
-### Estimated Time: 2-3 days
+### Estimated Time: 1-2 days
 ### Dependencies: None
 
-## Phase 2: Model Updates
+## Phase 2: Database Schema Updates
 ### Tasks:
 1. Create `models/event_musician.py`:
    - EventMusician model with SQLAlchemy fields matching database schema
@@ -97,81 +68,62 @@ This plan outlines a comprehensive implementation of the musician events feature
 
 ## Phase 3: Schema Updates
 ### Tasks:
-1. Create `schemas/event_musician.py`:
-   - EventMusicianBase, EventMusicianCreate, EventMusicianUpdate, EventMusicianResponse
-   - Validation for salary (positive decimal), role (optional string)
-   - PaymentStatus enum matching model
+1. Generate Alembic migrations using `alembic revision --autogenerate`
 
-2. Create `schemas/musician_event_payment.py`:
-   - MusicianEventPaymentBase, MusicianEventPaymentCreate, MusicianEventPaymentResponse
-   - PaymentType enum (reuse from existing event_payment if compatible)
-   - Amount validation
+2. Review the generated migrations for accuracy
 
-3. Create `schemas/musician_availability.py`:
-   - MusicianAvailabilityBase, MusicianAvailabilityCreate, MusicianAvailabilityUpdate, MusicianAvailabilityResponse
-   - Date validation for unavailable_date (cannot be in the past)
-   - Optional reason field
-
-4. Create composite schemas:
-   - EventWithMusiciansResponse (extend existing EventResponse)
-   - MusicianSummaryResponse (for listing musicians per event)
-   - MusicianAvailabilitySummaryResponse (for availability queries)
+3. Run migrations and verify schema integrity
 
 ### Estimated Time: 1 day
-### Dependencies: Phase 2 complete
+### Dependencies: Phase 1 complete
+
+## Phase 3: Schema Updates
+### Tasks:
+1. Create `schemas/event_musician.py`:
+    - EventMusicianBase, EventMusicianCreate, EventMusicianUpdate, EventMusicianResponse
+    - Validation for salary (positive decimal), role (optional string)
+    - PaymentStatus enum matching model
+
+2. Create `schemas/musician_event_payment.py`:
+    - MusicianEventPaymentBase, MusicianEventPaymentCreate, MusicianEventPaymentResponse
+    - PaymentType enum (reuse from existing event_payment if compatible)
+    - Amount validation
+
+3. Create `schemas/musician_availability.py`:
+    - MusicianAvailabilityBase, MusicianAvailabilityCreate, MusicianAvailabilityUpdate, MusicianAvailabilityResponse
+    - Date validation for unavailable_date (cannot be in the past)
+    - Optional reason field
+
+4. Create composite schemas:
+    - EventWithMusiciansResponse (extend existing EventResponse)
+    - MusicianSummaryResponse (for listing musicians per event)
+    - MusicianAvailabilitySummaryResponse (for availability queries)
+
+### Estimated Time: 1 day
+### Dependencies: Phase 1 complete
 
 ## Phase 4: Data Layer Implementation
 ### Tasks:
 1. Create `data/event_musician.py`:
-   - CRUD functions: create, get_by_event, get_by_musician, update, delete
-   - Functions to check if musician is assigned to event
-   - Bulk operations for event musician management
+    - CRUD functions: create, get_by_event, get_by_musician, update, delete
+    - Functions to check if musician is assigned to event
+    - Bulk operations for event musician management
 
 2. Create `data/musician_event_payment.py`:
-   - CRUD functions for musician payments
-   - Functions to get payments by event/musician, calculate totals
-   - Payment status update functions
+    - CRUD functions for musician payments
+    - Functions to get payments by event/musician, calculate totals
+    - Payment status update functions
 
 3. Create `data/musician_availability.py`:
-   - CRUD functions for musician availability
-   - Functions to get availability by musician, check date conflicts
-   - Bulk insert/update for multiple dates
-   - Query functions for availability checking
+    - CRUD functions for musician availability
+    - Functions to get availability by musician, check date conflicts
+    - Bulk insert/update for multiple dates
+    - Query functions for availability checking
 
 4. Update existing `data/event_payment.py` if needed to handle musician-specific logic
 
 ### Estimated Time: 2-3 days
-### Dependencies: Phase 2, Phase 3 complete
-
-## Phase 5: Services Layer Implementation
-### Tasks:
-1. Create `services/event_musician.py`:
-   - assign_musician_to_event(): Validate user has musician role, check conflicts, validate availability
-   - update_musician_role(): Change role/salary for assigned musician
-   - remove_musician_from_event(): Handle payment implications
-   - get_musicians_for_event(): List with payment summaries
-   - validate_musician_assignment(): Business rules (musician role required, availability check)
-
-2. Create `services/musician_availability.py`:
-   - add_unavailable_date(): Add musician unavailability
-   - remove_unavailable_date(): Remove specific unavailable date
-   - get_musician_availability(): Get all unavailable dates for a musician
-   - check_availability_conflict(): Check if musician is available on a specific date
-   - bulk_update_availability(): Handle multiple dates
-
-3. Create `services/musician_event_payment.py`:
-   - create_musician_payment(): Validation against musician salary
-   - get_musician_payment_summary(): Total paid vs salary
-   - update_payment_status(): Mark payments as completed
-   - validate_payment_amount(): Ensure doesn't exceed musician's salary balance
-   - calculate_remaining_salary(): For partial payments
-
-4. Update `services/event_payment.py`:
-   - Integrate musician payment totals into event payment summaries
-   - Add validation to ensure event payments cover musician salaries
-
-### Estimated Time: 3-4 days
-### Dependencies: Phase 4 complete
+### Dependencies: Phase 1, Phase 3 complete
 
 ## Phase 6: Web Layer Implementation
 ### Tasks:
