@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYXJpYS5nYXJjaWFAZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjo0LCJyb2xlX2lkIjozLCJleHAiOjE3NzQ4NzgxNzN9.9-HjTStVi5rI1vLzuoeF9oh4nBpjCMfXxcfUoN3MRZQ
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqb2VsLmhpZ3VlcmFAZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjo2LCJyb2xlX2lkIjo1LCJleHAiOjE3NzU3Mzg0OTN9.xGuIWzCRlP-pUyvKakQQNOFQ8VnvuaHYQM4DKsYWe14
 Authorization: Bearer {{user_token}}
 
 ###
@@ -404,4 +404,102 @@ Content-Type: application/json
 
 ### Get payment summary
 GET {{api}}/events/1/payments/summary
+Authorization: Bearer {{user_token}}
+
+### MUSICIAN AVAILABILITY ENDPOINTS ###
+
+### Get availability for a specific musician (musician can only view their own, admin can view any)
+GET {{api}}/musician-availability/6
+Authorization: Bearer {{user_token}}
+
+### Check if a musician is available on a specific date
+GET {{api}}/musician-availability/check/6/2026-04-15
+Authorization: Bearer {{user_token}}
+
+### Create a new availability entry (musicians can only create for themselves, admin can create for any)
+POST {{api}}/musician-availability
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "musician_id": 6,
+  "unavailable_date": "2026-04-20",
+  "reason": "Holiday trip"
+}
+
+### Create bulk availability entries (musicians can only create for themselves, admin can create for any)
+POST {{api}}/musician-availability/bulk
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+[
+  {
+    "musician_id": 6,
+    "unavailable_date": "2026-04-22",
+    "reason": "Family vacation"
+  },
+  {
+    "musician_id": 6,
+    "unavailable_date": "2026-04-21",
+    "reason": "Family vacation"
+  }
+]
+
+### Update an existing availability entry (musicians can only update their own, admin can update any)
+PATCH {{api}}/musician-availability/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "reason": "Updated reason - medical appointment"
+}
+
+### Update availability date (should check for conflicts)
+PATCH {{api}}/musician-availability/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "unavailable_date": "2026-04-19",
+  "reason": "Rescheduled vacation"
+}
+
+### Delete an availability entry (musicians can only delete their own, admin can delete any)
+DELETE {{api}}/musician-availability/1
+Authorization: Bearer {{user_token}}
+
+### Delete availability by musician and date (musicians can only delete their own, admin can delete any)
+DELETE {{api}}/musician-availability/5/2026-04-19
+Authorization: Bearer {{user_token}}
+
+### ADMIN ENDPOINTS - Musician Availability ###
+
+### Get all musicians unavailable on a specific date (admin only)
+GET {{api}}/admin/musician-availability/date/2026-04-21
+Authorization: Bearer {{user_token}}
+
+### Try to create availability with past date (should fail with 400 Bad Request)
+POST {{api}}/musician-availability
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "musician_id": 1,
+  "unavailable_date": "2020-01-01",
+  "reason": "Past date test"
+}
+
+### Try to create conflicting availability (should fail with 409 Conflict)
+POST {{api}}/musician-availability
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "musician_id": 5,
+  "unavailable_date": "2026-04-12",
+  "reason": "Duplicate date test"
+}
+
+### Try to access other musician's availability as regular user (should fail with 403 Forbidden)
+GET {{api}}/musician-availability/5
 Authorization: Bearer {{user_token}}
