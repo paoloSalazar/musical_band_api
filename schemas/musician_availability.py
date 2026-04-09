@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, field_validator
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 
@@ -36,8 +36,8 @@ class MusicianAvailabilityUpdate(BaseModel):
 class MusicianAvailabilityResponse(MusicianAvailabilityBase):
     """Schema for musician availability responses"""
     id: int
-    created_at: date
-    updated_at: date
+    created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 

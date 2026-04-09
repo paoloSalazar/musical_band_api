@@ -59,6 +59,35 @@ def get_by_musician(musician_id: int) -> list[MusicianAvailability]:
         db.close()
 
 
+def get_by_id(availability_id: int) -> MusicianAvailability | None:
+    """
+    Retrieve an availability entry by its ID.
+
+    Args:
+        availability_id: The ID of the availability entry.
+
+    Returns:
+        The MusicianAvailability object if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        return db.query(MusicianAvailability).filter(
+            MusicianAvailability.id == availability_id
+        ).first()
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting availability by id '{availability_id}'")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting availability by id '{availability_id}'")
+        raise DatabaseError("Failed to get availability")
+    finally:
+        db.close()
+
+
 def get_by_musician_and_date(musician_id: int, unavailable_date: date) -> MusicianAvailability | None:
     """
     Retrieve a specific availability entry for a musician on a date.
@@ -216,12 +245,13 @@ def create_bulk(availabilities: list[MusicianAvailability]) -> list[MusicianAvai
         db.close()
 
 
-def update(availability: MusicianAvailability) -> MusicianAvailability | None:
+def update(availability: MusicianAvailability, updates: dict) -> MusicianAvailability | None:
     """
     Update an existing availability entry in the database.
 
     Args:
-        availability: The MusicianAvailability object with updated fields.
+        availability: The MusicianAvailability object to update.
+        updates: Dict of field updates.
 
     Returns:
         The updated MusicianAvailability object, or None if not found.
@@ -236,8 +266,9 @@ def update(availability: MusicianAvailability) -> MusicianAvailability | None:
             MusicianAvailability.id == availability.id
         ).first()
         if db_availability:
-            db_availability.unavailable_date = availability.unavailable_date
-            db_availability.reason = availability.reason
+            for key, value in updates.items():
+                if hasattr(db_availability, key):
+                    setattr(db_availability, key, value)
             db.commit()
             db.refresh(db_availability)
         return db_availability

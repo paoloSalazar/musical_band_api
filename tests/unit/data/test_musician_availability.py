@@ -293,34 +293,35 @@ def test_update_availability_found(mocker):
     availability = MusicianAvailability(
         id=1,
         musician_id=1,
-        unavailable_date=date.today() + timedelta(days=2),
-        reason="Updated reason"
-    )
-    existing_availability = MusicianAvailability(
-        id=1,
-        musician_id=1,
         unavailable_date=date.today() + timedelta(days=1),
         reason="Holiday"
+    )
+    updates = {"unavailable_date": date.today() + timedelta(days=2), "reason": "Updated reason"}
+    expected_updated = MusicianAvailability(
+        id=1,
+        musician_id=1,
+        unavailable_date=date.today() + timedelta(days=2),
+        reason="Updated reason"
     )
 
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
     mock_query.filter.return_value = mock_query
-    mock_query.first.return_value = existing_availability
+    mock_query.first.return_value = expected_updated
 
     mock_session_local = mocker.patch('data.musician_availability.SessionLocal')
     mock_session_local.return_value = mock_session
 
     # Act
-    result = data.update(availability)
+    result = data.update(availability, updates)
 
     # Assert
-    assert result == existing_availability
-    assert existing_availability.unavailable_date == date.today() + timedelta(days=2)
-    assert existing_availability.reason == "Updated reason"
+    assert result == expected_updated
+    assert result.unavailable_date == date.today() + timedelta(days=2)
+    assert result.reason == "Updated reason"
     mock_session.commit.assert_called_once()
-    mock_session.refresh.assert_called_once_with(existing_availability)
+    mock_session.refresh.assert_called_once_with(expected_updated)
     mock_session.close.assert_called_once()
 
 
@@ -333,6 +334,7 @@ def test_update_availability_not_found(mocker):
         unavailable_date=date.today() + timedelta(days=1),
         reason="Holiday"
     )
+    updates = {"reason": "Updated reason"}
 
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
@@ -344,7 +346,7 @@ def test_update_availability_not_found(mocker):
     mock_session_local.return_value = mock_session
 
     # Act
-    result = data.update(availability)
+    result = data.update(availability, updates)
 
     # Assert
     assert result is None

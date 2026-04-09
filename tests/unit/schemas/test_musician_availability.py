@@ -1,5 +1,5 @@
 import pytest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from schemas.musician_availability import (
     MusicianAvailabilityCreate,
     MusicianAvailabilityUpdate,
@@ -82,20 +82,21 @@ def test_musician_availability_update_past_date():
 def test_musician_availability_response():
     """Test MusicianAvailabilityResponse schema"""
     today = date.today()
+    now = datetime.combine(today, datetime.min.time())
     schema = MusicianAvailabilityResponse(
         id=1,
         musician_id=1,
         unavailable_date=today,
         reason="Holiday",
-        created_at=today,
-        updated_at=today
+        created_at=now,
+        updated_at=now
     )
     assert schema.id == 1
     assert schema.musician_id == 1
     assert schema.unavailable_date == today
     assert schema.reason == "Holiday"
-    assert schema.created_at == today
-    assert schema.updated_at == today
+    assert schema.created_at == now
+    assert schema.updated_at == now
 
 
 def test_musician_availability_response_from_attributes():
@@ -151,13 +152,14 @@ def test_musician_availability_create_to_dict():
 def test_musician_availability_response_to_dict():
     """Test converting MusicianAvailabilityResponse to dictionary"""
     today = date.today()
+    now = datetime.combine(today, datetime.min.time())
     schema = MusicianAvailabilityResponse(
         id=1,
         musician_id=1,
         unavailable_date=today,
         reason="Holiday",
-        created_at=today,
-        updated_at=today
+        created_at=now,
+        updated_at=now
     )
     data = schema.model_dump()
     assert data == {
@@ -165,6 +167,6 @@ def test_musician_availability_response_to_dict():
         "musician_id": 1,
         "unavailable_date": today,
         "reason": "Holiday",
-        "created_at": today,
-        "updated_at": today
+        "created_at": now,
+        "updated_at": now
     }
