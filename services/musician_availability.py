@@ -44,7 +44,7 @@ def get_by_musician(musician_id: int, current_user: dict) -> List[MusicianAvaila
     Retrieve all availability entries for a specific musician.
 
     Authorization:
-    - Musicians can only view their own availability
+    - Musicians and auxiliar_musicians can only view their own availability
     - Admins can view anyone's availability
 
     Args:
@@ -62,8 +62,8 @@ def get_by_musician(musician_id: int, current_user: dict) -> List[MusicianAvaila
     current_user_id = current_user.get('id')
     user_role = current_user.get('role')
 
-    if user_role != 'admin' and current_user_id != musician_id:
-        logger.warning(f"User {current_user_id} attempted to view availability for musician {musician_id}")
+    if user_role not in ['admin'] and current_user_id != musician_id:
+        logger.warning(f"User {current_user_id} with role {user_role} attempted to view availability for musician {musician_id}")
         raise UnauthorizedError("You can only view your own availability")
 
     try:
@@ -147,7 +147,7 @@ def create(availability_create: MusicianAvailabilityCreate, current_user: dict) 
     Create a new availability entry for a musician.
 
     Authorization:
-    - Musicians can only create availability for themselves
+    - Musicians and auxiliar_musicians can only create availability for themselves
     - Admins can create availability for any musician
 
     Args:
@@ -167,8 +167,8 @@ def create(availability_create: MusicianAvailabilityCreate, current_user: dict) 
     current_user_id = current_user.get('id')
     user_role = current_user.get('role')
 
-    if user_role != 'admin' and current_user_id != availability_create.musician_id:
-        logger.warning(f"User {current_user_id} attempted to create availability for musician {availability_create.musician_id}")
+    if user_role not in ['admin'] and current_user_id != availability_create.musician_id:
+        logger.warning(f"User {current_user_id} with role {user_role} attempted to create availability for musician {availability_create.musician_id}")
         raise UnauthorizedError("You can only manage your own availability")
 
     # Check if musician exists
@@ -208,7 +208,7 @@ def create_bulk(availabilities_create: List[MusicianAvailabilityCreate], current
     Create multiple availability entries for a musician.
 
     Authorization:
-    - Musicians can only create availability for themselves
+    - Musicians and auxiliar_musicians can only create availability for themselves
     - Admins can create availability for any musician
 
     Args:
@@ -237,8 +237,8 @@ def create_bulk(availabilities_create: List[MusicianAvailabilityCreate], current
         if av.musician_id != musician_id:
             raise ValidationError("All availability entries must be for the same musician")
 
-    if user_role != 'admin' and current_user_id != musician_id:
-        logger.warning(f"User {current_user_id} attempted to bulk create availability for musician {musician_id}")
+    if user_role not in ['admin'] and current_user_id != musician_id:
+        logger.warning(f"User {current_user_id} with role {user_role} attempted to bulk create availability for musician {musician_id}")
         raise UnauthorizedError("You can only manage your own availability")
 
     # Check if musician exists
@@ -286,7 +286,7 @@ def update(availability_id: int, availability_update: MusicianAvailabilityUpdate
     Update an existing availability entry.
 
     Authorization:
-    - Musicians can only update their own availability
+    - Musicians and auxiliar_musicians can only update their own availability
     - Admins can update anyone's availability
 
     Args:
@@ -315,8 +315,8 @@ def update(availability_id: int, availability_update: MusicianAvailabilityUpdate
     current_user_id = current_user.get('id')
     user_role = current_user.get('role')
 
-    if user_role != 'admin' and current_user_id != existing_db.musician_id:
-        logger.warning(f"User {current_user_id} attempted to update availability for musician {existing_db.musician_id}")
+    if user_role not in ['admin'] and current_user_id != existing_db.musician_id:
+        logger.warning(f"User {current_user_id} with role {user_role} attempted to update availability for musician {existing_db.musician_id}")
         raise UnauthorizedError("You can only manage your own availability")
 
     # Check for conflicts if date is being updated
@@ -349,7 +349,7 @@ def delete(availability_id: int, current_user: dict) -> bool:
     Delete an availability entry.
 
     Authorization:
-    - Musicians can only delete their own availability
+    - Musicians and auxiliar_musicians can only delete their own availability
     - Admins can delete anyone's availability
 
     Args:
@@ -376,8 +376,8 @@ def delete(availability_id: int, current_user: dict) -> bool:
     current_user_id = current_user.get('id')
     user_role = current_user.get('role')
 
-    if user_role != 'admin' and current_user_id != existing_db.musician_id:
-        logger.warning(f"User {current_user_id} attempted to delete availability for musician {existing_db.musician_id}")
+    if user_role not in ['admin'] and current_user_id != existing_db.musician_id:
+        logger.warning(f"User {current_user_id} with role {user_role} attempted to delete availability for musician {existing_db.musician_id}")
         raise UnauthorizedError("You can only manage your own availability")
 
     try:
@@ -397,7 +397,7 @@ def delete_by_musician_and_date(musician_id: int, unavailable_date: date, curren
     Delete a specific availability entry by musician and date.
 
     Authorization:
-    - Musicians can only delete their own availability
+    - Musicians and auxiliar_musicians can only delete their own availability
     - Admins can delete anyone's availability
 
     Args:
@@ -417,8 +417,8 @@ def delete_by_musician_and_date(musician_id: int, unavailable_date: date, curren
     current_user_id = current_user.get('id')
     user_role = current_user.get('role')
 
-    if user_role != 'admin' and current_user_id != musician_id:
-        logger.warning(f"User {current_user_id} attempted to delete availability for musician {musician_id}")
+    if user_role not in ['admin'] and current_user_id != musician_id:
+        logger.warning(f"User {current_user_id} with role {user_role} attempted to delete availability for musician {musician_id}")
         raise UnauthorizedError("You can only manage your own availability")
 
     try:

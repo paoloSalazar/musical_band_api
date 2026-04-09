@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqb2VsLmhpZ3VlcmFAZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjo2LCJyb2xlX2lkIjo1LCJleHAiOjE3NzU3Mzg0OTN9.xGuIWzCRlP-pUyvKakQQNOFQ8VnvuaHYQM4DKsYWe14
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYXJpYS5nYXJjaWFAZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjo0LCJyb2xlX2lkIjozLCJleHAiOjE3NzU3MzkzNDl9.GN3KBUOHqsnBNfisoew8Vo0bPnGqNIEbukrZLNOieyg
 Authorization: Bearer {{user_token}}
 
 ###
@@ -407,8 +407,10 @@ GET {{api}}/events/1/payments/summary
 Authorization: Bearer {{user_token}}
 
 ### MUSICIAN AVAILABILITY ENDPOINTS ###
+### Note: Only users with roles 'musician', 'auxiliar_musician', or 'admin' can access these endpoints
+### Musicians and auxiliar_musicians can only manage their own availability, admins can manage all
 
-### Get availability for a specific musician (musician can only view their own, admin can view any)
+### Get availability for a specific musician (musicians/auxiliar_musicians can only view their own, admin can view any)
 GET {{api}}/musician-availability/6
 Authorization: Bearer {{user_token}}
 
@@ -416,7 +418,7 @@ Authorization: Bearer {{user_token}}
 GET {{api}}/musician-availability/check/6/2026-04-15
 Authorization: Bearer {{user_token}}
 
-### Create a new availability entry (musicians can only create for themselves, admin can create for any)
+### Create a new availability entry (musicians/auxiliar_musicians can only create for themselves, admin can create for any)
 POST {{api}}/musician-availability
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
@@ -427,7 +429,7 @@ Content-Type: application/json
   "reason": "Holiday trip"
 }
 
-### Create bulk availability entries (musicians can only create for themselves, admin can create for any)
+### Create bulk availability entries (musicians/auxiliar_musicians can only create for themselves, admin can create for any)
 POST {{api}}/musician-availability/bulk
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
@@ -445,7 +447,7 @@ Content-Type: application/json
   }
 ]
 
-### Update an existing availability entry (musicians can only update their own, admin can update any)
+### Update an existing availability entry (musicians/auxiliar_musicians can only update their own, admin can update any)
 PATCH {{api}}/musician-availability/1
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
@@ -464,11 +466,11 @@ Content-Type: application/json
   "reason": "Rescheduled vacation"
 }
 
-### Delete an availability entry (musicians can only delete their own, admin can delete any)
+### Delete an availability entry (musicians/auxiliar_musicians can only delete their own, admin can delete any)
 DELETE {{api}}/musician-availability/1
 Authorization: Bearer {{user_token}}
 
-### Delete availability by musician and date (musicians can only delete their own, admin can delete any)
+### Delete availability by musician and date (musicians/auxiliar_musicians can only delete their own, admin can delete any)
 DELETE {{api}}/musician-availability/5/2026-04-19
 Authorization: Bearer {{user_token}}
 

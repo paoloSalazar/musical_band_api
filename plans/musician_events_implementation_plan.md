@@ -137,6 +137,36 @@ This plan outlines a comprehensive implementation of the musician events feature
 #### Estimated Time: 1 day
 #### Dependencies: Sub-Phase 1.10 complete
 
+### Authorization Constraints Implementation
+#### Overview:
+Implemented specific role-based access control for musician availability endpoints as per business requirements.
+
+#### Authorization Rules:
+1. **Role Access Control**:
+   - Only users with roles `musician`, `auxiliar_musician`, or `admin` can access musician availability endpoints
+   - Other roles (e.g., `user`) are blocked at the FastAPI dependency level with 403 Forbidden
+
+2. **Data Ownership Rules**:
+   - **Admin users**: Can view and manage ALL musicians' availabilities regardless of ownership
+   - **Musician and auxiliar_musician users**: Can only view and manage their OWN availabilities
+   - Ownership is validated by matching `current_user.id` with `musician_id` in requests
+
+3. **Admin-Only Endpoints**:
+   - `GET /api/admin/musician-availability/date/{date}` requires admin role
+   - Returns availability data for all musicians on the specified date
+
+#### Implementation Details:
+- **Web Layer**: Added `RoleChecker(allowed_roles=["musician", "auxiliar_musician", "admin"])` to all regular endpoints
+- **Service Layer**: Updated authorization logic to treat `auxiliar_musician` role identically to `musician` role for ownership checks
+- **Error Handling**: Clear error messages for unauthorized access attempts
+- **Testing**: Comprehensive test coverage for all authorization scenarios
+
+#### Security Impact:
+- Prevents unauthorized users from accessing sensitive musician scheduling data
+- Ensures musicians can only manage their own availability
+- Maintains admin oversight capabilities for system management
+- Blocks access at the API level before reaching business logic
+
 ### Sub-Phase 1.12: Integration Testing
 #### Tasks:
 1. Write and run integration tests for availability feature

@@ -38,6 +38,7 @@ admin_router = APIRouter(prefix="/api/admin/musician-availability")
 
 # Authorization dependencies
 require_admin = RoleChecker(allowed_roles=["admin"])
+require_musician_or_auxiliar = RoleChecker(allowed_roles=["musician", "auxiliar_musician", "admin"])
 
 
 def get_current_user(current_user: Annotated[dict, Depends(get_auth_current_user)]) -> dict:
@@ -55,7 +56,7 @@ def get_current_user(current_user: Annotated[dict, Depends(get_auth_current_user
 
 @router.get("/{musician_id}", response_model=List[MusicianAvailabilityResponse])
 def get_by_musician(
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
     musician_id: int
 ) -> List[MusicianAvailabilityResponse]:
     """
@@ -84,7 +85,7 @@ def get_by_musician(
 
 @router.get("/check/{musician_id}/{check_date}", response_model=bool)
 def check_availability(
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
     musician_id: int,
     check_date: date
 ) -> bool:
@@ -112,7 +113,7 @@ def check_availability(
 
 @router.post("", response_model=MusicianAvailabilityResponse, status_code=201)
 def create_availability(
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
     availability_data: MusicianAvailabilityCreate
 ) -> MusicianAvailabilityResponse:
     """
@@ -147,7 +148,7 @@ def create_availability(
 
 @router.post("/bulk", response_model=List[MusicianAvailabilityResponse], status_code=201)
 def create_bulk_availability(
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
     availabilities_data: List[MusicianAvailabilityCreate]
 ) -> List[MusicianAvailabilityResponse]:
     """
@@ -183,7 +184,7 @@ def create_bulk_availability(
 
 @router.patch("/{availability_id}", response_model=MusicianAvailabilityResponse)
 def update_availability(
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
     availability_id: int,
     availability_data: MusicianAvailabilityUpdate
 ) -> MusicianAvailabilityResponse:
@@ -220,7 +221,7 @@ def update_availability(
 
 @router.delete("/{availability_id}")
 def delete_availability(
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
     availability_id: int
 ) -> dict:
     """
@@ -255,7 +256,7 @@ def delete_availability(
 
 @router.delete("/{musician_id}/{delete_date}")
 def delete_by_musician_and_date(
-    current_user: Annotated[dict, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
     musician_id: int,
     delete_date: date
 ) -> dict:
