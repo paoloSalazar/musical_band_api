@@ -4,4 +4,5 @@ from .user_detail import UserDetail
 from .permission import Permission, role_permissions
 from .event import Event
 from .event_payment import EventPayment
+from .user_detail import UserDetail
 from .musician_availability import MusicianAvailability
