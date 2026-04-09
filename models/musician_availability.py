@@ -5,6 +5,7 @@ from sqlalchemy import Column, Integer, Date, Text, DateTime, ForeignKey, Unique
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from config.database import Base
+from datetime import date
 
 class MusicianAvailability(Base):
     __tablename__ = "musician_availability"
@@ -22,6 +23,11 @@ class MusicianAvailability(Base):
     __table_args__ = (
         UniqueConstraint('musician_id', 'unavailable_date', name='uq_musician_availability'),
     )
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if self.unavailable_date < date.today():
+            raise ValueError("Unavailable date cannot be in the past")
 
     def __repr__(self):
         return f"<MusicianAvailability(musician_id={self.musician_id}, date={self.unavailable_date})>"
