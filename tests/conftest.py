@@ -12,6 +12,7 @@ from models.user_role import UserRole
 from models.user_detail import UserDetail
 from models.permission import Permission
 from models.event import Event
+from models.musician_availability import MusicianAvailability
 
 # This import ensures all models are registered with the Base metadata
 # and their relationships are properly configured
