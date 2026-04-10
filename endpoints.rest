@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYXJpYS5nYXJjaWFAZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjo0LCJyb2xlX2lkIjozLCJleHAiOjE3NzU3MzkzNDl9.GN3KBUOHqsnBNfisoew8Vo0bPnGqNIEbukrZLNOieyg
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NTgyMjQxM30.PK6zIe_5TKhPqDmPk46jfJSMnh8L5JRUeRJGu4KYOrY
 Authorization: Bearer {{user_token}}
 
 ###
@@ -186,8 +186,8 @@ POST {{api}}/users/login
 Content-Type: application/json
 
 {
-  "email": "paolo.salazar@example.com",
-  "password": "salazar"
+  "email": "admin@example.com",
+  "password": "admin"
 }
 
 ### Get Current User Info
@@ -370,6 +370,90 @@ Content-Type: application/json
 {
   "price": 150.00
 }
+
+### EVENT MUSICIAN ENDPOINTS ###
+### Note: Only users with roles 'user' or 'admin' can access these endpoints
+### Users can only manage musicians for their own events, admins can manage all
+
+### Get musicians assigned to an event
+GET {{api}}/events/1/musicians
+Authorization: Bearer {{user_token}}
+
+###
+
+### Assign a musician to an event
+POST {{api}}/events/1/musicians
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 1,
+  "musician_id": 3,
+  "role": "Lead Guitarist",
+  "salary": 400.00,
+  "payment_status": "PENDING"
+}
+
+###
+
+### Update a musician's assignment (role/salary)
+PATCH {{api}}/events/1/musicians/2
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "role": "Solo Guitarist",
+  "salary": 1600.00,
+  "payment_status": "COMPLETED"
+}
+
+###
+
+### Remove a musician from an event
+DELETE {{api}}/events/1/musicians/2
+Authorization: Bearer {{user_token}}
+
+###
+
+### Get musicians summary for an event
+GET {{api}}/events/1/musicians/summary
+Authorization: Bearer {{user_token}}
+
+###
+
+### Try to assign musician who is already assigned (should fail with 409 Conflict)
+POST {{api}}/events/1/musicians
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 1,
+  "musician_id": 2,
+  "role": "Duplicate Assignment",
+  "salary": 1000.00
+}
+
+###
+
+### Try to assign musician who is unavailable (should fail with 409 Conflict)
+POST {{api}}/events/1/musicians
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 1,
+  "musician_id": 3,
+  "role": "Unavailable Musician",
+  "salary": 1200.00
+}
+
+###
+
+### Try to manage musicians for another user's event (should fail with 403 Forbidden)
+GET {{api}}/events/2/musicians
+Authorization: Bearer {{user_token}}
+
+###
 
 ### Payment Endpoints ###
 ### Get event payments

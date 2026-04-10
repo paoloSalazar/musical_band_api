@@ -14,10 +14,10 @@ Functions:
 
 import logging
 from decimal import Decimal
-from services.event_musician import data
+import data.event_musician as data
 from data import event as event_data
 from data import user as user_data
-from data.musician_availability import check_availability as musician_availability_data
+from data.musician_availability import check_availability as check_musician_availability
 from models.event_musician import EventMusician
 from exceptions import (
     NotFoundError,
@@ -122,7 +122,7 @@ def assign_musician(assignment_data, current_user: dict) -> EventMusician:
 
     # Check availability on event date
     event_date = event.start_datetime.date()
-    if not musician_availability_data.check_availability(assignment_data.musician_id, event_date):
+    if not check_musician_availability(assignment_data.musician_id, event_date):
         raise ConflictError("Musician is not available on the event date")
 
     # Create the assignment
@@ -184,6 +184,46 @@ def update_assignment(assignment_id: int, update_data, current_user: dict) -> Ev
     return assignment
 
 
+def update_assignment_by_event_musician(event_id: int, musician_id: int, update_data, current_user: dict) -> EventMusician | None:
+    """
+    Update a musician assignment by event and musician IDs.
+
+    Args:
+        event_id: The ID of the event.
+        musician_id: The ID of the musician.
+        update_data: EventMusicianUpdate schema.
+        current_user: The current user dict.
+
+    Returns:
+        The updated EventMusician object, or None if not found.
+
+    Raises:
+        NotFoundError: If assignment or event doesn't exist.
+        UnauthorizedError: If user doesn't have permission.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        event = event_data.get_one(event_id)
+    except DatabaseError:
+        raise NotFoundError(f"Event with id {event_id} not found")
+
+    if not _can_manage_event_musicians(event, current_user):
+        raise UnauthorizedError("You can only manage musicians for your own events")
+
+    assignment = data.get_by_event_and_musician(event_id, musician_id)
+    if not assignment:
+        raise NotFoundError(f"Musician {musician_id} is not assigned to event {event_id}")
+
+    updates = update_data.model_dump(exclude_unset=True)
+    if updates:
+        try:
+            return data.update(assignment, updates)
+        except DatabaseError as e:
+            logger.error(f"Failed to update assignment for event {event_id} and musician {musician_id}")
+            raise e
+    return assignment
+
+
 def remove_musician(assignment_id: int, current_user: dict) -> bool:
     """
     Remove a musician from an event.
@@ -220,6 +260,42 @@ def remove_musician(assignment_id: int, current_user: dict) -> bool:
         return data.delete(assignment_id)
     except DatabaseError as e:
         logger.error(f"Failed to remove musician assignment {assignment_id}")
+        raise e
+
+
+def remove_musician_by_event_musician(event_id: int, musician_id: int, current_user: dict) -> bool:
+    """
+    Remove a musician from an event by event and musician IDs.
+
+    Args:
+        event_id: The ID of the event.
+        musician_id: The ID of the musician.
+        current_user: The current user dict.
+
+    Returns:
+        True if removed, False if not found.
+
+    Raises:
+        NotFoundError: If assignment or event doesn't exist.
+        UnauthorizedError: If user doesn't have permission.
+        DatabaseError: If database operation fails.
+    """
+    try:
+        event = event_data.get_one(event_id)
+    except DatabaseError:
+        raise NotFoundError(f"Event with id {event_id} not found")
+
+    if not _can_manage_event_musicians(event, current_user):
+        raise UnauthorizedError("You can only manage musicians for your own events")
+
+    assignment = data.get_by_event_and_musician(event_id, musician_id)
+    if not assignment:
+        raise NotFoundError(f"Musician {musician_id} is not assigned to event {event_id}")
+
+    try:
+        return data.delete(assignment.id)
+    except DatabaseError as e:
+        logger.error(f"Failed to remove musician {musician_id} from event {event_id}")
         raise e
 
 
