@@ -14,6 +14,7 @@ from models.permission import Permission
 from models.event import Event
 from models.event_payment import EventPayment
 from models.musician_availability import MusicianAvailability
+from models.event_musician import EventMusician
 
 # This import ensures all models are registered with the Base metadata
 # and their relationships are properly configured
