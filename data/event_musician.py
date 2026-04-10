@@ -84,6 +84,35 @@ def get_by_musician(musician_id: int) -> list[EventMusician]:
         db.close()
 
 
+def get_by_id(assignment_id: int) -> EventMusician | None:
+    """
+    Retrieve an assignment by its ID.
+
+    Args:
+        assignment_id: The ID of the assignment.
+
+    Returns:
+        The EventMusician object if found, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        return db.query(EventMusician).filter(
+            EventMusician.id == assignment_id
+        ).first()
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting assignment by id '{assignment_id}'")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting assignment by id '{assignment_id}'")
+        raise DatabaseError("Failed to get event musician assignment")
+    finally:
+        db.close()
+
+
 def get_by_event_and_musician(event_id: int, musician_id: int) -> EventMusician | None:
     """
     Retrieve a specific assignment for an event and musician.
