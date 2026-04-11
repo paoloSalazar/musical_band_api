@@ -12,7 +12,7 @@ Endpoints:
 """
 
 import logging
-from typing import Annotated, List, Dict
+from typing import Annotated, List
 from decimal import Decimal
 from fastapi import APIRouter, HTTPException, Depends
 from auth.auth import get_current_user as get_auth_current_user
@@ -22,6 +22,7 @@ from schemas.event_musician import (
     EventMusicianUpdate,
     EventMusicianResponse,
     MusicianSummaryResponse,
+    EventMusiciansSummaryResponse,
 )
 import services.event_musician as service
 from exceptions import DatabaseError, NotFoundError, ConflictError, UnauthorizedError, ValidationError
@@ -102,6 +103,9 @@ def assign_musician_to_event(
         assignment = service.assign_musician(musician_data, current_user)
         logger.info(f"API request: Assigned musician {assignment.musician_id} to event {event_id}")
         return assignment
+    except ValidationError as e:
+        logger.warning(f"Validation error in assign_musician_to_event: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except NotFoundError as e:
         logger.warning(f"Not found error in assign_musician_to_event: {str(e)}")
         raise HTTPException(status_code=404, detail=str(e))
@@ -192,11 +196,40 @@ def remove_musician_from_event(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/{event_id}/musicians/summary", response_model=Dict)
+@router.get("/musicians/{musician_id}/assignments", response_model=List[EventMusicianResponse])
+def get_musician_assignments(
+    current_user: Annotated[dict, Depends(require_user_or_admin)],
+    musician_id: int
+) -> List[EventMusicianResponse]:
+    """
+    Retrieve all event assignments for a specific musician.
+
+    Args:
+        musician_id: The ID of the musician.
+
+    Returns:
+        List of EventMusicianResponse objects.
+
+    Raises:
+        HTTPException: 403 if unauthorized, 500 if database error.
+    """
+    try:
+        assignments = service.get_by_musician(musician_id, current_user)
+        logger.info(f"API request: Retrieved {len(assignments)} assignments for musician {musician_id}")
+        return assignments
+    except UnauthorizedError as e:
+        logger.warning(f"Unauthorized access attempt: {str(e)}")
+        raise HTTPException(status_code=403, detail=str(e))
+    except DatabaseError as e:
+        logger.error(f"Database error in get_musician_assignments: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{event_id}/musicians/summary", response_model=EventMusiciansSummaryResponse)
 def get_event_musicians_summary(
     current_user: Annotated[dict, Depends(require_user_or_admin)],
     event_id: int
-) -> Dict:
+) -> EventMusiciansSummaryResponse:
     """
     Get summary of musicians assigned to an event.
 

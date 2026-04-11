@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 
 class PaymentStatus(str, Enum):
@@ -68,5 +68,14 @@ class MusicianSummaryResponse(BaseModel):
     role: Optional[str] = None
     salary: Decimal
     payment_status: PaymentStatus
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EventMusiciansSummaryResponse(BaseModel):
+    """Schema for event musicians summary response"""
+    total_musicians: int
+    total_salary: Decimal
+    musicians: List[EventMusicianResponse]
 
     model_config = ConfigDict(from_attributes=True)

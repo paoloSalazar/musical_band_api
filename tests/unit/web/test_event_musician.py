@@ -7,12 +7,13 @@ from schemas.event_musician import (
     EventMusicianUpdate,
     EventMusicianResponse,
     MusicianSummaryResponse,
+    PaymentStatus,
 )
 from web.event_musician import (
     get_event_musicians,
-    get_musician_assignments,
     assign_musician_to_event,
     update_event_musician,
+    get_musician_assignments,
     remove_musician_from_event,
     get_event_musicians_summary,
 )
@@ -27,7 +28,7 @@ def test_get_event_musicians_success(mocker):
     mock_musicians = [
         EventMusicianResponse(
             id=1, event_id=1, musician_id=2, role="Lead Guitarist",
-            salary=Decimal("1500.00"), payment_status="PENDING",
+            salary=Decimal("1500.00"), payment_status=PaymentStatus.PENDING,
             created_at=datetime.now(), updated_at=datetime.now()
         )
     ]
@@ -83,7 +84,7 @@ def test_get_musician_assignments_success(mocker):
     mock_assignments = [
         EventMusicianResponse(
             id=1, event_id=1, musician_id=2, role="Lead Guitarist",
-            salary=Decimal("1500.00"), payment_status="PENDING",
+            salary=Decimal("1500.00"), payment_status=PaymentStatus.PENDING,
             created_at=datetime.now(), updated_at=datetime.now()
         )
     ]
@@ -108,11 +109,12 @@ def test_assign_musician_to_event_success(mocker):
         event_id=1,
         musician_id=2,
         role="Lead Guitarist",
-        salary=Decimal("1500.00")
+        salary=Decimal("1500.00"),
+        payment_status=PaymentStatus.PENDING
     )
     mock_response = EventMusicianResponse(
         id=1, event_id=1, musician_id=2, role="Lead Guitarist",
-        salary=Decimal("1500.00"), payment_status="PENDING",
+        salary=Decimal("1500.00"), payment_status=PaymentStatus.PENDING,
         created_at=datetime.now(), updated_at=datetime.now()
     )
     mock_service = mocker.patch('web.event_musician.service.assign_musician')
@@ -165,10 +167,10 @@ def test_update_event_musician_success(mocker):
     update_data = EventMusicianUpdate(role="Solo Guitarist", salary=Decimal("1600.00"))
     mock_response = EventMusicianResponse(
         id=1, event_id=1, musician_id=2, role="Solo Guitarist",
-        salary=Decimal("1600.00"), payment_status="PENDING",
+        salary=Decimal("1600.00"), payment_status=PaymentStatus.PENDING,
         created_at=datetime.now(), updated_at=datetime.now()
     )
-    mock_service = mocker.patch('web.event_musician.service.update_assignment')
+    mock_service = mocker.patch('web.event_musician.service.update_assignment_by_event_musician')
     mock_service.return_value = mock_response
 
     # Act
@@ -192,7 +194,7 @@ def test_update_event_musician_not_found(mocker):
     musician_id = 2
     current_user = {"id": 1, "role": "user"}
     update_data = EventMusicianUpdate(role="Updated role")
-    mock_service = mocker.patch('web.event_musician.service.update_assignment')
+    mock_service = mocker.patch('web.event_musician.service.update_assignment_by_event_musician')
     mock_service.side_effect = NotFoundError("Assignment not found")
 
     # Act & Assert
@@ -213,7 +215,7 @@ def test_remove_musician_from_event_success(mocker):
     event_id = 1
     musician_id = 2
     current_user = {"id": 1, "role": "user"}
-    mock_service = mocker.patch('web.event_musician.service.remove_musician')
+    mock_service = mocker.patch('web.event_musician.service.remove_musician_by_event_musician')
     mock_service.return_value = True
 
     # Act
@@ -234,7 +236,7 @@ def test_remove_musician_from_event_not_found(mocker):
     event_id = 1
     musician_id = 2
     current_user = {"id": 1, "role": "user"}
-    mock_service = mocker.patch('web.event_musician.service.remove_musician')
+    mock_service = mocker.patch('web.event_musician.service.remove_musician_by_event_musician')
     mock_service.side_effect = NotFoundError("Assignment not found")
 
     # Act & Assert

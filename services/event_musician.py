@@ -17,7 +17,7 @@ from decimal import Decimal
 import data.event_musician as data
 from data import event as event_data
 from data import user as user_data
-from data.musician_availability import check_availability as check_musician_availability
+import data.musician_availability as musician_availability_data
 from models.event_musician import EventMusician
 from exceptions import (
     NotFoundError,
@@ -112,9 +112,13 @@ def assign_musician(assignment_data, current_user: dict) -> EventMusician:
         raise UnauthorizedError("You can only manage musicians for your own events")
 
     try:
-        user_data.get_one_by_id(assignment_data.musician_id)
+        musician = user_data.get_one_by_id(assignment_data.musician_id)
     except DatabaseError:
         raise NotFoundError(f"Musician with id {assignment_data.musician_id} not found")
+
+    # Validate that the user has musician role
+    if musician.role.name not in ['musician', 'auxiliar_musician']:
+        raise ValidationError("Only users with musician or auxiliar_musician roles can be assigned to events")
 
     # Check if already assigned
     if data.is_assigned_to_event(assignment_data.event_id, assignment_data.musician_id):
@@ -122,7 +126,7 @@ def assign_musician(assignment_data, current_user: dict) -> EventMusician:
 
     # Check availability on event date
     event_date = event.start_datetime.date()
-    if not check_musician_availability(assignment_data.musician_id, event_date):
+    if not musician_availability_data.check_availability(assignment_data.musician_id, event_date):
         raise ConflictError("Musician is not available on the event date")
 
     # Create the assignment
