@@ -29,6 +29,7 @@ def test_get_event_musicians_success(mocker):
         EventMusicianResponse(
             id=1, event_id=1, musician_id=2, role="Lead Guitarist",
             salary=Decimal("1500.00"), payment_status=PaymentStatus.PENDING,
+            musician_name="John", musician_lastname="Doe",
             created_at=datetime.now(), updated_at=datetime.now()
         )
     ]
@@ -85,6 +86,7 @@ def test_get_musician_assignments_success(mocker):
         EventMusicianResponse(
             id=1, event_id=1, musician_id=2, role="Lead Guitarist",
             salary=Decimal("1500.00"), payment_status=PaymentStatus.PENDING,
+            musician_name="Jane", musician_lastname="Smith",
             created_at=datetime.now(), updated_at=datetime.now()
         )
     ]
@@ -115,6 +117,7 @@ def test_assign_musician_to_event_success(mocker):
     mock_response = EventMusicianResponse(
         id=1, event_id=1, musician_id=2, role="Lead Guitarist",
         salary=Decimal("1500.00"), payment_status=PaymentStatus.PENDING,
+        musician_name="John", musician_lastname="Doe",
         created_at=datetime.now(), updated_at=datetime.now()
     )
     mock_service = mocker.patch('web.event_musician.service.assign_musician')
@@ -168,6 +171,7 @@ def test_update_event_musician_success(mocker):
     mock_response = EventMusicianResponse(
         id=1, event_id=1, musician_id=2, role="Solo Guitarist",
         salary=Decimal("1600.00"), payment_status=PaymentStatus.PENDING,
+        musician_name="John", musician_lastname="Doe",
         created_at=datetime.now(), updated_at=datetime.now()
     )
     mock_service = mocker.patch('web.event_musician.service.update_assignment_by_event_musician')

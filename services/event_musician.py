@@ -19,6 +19,7 @@ from data import event as event_data
 from data import user as user_data
 import data.musician_availability as musician_availability_data
 from models.event_musician import EventMusician
+from schemas.event_musician import EventMusicianResponse
 from exceptions import (
     NotFoundError,
     DatabaseError,
@@ -30,7 +31,7 @@ from exceptions import (
 logger = logging.getLogger(__name__)
 
 
-def get_by_event(event_id: int, current_user: dict) -> list[EventMusician]:
+def get_by_event(event_id: int, current_user: dict) -> list[EventMusicianResponse]:
     """
     Retrieve all musician assignments for a specific event.
 
@@ -55,13 +56,28 @@ def get_by_event(event_id: int, current_user: dict) -> list[EventMusician]:
         raise UnauthorizedError("You can only manage musicians for your own events")
 
     try:
-        return data.get_by_event(event_id)
+        musicians = data.get_by_event(event_id)
+        return [
+            EventMusicianResponse(
+                id=musician.id,
+                event_id=musician.event_id,
+                musician_id=musician.musician_id,
+                role=musician.role,
+                salary=musician.salary,
+                payment_status=musician.payment_status,
+                musician_name=musician.musician.name if musician.musician else None,
+                musician_lastname=musician.musician.lastname if musician.musician else None,
+                created_at=musician.created_at,
+                updated_at=musician.updated_at
+            )
+            for musician in musicians
+        ]
     except DatabaseError as e:
         logger.error(f"Failed to get musicians for event {event_id}")
         raise e
 
 
-def get_by_musician(musician_id: int, current_user: dict) -> list[EventMusician]:
+def get_by_musician(musician_id: int, current_user: dict) -> list[EventMusicianResponse]:
     """
     Retrieve all event assignments for a specific musician.
 
@@ -80,13 +96,28 @@ def get_by_musician(musician_id: int, current_user: dict) -> list[EventMusician]
         raise UnauthorizedError("You can only view your own event assignments")
 
     try:
-        return data.get_by_musician(musician_id)
+        assignments = data.get_by_musician(musician_id)
+        return [
+            EventMusicianResponse(
+                id=assignment.id,
+                event_id=assignment.event_id,
+                musician_id=assignment.musician_id,
+                role=assignment.role,
+                salary=assignment.salary,
+                payment_status=assignment.payment_status,
+                musician_name=assignment.musician.name if assignment.musician else None,
+                musician_lastname=assignment.musician.lastname if assignment.musician else None,
+                created_at=assignment.created_at,
+                updated_at=assignment.updated_at
+            )
+            for assignment in assignments
+        ]
     except DatabaseError as e:
         logger.error(f"Failed to get assignments for musician {musician_id}")
         raise e
 
 
-def assign_musician(assignment_data, current_user: dict) -> EventMusician:
+def assign_musician(assignment_data, current_user: dict) -> EventMusicianResponse:
     """
     Assign a musician to an event with validation.
 
@@ -139,7 +170,19 @@ def assign_musician(assignment_data, current_user: dict) -> EventMusician:
     )
 
     try:
-        return data.create(musician)
+        created_musician = data.create(musician)
+        return EventMusicianResponse(
+            id=created_musician.id,
+            event_id=created_musician.event_id,
+            musician_id=created_musician.musician_id,
+            role=created_musician.role,
+            salary=created_musician.salary,
+            payment_status=created_musician.payment_status,
+            musician_name=created_musician.musician.name if created_musician.musician else None,
+            musician_lastname=created_musician.musician.lastname if created_musician.musician else None,
+            created_at=created_musician.created_at,
+            updated_at=created_musician.updated_at
+        )
     except DatabaseError as e:
         logger.error(f"Failed to assign musician {assignment_data.musician_id} to event {assignment_data.event_id}")
         raise e
@@ -188,7 +231,7 @@ def update_assignment(assignment_id: int, update_data, current_user: dict) -> Ev
     return assignment
 
 
-def update_assignment_by_event_musician(event_id: int, musician_id: int, update_data, current_user: dict) -> EventMusician | None:
+def update_assignment_by_event_musician(event_id: int, musician_id: int, update_data, current_user: dict) -> EventMusicianResponse | None:
     """
     Update a musician assignment by event and musician IDs.
 
@@ -221,11 +264,37 @@ def update_assignment_by_event_musician(event_id: int, musician_id: int, update_
     updates = update_data.model_dump(exclude_unset=True)
     if updates:
         try:
-            return data.update(assignment, updates)
+            updated_assignment = data.update(assignment, updates)
+            if updated_assignment:
+                return EventMusicianResponse(
+                    id=updated_assignment.id,
+                    event_id=updated_assignment.event_id,
+                    musician_id=updated_assignment.musician_id,
+                    role=updated_assignment.role,
+                    salary=updated_assignment.salary,
+                    payment_status=updated_assignment.payment_status,
+                    musician_name=updated_assignment.musician.name if updated_assignment.musician else None,
+                    musician_lastname=updated_assignment.musician.lastname if updated_assignment.musician else None,
+                    created_at=updated_assignment.created_at,
+                    updated_at=updated_assignment.updated_at
+                )
+            return None
         except DatabaseError as e:
             logger.error(f"Failed to update assignment for event {event_id} and musician {musician_id}")
             raise e
-    return assignment
+    # Return the assignment as is if no updates
+    return EventMusicianResponse(
+        id=assignment.id,
+        event_id=assignment.event_id,
+        musician_id=assignment.musician_id,
+        role=assignment.role,
+        salary=assignment.salary,
+        payment_status=assignment.payment_status,
+        musician_name=assignment.musician.name if assignment.musician else None,
+        musician_lastname=assignment.musician.lastname if assignment.musician else None,
+        created_at=assignment.created_at,
+        updated_at=assignment.updated_at
+    )
 
 
 def remove_musician(assignment_id: int, current_user: dict) -> bool:

@@ -133,6 +133,7 @@ def test_get_by_event_and_musician_found(mocker):
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
+    mock_query.options.return_value = mock_query
     mock_query.filter.return_value = mock_query
     mock_query.first.return_value = expected_assignment
 
@@ -156,6 +157,7 @@ def test_get_by_event_and_musician_not_found(mocker):
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
+    mock_query.options.return_value = mock_query
     mock_query.filter.return_value = mock_query
     mock_query.first.return_value = None
 
@@ -238,7 +240,9 @@ def test_create_event_musician(mocker):
     assert result == musician
     mock_session.add.assert_called_once_with(musician)
     mock_session.commit.assert_called_once()
-    mock_session.refresh.assert_called_once_with(musician)
+    assert mock_session.refresh.call_count == 2
+    mock_session.refresh.assert_any_call(musician)
+    mock_session.refresh.assert_any_call(musician, ['musician', 'event'])
     mock_session.close.assert_called_once()
 
 
@@ -330,7 +334,9 @@ def test_update_event_musician_found(mocker):
     assert result.salary == Decimal("1600.00")
     assert result.payment_status == "COMPLETED"
     mock_session.commit.assert_called_once()
-    mock_session.refresh.assert_called_once_with(expected_updated)
+    assert mock_session.refresh.call_count == 2
+    mock_session.refresh.assert_any_call(expected_updated)
+    mock_session.refresh.assert_any_call(expected_updated, ['musician'])
     mock_session.close.assert_called_once()
 
 

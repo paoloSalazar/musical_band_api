@@ -104,6 +104,8 @@ def test_event_musician_response():
         role="Lead Guitarist",
         salary=Decimal("1500.00"),
         payment_status=PaymentStatus.PENDING,
+        musician_name="John",
+        musician_lastname="Doe",
         created_at=now,
         updated_at=now
     )
@@ -187,6 +189,8 @@ def test_event_musician_response_to_dict():
         role="Lead Guitarist",
         salary=Decimal("1500.00"),
         payment_status=PaymentStatus.PENDING,
+        musician_name="John",
+        musician_lastname="Doe",
         created_at=now,
         updated_at=now
     )
@@ -198,6 +202,8 @@ def test_event_musician_response_to_dict():
         "role": "Lead Guitarist",
         "salary": Decimal("1500.00"),
         "payment_status": PaymentStatus.PENDING,
+        "musician_name": "John",
+        "musician_lastname": "Doe",
         "created_at": now,
         "updated_at": now
     }

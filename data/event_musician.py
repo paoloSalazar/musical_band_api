@@ -130,7 +130,9 @@ def get_by_event_and_musician(event_id: int, musician_id: int) -> EventMusician 
     """
     db = SessionLocal()
     try:
-        return db.query(EventMusician).filter(
+        return db.query(EventMusician).options(
+            selectinload(EventMusician.musician)
+        ).filter(
             EventMusician.event_id == event_id,
             EventMusician.musician_id == musician_id
         ).first()
@@ -195,6 +197,8 @@ def create(musician: EventMusician) -> EventMusician:
         db.add(musician)
         db.commit()
         db.refresh(musician)
+        # Load relationships
+        db.refresh(musician, ['musician', 'event'])
         return musician
     except (OperationalError, InterfaceError) as e:
         logger.error(f"Database connection error while creating assignment for event '{musician.event_id}' and musician '{musician.musician_id}'")
@@ -267,6 +271,8 @@ def update(musician: EventMusician, updates: dict) -> EventMusician | None:
                     setattr(db_musician, key, value)
             db.commit()
             db.refresh(db_musician)
+            # Load relationships
+            db.refresh(db_musician, ['musician'])
         return db_musician
     except (OperationalError, InterfaceError) as e:
         logger.error(f"Database connection error while updating assignment '{musician.id}'")

@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NTg5OTgwM30.1Xy-IUtMRrA_umlPAVVJUl5CHBXiNqm9B8xgBxOGOO4
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NTkwNDE0N30.8ivYsh-8kbFHqoV4n1UWsfP6M8Wm5YTDVeEQxyb2zwU
 Authorization: Bearer {{user_token}}
 
 ###

@@ -1,5 +1,6 @@
 import pytest
 from decimal import Decimal
+from datetime import datetime
 from unittest.mock import Mock
 from services.event_musician import (
     get_by_event,
@@ -37,8 +38,8 @@ def test_get_by_event_success(mocker):
     mock_event_data_get.return_value = mock_event
 
     mock_musicians = [
-        EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1500.00"), payment_status="PENDING"),
-        EventMusician(id=2, event_id=1, musician_id=3, role="Drummer", salary=Decimal("1200.00"), payment_status="COMPLETED")
+        EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1500.00"), payment_status="PENDING", created_at=datetime.now(), updated_at=datetime.now()),
+        EventMusician(id=2, event_id=1, musician_id=3, role="Drummer", salary=Decimal("1200.00"), payment_status="COMPLETED", created_at=datetime.now(), updated_at=datetime.now())
     ]
     mock_data_get = mocker.patch('services.event_musician.data.get_by_event')
     mock_data_get.return_value = mock_musicians
@@ -64,7 +65,7 @@ def test_get_by_event_admin_access(mocker):
     mock_event_data_get = mocker.patch('services.event_musician.event_data.get_one')
     mock_event_data_get.return_value = mock_event
 
-    mock_musicians = [EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1500.00"), payment_status="PENDING")]
+    mock_musicians = [EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1500.00"), payment_status="PENDING", created_at=datetime.now(), updated_at=datetime.now())]
     mock_data_get = mocker.patch('services.event_musician.data.get_by_event')
     mock_data_get.return_value = mock_musicians
 
@@ -118,8 +119,8 @@ def test_get_by_musician_success(mocker):
     current_user = {'id': 2, 'role': 'musician'}
 
     mock_assignments = [
-        EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1500.00"), payment_status="PENDING"),
-        EventMusician(id=3, event_id=2, musician_id=2, role="Bassist", salary=Decimal("1300.00"), payment_status="COMPLETED")
+        EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1500.00"), payment_status="PENDING", created_at=datetime.now(), updated_at=datetime.now()),
+        EventMusician(id=3, event_id=2, musician_id=2, role="Bassist", salary=Decimal("1300.00"), payment_status="COMPLETED", created_at=datetime.now(), updated_at=datetime.now())
     ]
     mock_data_get = mocker.patch('services.event_musician.data.get_by_musician')
     mock_data_get.return_value = mock_assignments
@@ -138,7 +139,7 @@ def test_get_by_musician_admin_access(mocker):
     musician_id = 2
     current_user = {'id': 1, 'role': 'admin'}
 
-    mock_assignments = [EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1500.00"), payment_status="PENDING")]
+    mock_assignments = [EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1500.00"), payment_status="PENDING", created_at=datetime.now(), updated_at=datetime.now())]
     mock_data_get = mocker.patch('services.event_musician.data.get_by_musician')
     mock_data_get.return_value = mock_assignments
 
@@ -195,14 +196,19 @@ def test_assign_musician_success(mocker):
     mock_availability_check = mocker.patch('services.event_musician.musician_availability_data.check_availability')
     mock_availability_check.return_value = True
 
-    mock_assignment = EventMusician(
-        id=1,
-        event_id=1,
-        musician_id=2,
-        role="Lead Guitarist",
-        salary=Decimal("1500.00"),
-        payment_status="PENDING"
-    )
+    mock_assignment = Mock()
+    mock_assignment.id = 1
+    mock_assignment.event_id = 1
+    mock_assignment.musician_id = 2
+    mock_assignment.role = "Lead Guitarist"
+    mock_assignment.salary = Decimal("1500.00")
+    mock_assignment.payment_status = "PENDING"
+    mock_assignment.created_at = datetime.now()
+    mock_assignment.updated_at = datetime.now()
+    # Mock the musician relationship
+    mock_assignment.musician = Mock()
+    mock_assignment.musician.name = "John"
+    mock_assignment.musician.lastname = "Doe"
     mock_data_create = mocker.patch('services.event_musician.data.create')
     mock_data_create.return_value = mock_assignment
 

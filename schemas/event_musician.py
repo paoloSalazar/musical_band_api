@@ -54,6 +54,8 @@ class EventMusicianUpdate(BaseModel):
 class EventMusicianResponse(EventMusicianBase):
     """Schema for event musician response"""
     id: int
+    musician_name: Optional[str] = None
+    musician_lastname: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
