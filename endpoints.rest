@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NTkwNDE0N30.8ivYsh-8kbFHqoV4n1UWsfP6M8Wm5YTDVeEQxyb2zwU
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NTkwNjI5NX0.6wpusQ-HG9T6FGagOTjBwuiyK6MI4HezM2C9zIL3ARQ
 Authorization: Bearer {{user_token}}
 
 ###
@@ -417,6 +417,29 @@ Authorization: Bearer {{user_token}}
 ### Get musicians summary for an event
 GET {{api}}/events/6/musicians/summary
 Authorization: Bearer {{user_token}}
+
+###
+
+### Get all event assignments for a specific musician
+### Returns a list of assignments with event details and musician names
+GET {{api}}/events/musicians/5/assignments
+Authorization: Bearer {{user_token}}
+
+### Example response:
+# [
+#   {
+#     "id": 1,
+#     "event_id": 1,
+#     "musician_id": 5,
+#     "role": "Lead Guitarist",
+#     "salary": "1500.00",
+#     "payment_status": "PENDING",
+#     "musician_name": "John",
+#     "musician_lastname": "Doe",
+#     "created_at": "2026-04-11T06:41:09",
+#     "updated_at": "2026-04-11T06:41:09"
+#   }
+# ]
 
 ###
 
