@@ -20,7 +20,7 @@ for name in ['sqlalchemy.engine', 'sqlalchemy.pool', 'sqlalchemy.orm', 'sqlalche
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from web import user_role, user, permission, user_detail, event, event_payment, event_musician
+from web import user_role, user, permission, user_detail, event, event_payment, event_musician, musician_event_payment
 from web.musician_availability import router as musician_availability_router, admin_router as musician_availability_admin_router
 
 app = FastAPI()
@@ -43,6 +43,7 @@ app.include_router(event_payment.router)
 app.include_router(musician_availability_router)
 app.include_router(musician_availability_admin_router)
 app.include_router(event_musician.router)
+app.include_router(musician_event_payment.router)
 
 if __name__ == "__main__":
     import uvicorn
