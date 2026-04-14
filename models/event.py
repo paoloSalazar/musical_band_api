@@ -38,6 +38,9 @@ class Event(Base):
     # Relationship to Musicians
     musicians = relationship("EventMusician", back_populates="event")
 
+    # Relationship to Musician Payments
+    musician_payments = relationship("MusicianEventPayment", back_populates="event")
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if self.status is None:

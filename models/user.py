@@ -23,6 +23,7 @@ class User(Base):
     payments = relationship("EventPayment", back_populates="user")
     musician_availability = relationship("MusicianAvailability", back_populates="musician")
     event_musicians = relationship("EventMusician", back_populates="musician")
+    musician_event_payments = relationship("MusicianEventPayment", back_populates="musician")
 
     def __repr__(self):
         return f"<User(name={self.name}, email={self.email})>"
