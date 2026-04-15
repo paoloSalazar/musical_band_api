@@ -3,9 +3,10 @@ Pydantic schemas for MusicianEventPayment API operations.
 
 Provides request/response validation for musician event payment endpoints.
 """
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
 from schemas.event_payment import PaymentType
 
 
@@ -15,8 +16,8 @@ class MusicianEventPaymentBase(BaseModel):
     musician_id: int
     amount: Decimal
     payment_type: PaymentType
-    payment_date: datetime
-    notes: str | None = None
+    payment_date: datetime = Field(default_factory=datetime.now)
+    notes: Optional[str] = None
 
 
 class MusicianEventPaymentCreate(MusicianEventPaymentBase):

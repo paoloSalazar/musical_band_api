@@ -36,6 +36,17 @@ class TestMusicianEventPaymentBase:
         assert payment.payment_type == PaymentType.ADVANCE
         assert payment.payment_date == payment_date
 
+    def test_base_schema_payment_date_defaults_to_now(self):
+        """Test MusicianEventPaymentBase payment_date defaults to current time"""
+        payment = MusicianEventPaymentBase(
+            event_id=1,
+            musician_id=1,
+            amount=Decimal("1000.00"),
+            payment_type=PaymentType.ADVANCE
+        )
+        assert payment.payment_date is not None
+        assert isinstance(payment.payment_date, datetime)
+
     def test_base_schema_optional_notes(self):
         """Test MusicianEventPaymentBase notes is optional"""
         payment_date = datetime(2023, 10, 1, 12, 0, 0, tzinfo=timezone.utc)
@@ -116,15 +127,17 @@ class TestMusicianEventPaymentCreate:
                 payment_date=payment_date
             )
 
-    def test_create_schema_payment_date_required(self):
-        """Test MusicianEventPaymentCreate payment_date is required"""
-        with pytest.raises(ValidationError):
-            MusicianEventPaymentCreate(
-                event_id=1,
-                musician_id=1,
-                amount=Decimal("1000.00"),
-                payment_type=PaymentType.ADVANCE
-            )
+    def test_create_schema_payment_date_defaults_to_now(self):
+        """Test MusicianEventPaymentCreate payment_date defaults to current time"""
+        payment = MusicianEventPaymentCreate(
+            event_id=1,
+            musician_id=1,
+            amount=Decimal("1000.00"),
+            payment_type=PaymentType.ADVANCE
+        )
+        assert payment.payment_date is not None
+        # Check that it's a datetime object (close to current time)
+        assert isinstance(payment.payment_date, datetime)
 
 
 class TestMusicianEventPaymentResponse:

@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from typing import Optional
 
 
 class PaymentType(str, Enum):
@@ -22,7 +23,7 @@ class EventPaymentBase(BaseModel):
     user_id: int
     amount: Decimal
     payment_type: PaymentType
-    notes: str | None = None
+    notes: Optional[str] = None
 
 
 class EventPaymentCreate(BaseModel):
@@ -31,7 +32,7 @@ class EventPaymentCreate(BaseModel):
     user_id: int
     amount: Decimal
     payment_type: PaymentType
-    notes: str | None = None
+    notes: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -44,7 +45,7 @@ class EventPaymentResponse(BaseModel):
     amount: Decimal
     payment_type: PaymentType
     payment_date: datetime
-    notes: str | None = None
+    notes: Optional[str] = None
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)

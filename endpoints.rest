@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NTkwNjI5NX0.6wpusQ-HG9T6FGagOTjBwuiyK6MI4HezM2C9zIL3ARQ
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjI4MDY4MX0.K1V3UDxBRJ8DBezERqXipWGrJDY9xGxdc3d9EXPLfGE
 Authorization: Bearer {{user_token}}
 
 ###
@@ -376,18 +376,18 @@ Content-Type: application/json
 ### Users can only manage musicians for their own events, admins can manage all
 
 ### Get musicians assigned to an event
-GET {{api}}/events/6/musicians
+GET {{api}}/events/3/musicians
 Authorization: Bearer {{user_token}}
 
 ###
 
 ### Assign a musician to an event
-POST {{api}}/events/6/musicians
+POST {{api}}/events/3/musicians
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "event_id": 6,
+  "event_id": 3,
   "musician_id": 5,
   "role": "Pianist",
   "salary": 400.00,
@@ -509,7 +509,67 @@ Content-Type: application/json
 }
 
 ### Get payment summary
-GET {{api}}/events/1/payments/summary
+GET {{api}}/events/3/payments/summary
+Authorization: Bearer {{user_token}}
+
+### MUSICIAN EVENT PAYMENT ENDPOINTS ###
+### Note: These endpoints manage payments to individual musicians for specific events
+### Users with roles 'user' or 'admin' can access these endpoints
+### payment_date defaults to current time if not provided
+
+### Add payment to musician for event (ADVANCE)
+POST {{api}}/events/3/musicians/5/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 1,
+  "musician_id": 5,
+  "amount": 300.00,
+  "payment_type": "ADVANCE",
+  "notes": "Advance payment for guitarist"
+}
+
+###
+
+### Add payment to musician for event (REMAINING)
+POST {{api}}/events/1/musicians/5/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 1,
+  "musician_id": 5,
+  "amount": 700.00,
+  "payment_type": "REMAINING",
+  "notes": "Remaining balance payment"
+}
+
+###
+
+### Add payment to musician for event (TOTAL)
+POST {{api}}/events/2/musicians/3/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 2,
+  "musician_id": 3,
+  "amount": 500.00,
+  "payment_type": "TOTAL",
+  "notes": "Full payment for drummer"
+}
+
+###
+
+### List all payments for musician in event
+GET {{api}}/events/1/musicians/5/payments
+Authorization: Bearer {{user_token}}
+
+###
+
+### Get payment summary for musician in event
+GET {{api}}/events/1/musicians/5/payments/summary
 Authorization: Bearer {{user_token}}
 
 ### MUSICIAN AVAILABILITY ENDPOINTS ###
@@ -611,3 +671,21 @@ Content-Type: application/json
 ### Try to access other musician's availability as regular user (should fail with 403 Forbidden)
 GET {{api}}/musician-availability/5
 Authorization: Bearer {{user_token}}
+
+### MUSICIAN EVENT PAYMENTS ENDPOINTS ###
+### Get payments for a specific musician in an event
+GET {{api}}/events/3/musicians/5/payments
+Authorization: Bearer {{user_token}}
+
+### Add payment for a musician in an event
+POST {{api}}/events/3/musicians/5/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 3,
+  "musician_id": 5,
+  "amount": 400.00,
+  "payment_type": "TOTAL",
+  "notes": "Payment for performance"
+}

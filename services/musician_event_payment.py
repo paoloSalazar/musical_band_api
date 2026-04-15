@@ -64,14 +64,12 @@ def create_musician_payment(
         raise NotFoundError(f"Musician with id {payment_data_input.musician_id} not found")
 
     # Check if musician is assigned to this event
-    assignments = assignment_data.get_by_event_and_musician(
+    assignment = assignment_data.get_by_event_and_musician(
         payment_data_input.event_id,
         payment_data_input.musician_id
     )
-    if not assignments:
+    if not assignment:
         raise ValidationError("Musician is not assigned to this event")
-
-    assignment = assignments[0]  # Should be only one
 
     # Validate payment amount doesn't exceed salary
     if payment_data_input.amount > assignment.salary:

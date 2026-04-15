@@ -56,7 +56,7 @@ def test_create_musician_payment_success(mocker):
 
     mock_assignment = EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1500.00"), payment_status="PENDING")
     mock_assignment_data_get = mocker.patch('services.musician_event_payment.assignment_data.get_by_event_and_musician')
-    mock_assignment_data_get.return_value = [mock_assignment]
+    mock_assignment_data_get.return_value = mock_assignment
 
     now = datetime.now(timezone.utc)
     mock_payment = MusicianEventPayment(
@@ -159,7 +159,7 @@ def test_create_musician_payment_not_assigned(mocker):
     mock_user_data_get.return_value = mock_musician
 
     mock_assignment_data_get = mocker.patch('services.musician_event_payment.assignment_data.get_by_event_and_musician')
-    mock_assignment_data_get.return_value = []  # No assignment
+    mock_assignment_data_get.return_value = None  # No assignment
 
     # Act & Assert
     with pytest.raises(ValidationError) as exc_info:
@@ -193,7 +193,7 @@ def test_create_musician_payment_amount_exceeds_salary(mocker):
 
     mock_assignment = EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1000.00"), payment_status="PENDING")
     mock_assignment_data_get = mocker.patch('services.musician_event_payment.assignment_data.get_by_event_and_musician')
-    mock_assignment_data_get.return_value = [mock_assignment]
+    mock_assignment_data_get.return_value = mock_assignment
 
     # Act & Assert
     with pytest.raises(ValidationError) as exc_info:
@@ -303,7 +303,7 @@ def test_get_payment_summary_for_musician_event_success(mocker):
 
     mock_assignment = EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1500.00"), payment_status="PENDING")
     mock_assignment_data_get = mocker.patch('services.musician_event_payment.assignment_data.get_by_event_and_musician')
-    mock_assignment_data_get.return_value = [mock_assignment]
+    mock_assignment_data_get.return_value = mock_assignment
 
     # Act
     result = get_payment_summary_for_musician_event(event_id, musician_id, current_user)
