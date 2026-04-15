@@ -442,11 +442,165 @@ Implemented specific role-based access control for musician availability endpoin
 ### Sub-Phase 3.12: Integration Testing
 #### Tasks:
 1. Write and run integration tests for musician event payment feature
-   - Full payment tracking workflows
-   - End-to-end scenarios
+    - Full payment tracking workflows
+    - End-to-end scenarios
 
 #### Estimated Time: 0.5 days
 #### Dependencies: Sub-Phase 3.11 complete
+
+### Sub-Phase 3.13: Payment Validation Improvements
+#### Overview
+This sub-phase addresses missing validations for musician payments to ensure proper business logic and data integrity.
+
+#### Current State
+✅ **Already implemented:**
+- Check if musician is assigned to event (via `event_musician` table)
+- Validate individual payment amount doesn't exceed musician's salary
+
+✅ **Successfully implemented validations:**
+- **Cumulative payment validation**: Total payments for musician-event don't exceed salary
+- **Payment type business logic validation**: Proper rules for ADVANCE, REMAINING, TOTAL payments
+- **Payment status updates**: Automatic updates to `event_musician` table
+- **TOTAL payment equality**: TOTAL payments must equal full salary amount
+- **ADVANCE payment limit**: ADVANCE payments cannot exceed 50% of salary
+
+#### Tasks Completed:
+1. **✅ Add Cumulative Payment Validation** in `services/musician_event_payment.py`:
+   - Calculate total existing payments for musician-event combination
+   - Validate that new payment + existing payments don't exceed salary
+   - Uses existing data layer function: `get_total_paid_by_musician_for_event(event_id, musician_id)`
+
+2. **✅ Add Payment Type Business Logic Validation**:
+   - **ADVANCE**: ≤ 50% of salary AND ≤ remaining salary after existing payments
+   - **REMAINING**: ≤ remaining salary after existing advances
+   - **TOTAL**: Must = full salary amount AND no previous partial payments exist
+   - Comprehensive validation logic with specific error messages
+
+3. **✅ Update Payment Status in EventMusician Table**:
+   - Automatic `payment_status` updates based on total paid vs salary
+   - **PENDING**: 0 payments made
+   - **PARTIAL**: Some payments but < full salary
+   - **COMPLETED**: Total paid ≥ full salary
+   - Added data layer function: `update_payment_status(event_id, musician_id, status)`
+
+4. **✅ Update Data Layer Functions**:
+   - `data/musician_event_payment.py`: Used existing functions for payment calculations
+   - `data/event_musician.py`: Added `update_payment_status()` function
+
+5. **✅ Update Tests** in `tests/unit/services/test_musician_event_payment.py`:
+   - Added 5 comprehensive test cases covering all validation scenarios
+   - Tests for cumulative validation, 50% advance limit, TOTAL payment rules, and status updates
+   - Updated existing tests to match new validation logic
+   - All 16 service tests + 12 schema tests passing
+
+6. **✅ Update API Documentation** in `endpoints.rest`:
+   - Added validation rules and limits to payment examples
+   - Clear notes about 50% advance limit and TOTAL payment requirements
+
+#### Implementation Results:
+✅ **All validations successfully implemented using TDD approach**
+✅ **28 total tests passing** (16 service + 12 schema tests)
+✅ **Zero breaking changes** - only restricts invalid operations
+✅ **Comprehensive error messages** with specific amounts and context
+✅ **Automatic payment status tracking** for better visibility
+
+#### Key Business Rules Enforced:
+| Payment Type | Validation Rules |
+|-------------|------------------|
+| **ADVANCE** | ≤ 50% of salary AND ≤ remaining salary |
+| **REMAINING** | ≤ remaining salary after advances |
+| **TOTAL** | = full salary AND no existing partial payments |
+| **All Types** | Positive amounts, musician assigned, cumulative limits |
+
+#### Error Message Examples:
+- `"ADVANCE payment cannot exceed 50% of salary. Maximum advance: 500.00, Requested amount: 600.00, Salary: 1000.00"`
+- `"TOTAL payment must equal the full salary amount. Expected: 1000.00, Got: 800.00"`
+- `"REMAINING payment would exceed remaining salary. Already paid: 500.00, Payment amount: 600.00, Salary: 1000.00"`
+
+#### Risk Assessment:
+- **Breaking changes**: None - adding validations only restricts invalid operations
+- **Performance**: Minimal impact - additional DB queries are optimized
+- **Backward compatibility**: Maintained - existing valid payments still work
+- **Data integrity**: Enhanced - prevents overpayments and invalid payment combinations
+
+#### Actual Time Spent: 1 day (completed)
+#### Dependencies: Sub-Phase 3.11 complete
+
+### Sub-Phase 3.14: Date-Based Payment Timing Validations
+#### Overview
+This sub-phase implements date-based restrictions for payment timing to ensure payments are made at appropriate stages of the event lifecycle.
+
+#### Business Requirements
+
+| Payment Type | Timing Rules | Business Logic |
+|-------------|--------------|----------------|
+| **ADVANCE** | ❌ **Before** event start date only | Help musicians with upfront costs/preparation |
+| **REMAINING** | ✅ **On/after** event end date only | Payment after work is completed |
+| **TOTAL** | ✅ **On/after** event end date only | Full settlement after event completion |
+
+#### Current State
+❌ **Missing validations:**
+- ADVANCE payments allowed anytime before event
+- TOTAL/REMAINING payments allowed anytime after event start
+
+#### Tasks:
+1. **Add Date-Based Validation Logic** in `services/musician_event_payment.py`:
+   - Fetch event start_datetime and end_datetime
+   - Compare current time against event dates
+   - Apply different rules for ADVANCE vs TOTAL/REMAINING payments
+   - Provide clear error messages with specific dates
+
+2. **Payment Type Timing Rules**:
+   - **ADVANCE**: `current_time < event.start_datetime`
+   - **REMAINING/TOTAL**: `current_time >= event.end_datetime`
+   - All times compared in UTC timezone
+
+3. **Add Comprehensive Test Cases** in `tests/unit/services/test_musician_event_payment.py`:
+   - `test_create_musician_payment_advance_after_event_start` - Should fail
+   - `test_create_musician_payment_advance_before_event_start` - Should succeed
+   - `test_create_musician_payment_remaining_before_event_end` - Should fail
+   - `test_create_musician_payment_remaining_after_event_end` - Should succeed
+   - `test_create_musician_payment_total_before_event_end` - Should fail
+   - `test_create_musician_payment_total_after_event_end` - Should succeed
+   - `test_create_musician_payment_total_on_event_end_date` - Should succeed
+
+4. **Update API Documentation** in `endpoints.rest`:
+   - Add timing restrictions to payment examples
+   - Update comments to clarify date requirements
+   - Include notes about payment windows
+
+5. **Integration Testing**:
+   - End-to-end scenarios with event date manipulation
+   - Edge cases around exact start/end times
+   - Timezone handling verification
+
+#### Error Message Examples:
+- **ADVANCE Too Late:**
+  ```
+  "ADVANCE payments can only be made before event start date.
+  Event starts: 2026-05-01T20:00:00+00:00, Current time: 2026-05-01T21:00:00+00:00"
+  ```
+
+- **REMAINING/TOTAL Too Early:**
+  ```
+  "REMAINING payments can only be made on or after event end date.
+  Event ends: 2026-05-02T02:00:00+00:00, Current time: 2026-05-01T22:00:00+00:00"
+  ```
+
+#### Implementation Order:
+1. Add date validation logic to service layer
+2. Write comprehensive test cases
+3. Update API documentation
+4. Integration testing
+
+#### Risk Assessment:
+- **Breaking changes**: Low - only adds restrictions on payment timing
+- **Existing payments**: Unaffected - only validates new payment creation
+- **Business impact**: May require process changes for payment scheduling
+- **Performance**: Minimal - reuses existing event data fetch
+
+#### Estimated Time: 1.75 days
+#### Dependencies: Sub-Phase 3.13 complete
 
 ## Phase 4: Integration and Deployment
 ### Tasks:

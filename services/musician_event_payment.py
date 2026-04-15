@@ -13,9 +13,10 @@ Functions:
 """
 import logging
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 
 from models.musician_event_payment import MusicianEventPayment
+from models.event_musician import PaymentStatus
 from schemas.musician_event_payment import (
     MusicianEventPaymentCreate,
     MusicianEventPaymentResponse,
@@ -71,16 +72,81 @@ def create_musician_payment(
     if not assignment:
         raise ValidationError("Musician is not assigned to this event")
 
-    # Validate payment amount doesn't exceed salary
-    if payment_data_input.amount > assignment.salary:
-        raise ValidationError(
-            f"Payment amount ({payment_data_input.amount}) exceeds musician's salary "
-            f"({assignment.salary})"
-        )
-
     # Validate payment amount is positive
     if payment_data_input.amount <= Decimal("0.00"):
         raise ValidationError("Payment amount must be positive")
+
+    # Get existing payments for this musician-event pair
+    existing_payments = payment_data.get_payments_by_event_and_musician(
+        payment_data_input.event_id,
+        payment_data_input.musician_id
+    )
+
+    # Calculate total already paid
+    total_already_paid = payment_data.get_total_paid_by_musician_for_event(
+        payment_data_input.event_id,
+        payment_data_input.musician_id
+    )
+
+    # Validate payment type business logic
+    if payment_data_input.payment_type == PaymentType.ADVANCE:
+        # ADVANCE cannot exceed 50% of salary
+        max_advance = assignment.salary * Decimal("0.5")
+        if payment_data_input.amount > max_advance:
+            raise ValidationError(
+                f"ADVANCE payment cannot exceed 50% of salary. "
+                f"Maximum advance: {max_advance}, "
+                f"Requested amount: {payment_data_input.amount}, "
+                f"Salary: {assignment.salary}"
+            )
+
+        # ADVANCE cannot exceed remaining salary
+        if total_already_paid + payment_data_input.amount > assignment.salary:
+            raise ValidationError(
+                f"ADVANCE payment would exceed remaining salary. "
+                f"Already paid: {total_already_paid}, "
+                f"Payment amount: {payment_data_input.amount}, "
+                f"Salary: {assignment.salary}"
+            )
+
+    elif payment_data_input.payment_type == PaymentType.REMAINING:
+        # REMAINING should fill the gap after ADVANCE
+        if total_already_paid + payment_data_input.amount > assignment.salary:
+            raise ValidationError(
+                f"REMAINING payment would exceed remaining salary. "
+                f"Already paid: {total_already_paid}, "
+                f"Payment amount: {payment_data_input.amount}, "
+                f"Salary: {assignment.salary}"
+            )
+
+    elif payment_data_input.payment_type == PaymentType.TOTAL:
+        # TOTAL should be the full payment, no partials allowed
+        if existing_payments:
+            raise ValidationError("Cannot create TOTAL payment when partial payments exist")
+        if payment_data_input.amount != assignment.salary:
+            raise ValidationError(
+                f"TOTAL payment must equal the full salary amount. "
+                f"Expected: {assignment.salary}, Got: {payment_data_input.amount}"
+            )
+
+    # Validate payment timing based on event dates
+    current_time = datetime.now(timezone.utc)
+
+    if payment_data_input.payment_type == PaymentType.ADVANCE:
+        # ADVANCE payments must be made before event start date
+        if current_time >= event.start_datetime:
+            raise ValidationError(
+                f"ADVANCE payments can only be made before event start date. "
+                f"Event starts: {event.start_datetime}, Current time: {current_time}"
+            )
+
+    elif payment_data_input.payment_type in [PaymentType.REMAINING, PaymentType.TOTAL]:
+        # REMAINING and TOTAL payments must be made on or after event end date
+        if current_time < event.end_datetime:
+            raise ValidationError(
+                f"{payment_data_input.payment_type.value} payments can only be made on or after event end date. "
+                f"Event ends: {event.end_datetime}, Current time: {current_time}"
+            )
 
     # Create payment record
     payment = MusicianEventPayment(
@@ -93,6 +159,22 @@ def create_musician_payment(
     )
 
     created = payment_data.create(payment)
+
+    # Update payment status in event_musician table
+    new_total_paid = total_already_paid + payment_data_input.amount
+
+    if new_total_paid >= assignment.salary:
+        new_status = PaymentStatus.COMPLETED
+    elif new_total_paid > 0:
+        new_status = PaymentStatus.PARTIAL
+    else:
+        new_status = PaymentStatus.PENDING
+
+    assignment_data.update_payment_status(
+        payment_data_input.event_id,
+        payment_data_input.musician_id,
+        new_status.value
+    )
 
     # Convert to response schema
     return MusicianEventPaymentResponse(

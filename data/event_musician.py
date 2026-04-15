@@ -11,6 +11,7 @@ Functions:
     - create: Create new assignment
     - create_bulk: Create multiple assignments
     - update: Update existing assignment
+    - update_payment_status: Update payment status for assignment
     - delete: Delete assignment
 """
 
@@ -282,6 +283,45 @@ def update(musician: EventMusician, updates: dict) -> EventMusician | None:
         logger.error(f"Database error while updating assignment '{musician.id}'")
         db.rollback()
         raise DatabaseError("Failed to update event musician")
+    finally:
+        db.close()
+
+
+def update_payment_status(event_id: int, musician_id: int, status: str) -> bool:
+    """
+    Update the payment status for an event musician assignment.
+
+    Args:
+        event_id: The ID of the event.
+        musician_id: The ID of the musician.
+        status: The new payment status.
+
+    Returns:
+        True if updated successfully, False if assignment not found.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        assignment = db.query(EventMusician).filter(
+            EventMusician.event_id == event_id,
+            EventMusician.musician_id == musician_id
+        ).first()
+        if assignment:
+            assignment.payment_status = status
+            db.commit()
+            return True
+        return False
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while updating payment status for event '{event_id}' and musician '{musician_id}'")
+        db.rollback()
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while updating payment status for event '{event_id}' and musician '{musician_id}'")
+        db.rollback()
+        raise DatabaseError("Failed to update payment status")
     finally:
         db.close()
 

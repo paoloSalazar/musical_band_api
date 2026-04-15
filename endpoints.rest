@@ -1,6 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjI4MDY4MX0.K1V3UDxBRJ8DBezERqXipWGrJDY9xGxdc3d9EXPLfGE
-Authorization: Bearer {{user_token}}
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjI4MjYwOH0.pta8dgIWFyItOeD86uY8x6hhl1RqhIW1agUIkX_HSO8
 
 ###
 GET {{api}}/permissions?skip=0&limit=8
@@ -517,7 +516,7 @@ Authorization: Bearer {{user_token}}
 ### Users with roles 'user' or 'admin' can access these endpoints
 ### payment_date defaults to current time if not provided
 
-### Add payment to musician for event (ADVANCE)
+### Add payment to musician for event (ADVANCE - before event start, max 50% of salary)
 POST {{api}}/events/3/musicians/5/payments
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
@@ -527,12 +526,12 @@ Content-Type: application/json
   "musician_id": 5,
   "amount": 300.00,
   "payment_type": "ADVANCE",
-  "notes": "Advance payment for guitarist"
+  "notes": "Advance payment for guitarist (must be before event start, max 50% of salary)"
 }
 
 ###
 
-### Add payment to musician for event (REMAINING)
+### Add payment to musician for event (REMAINING - on/after event end)
 POST {{api}}/events/1/musicians/5/payments
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
@@ -542,12 +541,12 @@ Content-Type: application/json
   "musician_id": 5,
   "amount": 700.00,
   "payment_type": "REMAINING",
-  "notes": "Remaining balance payment"
+  "notes": "Remaining balance payment (must be on or after event end)"
 }
 
 ###
 
-### Add payment to musician for event (TOTAL)
+### Add payment to musician for event (TOTAL - on/after event end, equals full salary)
 POST {{api}}/events/2/musicians/3/payments
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
@@ -557,7 +556,7 @@ Content-Type: application/json
   "musician_id": 3,
   "amount": 500.00,
   "payment_type": "TOTAL",
-  "notes": "Full payment for drummer"
+  "notes": "Full payment for drummer (must be on/after event end, equals full salary)"
 }
 
 ###
@@ -685,7 +684,7 @@ Content-Type: application/json
 {
   "event_id": 3,
   "musician_id": 5,
-  "amount": 400.00,
-  "payment_type": "TOTAL",
+  "amount": 100.00,
+  "payment_type": "ADVANCE",
   "notes": "Payment for performance"
 }
