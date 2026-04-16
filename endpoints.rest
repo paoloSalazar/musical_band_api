@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjI4NDQzNH0.QgdsmL9nea1Wuz83U4ptJ_V5aOp38cp7FHRJdOvei14
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjM0MzM2OH0.iyUU7A4Lf7bcJ6BHOY4Waf1U1J5GhM36g94JHmDu-58
 
 ###
 GET {{api}}/permissions?skip=0&limit=8
@@ -375,19 +375,19 @@ Content-Type: application/json
 ### Users can only manage musicians for their own events, admins can manage all
 
 ### Get musicians assigned to an event
-GET {{api}}/events/3/musicians
+GET {{api}}/events/7/musicians
 Authorization: Bearer {{user_token}}
 
 ###
 
 ### Assign a musician to an event
-POST {{api}}/events/3/musicians
+POST {{api}}/events/7/musicians
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "event_id": 3,
-  "musician_id": 6,
+  "event_id": 7,
+  "musician_id": 3,
   "role": "Pianist",
   "salary": 400.00,
   "payment_status": "PENDING"
@@ -590,7 +590,7 @@ Content-Type: application/json
 
 {
   "musician_id": 6,
-  "unavailable_date": "2026-04-20",
+  "unavailable_date": "2026-04-30",
   "reason": "Holiday trip"
 }
 
@@ -673,18 +673,18 @@ Authorization: Bearer {{user_token}}
 
 ### MUSICIAN EVENT PAYMENTS ENDPOINTS ###
 ### Get payments for a specific musician in an event
-GET {{api}}/events/3/musicians/5/payments
+GET {{api}}/events/7/musicians/5/payments
 Authorization: Bearer {{user_token}}
 
 ### Add payment for a musician in an event
-POST {{api}}/events/3/musicians/5/payments
+POST {{api}}/events/7/musicians/7/payments
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "event_id": 3,
-  "musician_id": 3,
-  "amount": 100.00,
+  "event_id": 7,
+  "musician_id": 7,
+  "amount": 0.00,
   "payment_type": "ADVANCE",
   "notes": "Payment for performance"
 }

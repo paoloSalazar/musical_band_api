@@ -88,14 +88,19 @@ def create_musician_payment(
         payment_data_input.musician_id
     )
 
+    # Calculate total advance paid
+    total_advance_paid = sum(p.amount for p in existing_payments if p.payment_type == PaymentType.ADVANCE)
+
     # Validate payment type business logic
     if payment_data_input.payment_type == PaymentType.ADVANCE:
-        # ADVANCE cannot exceed 50% of salary
+        # Total ADVANCE payments cannot exceed 50% of salary
         max_advance = assignment.salary * Decimal("0.5")
-        if payment_data_input.amount > max_advance:
+        total_advance_after = total_advance_paid + payment_data_input.amount
+        if total_advance_after > max_advance:
             raise ValidationError(
-                f"ADVANCE payment cannot exceed 50% of salary. "
-                f"Maximum advance: {max_advance}, "
+                f"Total ADVANCE payments cannot exceed 50% of salary. "
+                f"Maximum total advance: {max_advance}, "
+                f"Current total advance: {total_advance_paid}, "
                 f"Requested amount: {payment_data_input.amount}, "
                 f"Salary: {assignment.salary}"
             )
@@ -110,13 +115,29 @@ def create_musician_payment(
             )
 
     elif payment_data_input.payment_type == PaymentType.REMAINING:
+        # REMAINING can only be created if ADVANCE payments exist
+        if total_advance_paid == Decimal("0.00"):
+            raise ValidationError(
+                "Cannot create REMAINING payment without prior ADVANCE payments. Use TOTAL payment type instead."
+            )
+
         # REMAINING should fill the gap after ADVANCE
-        if total_already_paid + payment_data_input.amount > assignment.salary:
+        remaining_amount = assignment.salary - total_already_paid
+        if remaining_amount <= Decimal("0.00"):
+            raise ValidationError(
+                f"No remaining amount to pay. Total already paid: {total_already_paid}, Salary: {assignment.salary}"
+            )
+        if payment_data_input.amount > remaining_amount:
             raise ValidationError(
                 f"REMAINING payment would exceed remaining salary. "
                 f"Already paid: {total_already_paid}, "
                 f"Payment amount: {payment_data_input.amount}, "
                 f"Salary: {assignment.salary}"
+            )
+        if payment_data_input.amount < remaining_amount:
+            raise ValidationError(
+                f"REMAINING payment must equal the full remaining salary. "
+                f"Expected: {remaining_amount}, Got: {payment_data_input.amount}"
             )
 
     elif payment_data_input.payment_type == PaymentType.TOTAL:
@@ -134,7 +155,7 @@ def create_musician_payment(
 
     if payment_data_input.payment_type == PaymentType.ADVANCE:
         # ADVANCE payments must be made before event start date
-        if current_time >= event.start_datetime:
+        if current_time >= event.start_datetime.replace(tzinfo=timezone.utc):
             raise ValidationError(
                 f"ADVANCE payments can only be made before event start date. "
                 f"Event starts: {event.start_datetime}, Current time: {current_time}"
@@ -142,7 +163,7 @@ def create_musician_payment(
 
     elif payment_data_input.payment_type in [PaymentType.REMAINING, PaymentType.TOTAL]:
         # REMAINING and TOTAL payments must be made on or after event end date
-        if current_time < event.end_datetime:
+        if current_time < event.end_datetime.replace(tzinfo=timezone.utc):
             raise ValidationError(
                 f"{payment_data_input.payment_type.value} payments can only be made on or after event end date. "
                 f"Event ends: {event.end_datetime}, Current time: {current_time}"

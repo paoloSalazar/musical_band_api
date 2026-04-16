@@ -215,8 +215,8 @@ def test_create_musician_payment_cumulative_exceeds_salary(mocker):
     payment_data = MusicianEventPaymentCreate(
         event_id=1,
         musician_id=2,
-        amount=Decimal("600.00"),  # This would make total paid = 500 + 600 = 1100 > 1000
-        payment_type=PaymentType.REMAINING,  # Use REMAINING instead of ADVANCE to test cumulative validation
+        amount=Decimal("600.00"),  # This would make total advance = 600 > 500
+        payment_type=PaymentType.ADVANCE,  # Test cumulative advance validation
         payment_date=datetime(2023, 10, 1, 12, 0, 0, tzinfo=timezone.utc)
     )
 
@@ -246,7 +246,7 @@ def test_create_musician_payment_cumulative_exceeds_salary(mocker):
     with pytest.raises(ValidationError) as exc_info:
         create_musician_payment(payment_data, current_user)
 
-    assert "REMAINING payment would exceed remaining salary" in str(exc_info.value)
+    assert "Total ADVANCE payments cannot exceed 50% of salary" in str(exc_info.value)
 
 
 def test_create_musician_payment_advance_exceeds_50_percent(mocker):
@@ -287,7 +287,7 @@ def test_create_musician_payment_advance_exceeds_50_percent(mocker):
     with pytest.raises(ValidationError) as exc_info:
         create_musician_payment(payment_data, current_user)
 
-    assert "ADVANCE payment cannot exceed 50% of salary. Maximum advance: 500.000, Requested amount: 600.00, Salary: 1000.00" in str(exc_info.value)
+    assert "Total ADVANCE payments cannot exceed 50% of salary. Maximum total advance: 500.000, Current total advance: 0, Requested amount: 600.00, Salary: 1000.00" in str(exc_info.value)
 
 
 def test_create_musician_payment_total_with_existing_payments(mocker):
@@ -483,8 +483,11 @@ def test_create_musician_payment_remaining_before_event_end(mocker):
     mock_payment_data_total = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_musician_for_event')
     mock_payment_data_total.return_value = Decimal("300.00")
 
+    mock_advance_payment = Mock()
+    mock_advance_payment.amount = Decimal("200.00")
+    mock_advance_payment.payment_type = PaymentType.ADVANCE
     mock_payment_data_get = mocker.patch('services.musician_event_payment.payment_data.get_payments_by_event_and_musician')
-    mock_payment_data_get.return_value = []
+    mock_payment_data_get.return_value = [mock_advance_payment]
 
     # Freeze time to simulate current time (before event end)
     with freeze_time("2023-10-01 12:00:00"):
@@ -531,8 +534,11 @@ def test_create_musician_payment_remaining_after_event_end(mocker):
     mock_payment_data_total = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_musician_for_event')
     mock_payment_data_total.return_value = Decimal("300.00")
 
+    mock_advance_payment = Mock()
+    mock_advance_payment.amount = Decimal("200.00")
+    mock_advance_payment.payment_type = PaymentType.ADVANCE
     mock_payment_data_get = mocker.patch('services.musician_event_payment.payment_data.get_payments_by_event_and_musician')
-    mock_payment_data_get.return_value = []
+    mock_payment_data_get.return_value = [mock_advance_payment]
 
     now = datetime.now(timezone.utc)
     mock_payment = MusicianEventPayment(
@@ -769,8 +775,11 @@ def test_create_musician_payment_updates_payment_status_completed(mocker):
     mock_payment_data_total = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_musician_for_event')
     mock_payment_data_total.return_value = Decimal("300.00")
 
+    mock_advance_payment = Mock()
+    mock_advance_payment.amount = Decimal("200.00")
+    mock_advance_payment.payment_type = PaymentType.ADVANCE
     mock_payment_data_get = mocker.patch('services.musician_event_payment.payment_data.get_payments_by_event_and_musician')
-    mock_payment_data_get.return_value = []
+    mock_payment_data_get.return_value = [mock_advance_payment]
 
     now = datetime.now(timezone.utc)
     mock_payment = MusicianEventPayment(
