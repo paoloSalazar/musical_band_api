@@ -188,7 +188,7 @@ def test_get_musician_payments_success(mocker):
     assert len(result) == 1
     assert result[0].event_id == event_id
     assert result[0].musician_id == musician_id
-    mock_service.assert_called_once_with(event_id, current_user)
+    mock_service.assert_called_once_with(event_id, musician_id, current_user)
 
 
 def test_get_musician_payments_unauthorized(mocker):
@@ -199,7 +199,7 @@ def test_get_musician_payments_unauthorized(mocker):
     current_user = {"id": 2, "role": "user"}
 
     mock_service = mocker.patch('web.musician_event_payment.service.get_payments_for_event')
-    mock_service.side_effect = UnauthorizedError("You can only manage payments for your own events")
+    mock_service.side_effect = UnauthorizedError("Unauthorized to view musician payments")
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:
@@ -210,7 +210,7 @@ def test_get_musician_payments_unauthorized(mocker):
         )
 
     assert exc_info.value.status_code == 403
-    assert "You can only manage payments for your own events" in exc_info.value.detail
+    assert "Unauthorized to view musician payments" in exc_info.value.detail
 
 
 def test_get_musician_payment_summary_success(mocker):

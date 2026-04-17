@@ -807,11 +807,12 @@ def test_create_musician_payment_updates_payment_status_completed(mocker):
     mock_assignment_data_update.assert_called_once_with(1, 2, "COMPLETED")
 
 
-def test_get_payments_for_event_success(mocker):
-    """Test get_payments_for_event() returns payments for event owner"""
+def test_get_payments_for_event_admin_success(mocker):
+    """Test get_payments_for_event() returns payments for admin"""
     # Arrange
     event_id = 1
-    current_user = {'id': 1, 'role': 'user'}
+    musician_id = 2
+    current_user = {'id': 1, 'role': 'admin'}
 
     mock_event = Mock()
     mock_event.id = 1
@@ -821,41 +822,86 @@ def test_get_payments_for_event_success(mocker):
 
     now = datetime.now(timezone.utc)
     mock_payments = [
-        MusicianEventPayment(id=1, event_id=1, musician_id=2, amount=Decimal("500.00"), payment_type=PaymentType.ADVANCE, payment_date=datetime(2023, 10, 1, 12, 0, 0, tzinfo=timezone.utc), created_at=now, updated_at=now),
-        MusicianEventPayment(id=2, event_id=1, musician_id=3, amount=Decimal("300.00"), payment_type=PaymentType.REMAINING, payment_date=datetime(2023, 10, 2, 12, 0, 0, tzinfo=timezone.utc), created_at=now, updated_at=now)
+        MusicianEventPayment(id=1, event_id=1, musician_id=2, amount=Decimal("500.00"), payment_type=PaymentType.ADVANCE, payment_date=datetime(2023, 10, 1, 12, 0, 0, tzinfo=timezone.utc), created_at=now, updated_at=now)
     ]
-    mock_payment_data_get = mocker.patch('services.musician_event_payment.payment_data.get_payments_by_event')
+    mock_payment_data_get = mocker.patch('services.musician_event_payment.payment_data.get_payments_by_event_and_musician')
     mock_payment_data_get.return_value = mock_payments
 
     # Act
-    result = get_payments_for_event(event_id, current_user)
+    result = get_payments_for_event(event_id, musician_id, current_user)
 
     # Assert
-    assert len(result) == 2
+    assert len(result) == 1
     mock_event_data_get.assert_called_once_with(event_id)
-    mock_payment_data_get.assert_called_once_with(event_id)
+    mock_payment_data_get.assert_called_once_with(event_id, musician_id)
 
 
-def test_get_payments_for_event_unauthorized(mocker):
-    """Test get_payments_for_event() raises UnauthorizedError for non-owner"""
+def test_get_payments_for_event_musician_success(mocker):
+    """Test get_payments_for_event() returns payments for musician viewing own payments"""
     # Arrange
     event_id = 1
-    current_user = {'id': 2, 'role': 'user'}
+    musician_id = 2
+    current_user = {'id': 2, 'role': 'musician'}
 
-    # Mock event with future dates to allow advance payments
     mock_event = Mock()
     mock_event.id = 1
     mock_event.user_id = 1
-    mock_event.start_datetime = datetime(2023, 10, 2, 20, 0, 0, tzinfo=timezone.utc)  # Future start
-    mock_event.end_datetime = datetime(2023, 10, 2, 23, 0, 0, tzinfo=timezone.utc)    # Future end
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = mock_event
+
+    now = datetime.now(timezone.utc)
+    mock_payments = [
+        MusicianEventPayment(id=1, event_id=1, musician_id=2, amount=Decimal("500.00"), payment_type=PaymentType.ADVANCE, payment_date=datetime(2023, 10, 1, 12, 0, 0, tzinfo=timezone.utc), created_at=now, updated_at=now)
+    ]
+    mock_payment_data_get = mocker.patch('services.musician_event_payment.payment_data.get_payments_by_event_and_musician')
+    mock_payment_data_get.return_value = mock_payments
+
+    # Act
+    result = get_payments_for_event(event_id, musician_id, current_user)
+
+    # Assert
+    assert len(result) == 1
+    mock_payment_data_get.assert_called_once_with(event_id, musician_id)
+
+
+def test_get_payments_for_event_musician_unauthorized(mocker):
+    """Test get_payments_for_event() raises UnauthorizedError for musician viewing others' payments"""
+    # Arrange
+    event_id = 1
+    musician_id = 3  # Different musician
+    current_user = {'id': 2, 'role': 'musician'}
+
+    mock_event = Mock()
+    mock_event.id = 1
+    mock_event.user_id = 1
     mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
     mock_event_data_get.return_value = mock_event
 
     # Act & Assert
     with pytest.raises(UnauthorizedError) as exc_info:
-        get_payments_for_event(event_id, current_user)
+        get_payments_for_event(event_id, musician_id, current_user)
 
-    assert "You can only manage payments for your own events" in str(exc_info.value)
+    assert "You can only view your own payment information" in str(exc_info.value)
+
+
+def test_get_payments_for_event_user_unauthorized(mocker):
+    """Test get_payments_for_event() raises UnauthorizedError for regular users"""
+    # Arrange
+    event_id = 1
+    musician_id = 2
+    current_user = {'id': 1, 'role': 'user'}
+
+    mock_event = Mock()
+    mock_event.id = 1
+    mock_event.user_id = 1
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = mock_event
+
+    # Act & Assert
+    with pytest.raises(UnauthorizedError) as exc_info:
+        get_payments_for_event(event_id, musician_id, current_user)
+
+    assert "Unauthorized to view musician payments" in str(exc_info.value)
 
 
 def test_get_payments_for_musician_success(mocker):
@@ -893,8 +939,8 @@ def test_get_payments_for_musician_unauthorized(mocker):
     assert "You can only view your own payment history" in str(exc_info.value)
 
 
-def test_get_payment_summary_for_musician_event_success(mocker):
-    """Test get_payment_summary_for_musician_event() returns summary"""
+def test_get_payment_summary_for_musician_event_admin_success(mocker):
+    """Test get_payment_summary_for_musician_event() returns summary for admin"""
     # Arrange
     event_id = 1
     musician_id = 2
@@ -909,9 +955,8 @@ def test_get_payment_summary_for_musician_event_success(mocker):
     mock_payment_data_total = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_musician_for_event')
     mock_payment_data_total.return_value = Decimal("800.00")
 
-    mock_assignment = EventMusician(id=1, event_id=1, musician_id=2, role="Lead Guitarist", salary=Decimal("1500.00"), payment_status="PENDING")
-    mock_assignment_data_get = mocker.patch('services.musician_event_payment.assignment_data.get_by_event_and_musician')
-    mock_assignment_data_get.return_value = mock_assignment
+    mock_payment_data_count = mocker.patch('services.musician_event_payment.payment_data.get_payments_by_event_and_musician')
+    mock_payment_data_count.return_value = [Mock(), Mock()]  # 2 payments
 
     # Act
     result = get_payment_summary_for_musician_event(event_id, musician_id, current_user)
@@ -919,7 +964,56 @@ def test_get_payment_summary_for_musician_event_success(mocker):
     # Assert
     assert result.musician_id == 2
     assert result.total_paid == Decimal("800.00")
+    assert result.payment_count == 2
     mock_payment_data_total.assert_called_once_with(event_id, musician_id)
+
+
+def test_get_payment_summary_for_musician_event_musician_success(mocker):
+    """Test get_payment_summary_for_musician_event() returns summary for musician viewing own payments"""
+    # Arrange
+    event_id = 1
+    musician_id = 2
+    current_user = {'id': 2, 'role': 'musician'}
+
+    mock_event = Mock()
+    mock_event.id = 1
+    mock_event.user_id = 1
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = mock_event
+
+    mock_payment_data_total = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_musician_for_event')
+    mock_payment_data_total.return_value = Decimal("800.00")
+
+    mock_payment_data_count = mocker.patch('services.musician_event_payment.payment_data.get_payments_by_event_and_musician')
+    mock_payment_data_count.return_value = [Mock()]  # 1 payment
+
+    # Act
+    result = get_payment_summary_for_musician_event(event_id, musician_id, current_user)
+
+    # Assert
+    assert result.musician_id == 2
+    assert result.total_paid == Decimal("800.00")
+    assert result.payment_count == 1
+
+
+def test_get_payment_summary_for_musician_event_musician_unauthorized(mocker):
+    """Test get_payment_summary_for_musician_event() raises UnauthorizedError for musician viewing others' payments"""
+    # Arrange
+    event_id = 1
+    musician_id = 3  # Different musician
+    current_user = {'id': 2, 'role': 'musician'}
+
+    mock_event = Mock()
+    mock_event.id = 1
+    mock_event.user_id = 1
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = mock_event
+
+    # Act & Assert
+    with pytest.raises(UnauthorizedError) as exc_info:
+        get_payment_summary_for_musician_event(event_id, musician_id, current_user)
+
+    assert "You can only view your own payment information" in str(exc_info.value)
 
 
 def test_get_payment_summary_for_musician_success(mocker):

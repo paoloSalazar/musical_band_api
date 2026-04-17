@@ -346,6 +346,74 @@ def test_create_bulk_mixed_musicians(mocker):
     assert "All availability entries must be for the same musician" in str(exc_info.value)
 
 
+def test_create_past_date_validation(mocker):
+    """Test create() raises ValidationError for past unavailable_date"""
+    # Arrange
+    current_user = {'id': 1, 'role': 'musician'}
+    availability_data = MusicianAvailabilityCreate(
+        musician_id=1,
+        unavailable_date=date.today() - timedelta(days=1),  # Past date
+        reason="Holiday"
+    )
+
+    # Act & Assert
+    with pytest.raises(ValidationError) as exc_info:
+        create(availability_data, current_user)
+
+    assert "Unavailable date cannot be in the past" in str(exc_info.value)
+
+
+def test_create_bulk_past_date_validation(mocker):
+    """Test create_bulk() raises ValidationError when any date is in the past"""
+    # Arrange
+    current_user = {'id': 1, 'role': 'musician'}
+    availabilities_data = [
+        MusicianAvailabilityCreate(
+            musician_id=1,
+            unavailable_date=date.today() + timedelta(days=1),  # Future date
+            reason="Holiday"
+        ),
+        MusicianAvailabilityCreate(
+            musician_id=1,
+            unavailable_date=date.today() - timedelta(days=1),  # Past date
+            reason="Sick"
+        )
+    ]
+
+    # Act & Assert
+    with pytest.raises(ValidationError) as exc_info:
+        create_bulk(availabilities_data, current_user)
+
+    assert "Unavailable date cannot be in the past" in str(exc_info.value)
+
+
+def test_update_past_date_validation(mocker):
+    """Test update() raises ValidationError when setting past unavailable_date"""
+    # Arrange
+    availability_id = 1
+    current_user = {'id': 1, 'role': 'musician'}
+    update_data = MusicianAvailabilityUpdate(
+        unavailable_date=date.today() - timedelta(days=1)  # Past date
+    )
+
+    existing_availability = MusicianAvailability(
+        id=1,
+        musician_id=1,
+        unavailable_date=date.today() + timedelta(days=1),
+        reason="Holiday",
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+    )
+    mock_data_get = mocker.patch('services.musician_availability.data.get_by_id')
+    mock_data_get.return_value = existing_availability
+
+    # Act & Assert
+    with pytest.raises(ValidationError) as exc_info:
+        update(availability_id, update_data, current_user)
+
+    assert "Unavailable date cannot be in the past" in str(exc_info.value)
+
+
 def test_update_success(mocker):
     """Test update() updates availability for authorized user"""
     # Arrange

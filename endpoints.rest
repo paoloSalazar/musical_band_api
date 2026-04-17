@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYXJpYS5nYXJjaWFAZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjo0LCJyb2xlX2lkIjozLCJleHAiOjE3NzY0MjQwODd9.5a6m5v-S3QkYVKfm9nRlYutRiuvbD05Vkew5uRKJ6gw
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjQyNjI2OH0.ObcIINsN9y34rmqJQ11rZ4FUuZI9dDOavqxHwVEZC_g
 
 ###
 GET {{api}}/permissions?skip=0&limit=8
@@ -448,37 +448,37 @@ Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "event_id": 1,
+  "event_id": 3,
   "musician_id": 5,
-  "role": "Duplicate Assignment",
-  "salary": 1000.00
+  "role": "Chorist",
+  "salary": 500.00
 }
 
 ###
 
 ### Try to assign musician who is unavailable (should fail with 409 Conflict)
-POST {{api}}/events/1/musicians
+POST {{api}}/events/3/musicians
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "event_id": 1,
-  "musician_id": 3,
-  "role": "Unavailable Musician",
-  "salary": 1200.00
+  "event_id": 3,
+  "musician_id": 6,
+  "role": "Vocalist",
+  "salary": 500.00
 }
 
 ###
 
 ### Try to manage musicians for another user's event (should fail with 403 Forbidden)
-GET {{api}}/events/6/musicians
+GET {{api}}/events/3/musicians
 Authorization: Bearer {{user_token}}
 
 ###
 
 ### Payment Endpoints ###
 ### Get event payments
-GET {{api}}/events/6/payments
+GET {{api}}/events/3/payments
 Authorization: Bearer {{user_token}}
 
 ### Add payment (ADVANCE)
@@ -562,13 +562,13 @@ Content-Type: application/json
 ###
 
 ### List all payments for musician in event
-GET {{api}}/events/1/musicians/5/payments
+GET {{api}}/events/3/musicians/5/payments
 Authorization: Bearer {{user_token}}
 
 ###
 
 ### Get payment summary for musician in event
-GET {{api}}/events/1/musicians/5/payments/summary
+GET {{api}}/events/3/musicians/5/payments/summary
 Authorization: Bearer {{user_token}}
 
 ### MUSICIAN AVAILABILITY ENDPOINTS ###
@@ -684,7 +684,7 @@ Content-Type: application/json
 {
   "event_id": 3,
   "musician_id": 5,
-  "amount": 400.00,
+  "amount": 100.00,
   "payment_type": "ADVANCE",
-  "notes": "Payment for performance"
+  "notes": "Payment for performance advance"
 }

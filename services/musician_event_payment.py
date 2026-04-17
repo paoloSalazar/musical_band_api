@@ -211,12 +211,13 @@ def create_musician_payment(
     )
 
 
-def get_payments_for_event(event_id: int, current_user: dict) -> list[MusicianEventPaymentResponse]:
+def get_payments_for_event(event_id: int, musician_id: int, current_user: dict) -> list[MusicianEventPaymentResponse]:
     """
-    Get all musician payments for an event.
+    Get all payments for a specific musician in an event.
 
     Args:
         event_id: The ID of the event.
+        musician_id: The ID of the musician.
         current_user: The current user making the request.
 
     Returns:
@@ -226,15 +227,24 @@ def get_payments_for_event(event_id: int, current_user: dict) -> list[MusicianEv
         NotFoundError: If event doesn't exist.
         UnauthorizedError: If user not authorized.
     """
-    # Check if current user can view this event's payments
+    # Check if current user can view this musician's payments for this event
     event = event_data.get_one(event_id)
     if not event:
         raise NotFoundError(f"Event with id {event_id} not found")
 
-    if current_user['role'] != 'admin' and event.user_id != current_user['id']:
-        raise UnauthorizedError("You can only manage payments for your own events")
+    user_role = current_user['role']
+    if user_role == 'admin':
+        # Admins can view all payments
+        pass
+    elif user_role in ['musician', 'auxiliar_musician']:
+        # Musicians can only view their own payments
+        if current_user['id'] != musician_id:
+            raise UnauthorizedError("You can only view your own payment information")
+    else:
+        # Other roles cannot access
+        raise UnauthorizedError("Unauthorized to view musician payments")
 
-    payments = payment_data.get_payments_by_event(event_id)
+    payments = payment_data.get_payments_by_event_and_musician(event_id, musician_id)
 
     # Convert to response schemas
     return [
@@ -310,13 +320,22 @@ def get_payment_summary_for_musician_event(
         NotFoundError: If event doesn't exist.
         UnauthorizedError: If user not authorized.
     """
-    # Check if current user can view this event's payments
+    # Check if current user can view this musician's payments for this event
     event = event_data.get_one(event_id)
     if not event:
         raise NotFoundError(f"Event with id {event_id} not found")
 
-    if current_user['role'] != 'admin' and event.user_id != current_user['id']:
-        raise UnauthorizedError("You can only manage payments for your own events")
+    user_role = current_user['role']
+    if user_role == 'admin':
+        # Admins can view all payments
+        pass
+    elif user_role in ['musician', 'auxiliar_musician']:
+        # Musicians can only view their own payments
+        if current_user['id'] != musician_id:
+            raise UnauthorizedError("You can only view your own payment information")
+    else:
+        # Other roles cannot access
+        raise UnauthorizedError("Unauthorized to view musician payments")
 
     total_paid = payment_data.get_total_paid_by_musician_for_event(event_id, musician_id)
     payment_count = len(payment_data.get_payments_by_event_and_musician(event_id, musician_id))

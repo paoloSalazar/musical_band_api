@@ -92,7 +92,7 @@ def create_musician_payment(
 @router.get(
     "/{event_id}/musicians/{musician_id}/payments",
     response_model=List[MusicianEventPaymentResponse],
-    dependencies=[Depends(require_user_or_admin)],
+    dependencies=[Depends(require_musician_or_admin)],
     summary="List payments for musician in event",
     description="Retrieve all payment records for a specific musician in an event."
 )
@@ -116,7 +116,7 @@ def get_musician_payments(
         HTTPException: For authorization or not found errors.
     """
     try:
-        return service.get_payments_for_event(event_id, current_user)
+        return service.get_payments_for_event(event_id, musician_id, current_user)
     except NotFoundError as e:
         logger.warning(f"Not found error getting payments for event {event_id}: {e}")
         raise HTTPException(status_code=404, detail=str(e))
@@ -131,7 +131,7 @@ def get_musician_payments(
 @router.get(
     "/{event_id}/musicians/{musician_id}/payments/summary",
     response_model=MusicianPaymentSummaryResponse,
-    dependencies=[Depends(require_user_or_admin)],
+    dependencies=[Depends(require_musician_or_admin)],
     summary="Get payment summary for musician in event",
     description="Retrieve payment summary (total paid, count) for a specific musician in an event."
 )

@@ -24,3 +24,15 @@ This document tracks fixes, improvements, and issues related to musician events 
 **Status:** Completed  
 **Category:** Error Handling Improvement
 
+### Access Control Restriction: Musician Payment Endpoints
+**Date:** 2026-04-17  
+**Endpoints:**
+- GET /api/events/{event_id}/musicians/{musician_id}/payments
+- GET /api/events/{event_id}/musicians/{musician_id}/payments/summary
+**Description:** Restricted access to these endpoints from all authenticated users to only admin, musician, and auxiliar_musician roles. For musicians and auxiliar_musicians, access is limited to their own payment information only. Admins can access all payment information.
+**Files Changed:**
+- `web/musician_event_payment.py` (changed dependencies from require_user_or_admin to require_musician_or_admin for both GET endpoints)
+- `services/musician_event_payment.py` (updated authorization logic in get_payments_for_event and get_payment_summary_for_musician_event functions)
+**Status:** Completed
+**Category:** Security Improvement
+

@@ -32,13 +32,13 @@ def test_musician_availability_create_today():
 
 
 def test_musician_availability_create_past_date():
-    """Test that MusicianAvailabilityCreate raises error for past date"""
+    """Test that MusicianAvailabilityCreate accepts past date (validation moved to service layer)"""
     past_date = date.today() - timedelta(days=1)
-    with pytest.raises(ValueError, match="Unavailable date cannot be in the past"):
-        MusicianAvailabilityCreate(
-            musician_id=1,
-            unavailable_date=past_date
-        )
+    schema = MusicianAvailabilityCreate(
+        musician_id=1,
+        unavailable_date=past_date
+    )
+    assert schema.unavailable_date == past_date
 
 
 def test_musician_availability_create_no_reason():
@@ -73,10 +73,10 @@ def test_musician_availability_update_valid_date():
 
 
 def test_musician_availability_update_past_date():
-    """Test that MusicianAvailabilityUpdate raises error for past date"""
+    """Test that MusicianAvailabilityUpdate accepts past date (validation moved to service layer)"""
     past_date = date.today() - timedelta(days=1)
-    with pytest.raises(ValueError, match="Unavailable date cannot be in the past"):
-        MusicianAvailabilityUpdate(unavailable_date=past_date)
+    schema = MusicianAvailabilityUpdate(unavailable_date=past_date)
+    assert schema.unavailable_date == past_date
 
 
 def test_musician_availability_response():
