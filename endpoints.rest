@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjM0MzM2OH0.iyUU7A4Lf7bcJ6BHOY4Waf1U1J5GhM36g94JHmDu-58
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYXJpYS5nYXJjaWFAZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjo0LCJyb2xlX2lkIjozLCJleHAiOjE3NzY0MjQwODd9.5a6m5v-S3QkYVKfm9nRlYutRiuvbD05Vkew5uRKJ6gw
 
 ###
 GET {{api}}/permissions?skip=0&limit=8
@@ -375,19 +375,19 @@ Content-Type: application/json
 ### Users can only manage musicians for their own events, admins can manage all
 
 ### Get musicians assigned to an event
-GET {{api}}/events/7/musicians
+GET {{api}}/events/3/musicians
 Authorization: Bearer {{user_token}}
 
 ###
 
 ### Assign a musician to an event
-POST {{api}}/events/7/musicians
+POST {{api}}/events/3/musicians
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "event_id": 7,
-  "musician_id": 3,
+  "event_id": 3,
+  "musician_id": 5,
   "role": "Pianist",
   "salary": 400.00,
   "payment_status": "PENDING"
@@ -580,7 +580,7 @@ GET {{api}}/musician-availability/6
 Authorization: Bearer {{user_token}}
 
 ### Check if a musician is available on a specific date
-GET {{api}}/musician-availability/check/6/2026-04-15
+GET {{api}}/musician-availability/check/5/2026-04-15
 Authorization: Bearer {{user_token}}
 
 ### Create a new availability entry (musicians/auxiliar_musicians can only create for themselves, admin can create for any)
@@ -589,8 +589,8 @@ Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "musician_id": 6,
-  "unavailable_date": "2026-04-30",
+  "musician_id": 5,
+  "unavailable_date": "2026-04-22",
   "reason": "Holiday trip"
 }
 
@@ -601,12 +601,12 @@ Content-Type: application/json
 
 [
   {
-    "musician_id": 6,
-    "unavailable_date": "2026-04-22",
+    "musician_id": 5,
+    "unavailable_date": "2026-04-23",
     "reason": "Family vacation"
   },
   {
-    "musician_id": 6,
+    "musician_id": 5,
     "unavailable_date": "2026-04-21",
     "reason": "Family vacation"
   }
@@ -636,7 +636,7 @@ DELETE {{api}}/musician-availability/1
 Authorization: Bearer {{user_token}}
 
 ### Delete availability by musician and date (musicians/auxiliar_musicians can only delete their own, admin can delete any)
-DELETE {{api}}/musician-availability/5/2026-04-19
+DELETE {{api}}/musician-availability/5/2026-04-18
 Authorization: Bearer {{user_token}}
 
 ### ADMIN ENDPOINTS - Musician Availability ###
@@ -673,18 +673,18 @@ Authorization: Bearer {{user_token}}
 
 ### MUSICIAN EVENT PAYMENTS ENDPOINTS ###
 ### Get payments for a specific musician in an event
-GET {{api}}/events/7/musicians/5/payments
+GET {{api}}/events/3/musicians/5/payments
 Authorization: Bearer {{user_token}}
 
 ### Add payment for a musician in an event
-POST {{api}}/events/7/musicians/7/payments
+POST {{api}}/events/3/musicians/5/payments
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "event_id": 7,
-  "musician_id": 7,
-  "amount": 0.00,
+  "event_id": 3,
+  "musician_id": 5,
+  "amount": 400.00,
   "payment_type": "ADVANCE",
   "notes": "Payment for performance"
 }

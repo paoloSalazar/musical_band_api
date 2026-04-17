@@ -171,6 +171,10 @@ def create(availability_create: MusicianAvailabilityCreate, current_user: dict) 
         logger.warning(f"User {current_user_id} with role {user_role} attempted to create availability for musician {availability_create.musician_id}")
         raise UnauthorizedError("You can only manage your own availability")
 
+    # Validate unavailable_date is not in the past
+    if availability_create.unavailable_date < date.today():
+        raise ValidationError('Unavailable date cannot be in the past')
+
     # Check if musician exists
     try:
         musician = user_data.get_one_by_id(availability_create.musician_id)
@@ -240,6 +244,11 @@ def create_bulk(availabilities_create: List[MusicianAvailabilityCreate], current
     if user_role not in ['admin'] and current_user_id != musician_id:
         logger.warning(f"User {current_user_id} with role {user_role} attempted to bulk create availability for musician {musician_id}")
         raise UnauthorizedError("You can only manage your own availability")
+
+    # Validate all unavailable_dates are not in the past
+    for av in availabilities_create:
+        if av.unavailable_date < date.today():
+            raise ValidationError('Unavailable date cannot be in the past')
 
     # Check if musician exists
     try:
@@ -318,6 +327,10 @@ def update(availability_id: int, availability_update: MusicianAvailabilityUpdate
     if user_role not in ['admin'] and current_user_id != existing_db.musician_id:
         logger.warning(f"User {current_user_id} with role {user_role} attempted to update availability for musician {existing_db.musician_id}")
         raise UnauthorizedError("You can only manage your own availability")
+
+    # Validate unavailable_date is not in the past if being updated
+    if availability_update.unavailable_date and availability_update.unavailable_date < date.today():
+        raise ValidationError('Unavailable date cannot be in the past')
 
     # Check for conflicts if date is being updated
     if availability_update.unavailable_date and availability_update.unavailable_date != existing_db.unavailable_date:

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict
 from datetime import date, datetime
 from typing import Optional
 
@@ -12,25 +12,11 @@ class MusicianAvailabilityBase(BaseModel):
 class MusicianAvailabilityCreate(MusicianAvailabilityBase):
     """Schema for creating musician availability"""
 
-    @field_validator('unavailable_date')
-    @classmethod
-    def validate_unavailable_date(cls, v):
-        if v < date.today():
-            raise ValueError('Unavailable date cannot be in the past')
-        return v
-
 
 class MusicianAvailabilityUpdate(BaseModel):
     """Schema for updating musician availability (all fields optional for PATCH)"""
     unavailable_date: Optional[date] = None
     reason: Optional[str] = None
-
-    @field_validator('unavailable_date')
-    @classmethod
-    def validate_unavailable_date(cls, v):
-        if v and v < date.today():
-            raise ValueError('Unavailable date cannot be in the past')
-        return v
 
 
 class MusicianAvailabilityResponse(MusicianAvailabilityBase):
