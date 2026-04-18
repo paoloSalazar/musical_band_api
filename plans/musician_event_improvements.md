@@ -24,17 +24,26 @@ This document tracks fixes, improvements, and issues related to musician events 
 **Status:** Completed  
 **Category:** Error Handling Improvement
 
-### Access Control Enhancement: Hierarchical Permissions for Event Musician Management
-**Date:** 2026-04-17
-**Endpoints:**
-- GET /api/events/{event_id}/musicians* (view operations)
-- POST/PATCH/DELETE /api/events/{event_id}/musicians* (management operations)
-- GET /api/events/{event_id}/musicians/{musician_id}/payments*
-**Description:** Implemented hierarchical access control where musicians can view assignments and payments but only admins can create, update, or delete assignments. All client/user roles completely removed from musician management features.
+### Security Enhancement: Differentiated Role and Permission-Based Access Control
+**Date:** 2026-04-18
+**Endpoints:** All musician events endpoints
+**Description:** Implemented sophisticated RoleAndPermissionChecker with differentiated access levels. Musician availability allows all roles full access, while event management and payments have restricted write permissions for admin only.
+**Feature-Specific Access Control:**
+- **Musician Availability**: All roles (admin/musician/auxiliar_musician) have full read/write/delete permissions
+- **Event Musician Management**: Musicians can read assignments, only admins can write/delete
+- **Musician Payments**: Musicians can read their payments, only admins can create payments
+**Permissions Implemented:**
+- `read:event_musician`, `write:event_musician`, `delete:event_musician`
+- `read:musician_availability`, `write:musician_availability`, `delete:musician_availability`
+- `read:musician_event_payment`, `write:musician_event_payment`
+**Role-Based Permission Assignment:**
+- **Admin**: All permissions across all features
+- **Musician/Auxiliar Musician**: Full availability permissions + read permissions for other features
 **Files Changed:**
-- `web/event_musician.py` (separated read/write permissions - GET for musicians, POST/PATCH/DELETE for admins only)
-- `web/musician_event_payment.py` (restricted all endpoints to musician roles only)
-- `services/musician_event_payment.py` (updated authorization logic)
+- `web/musician_availability.py` (full permissions for all roles)
+- `web/event_musician.py` (read for musicians, write/delete for admin only)
+- `web/musician_event_payment.py` (read for musicians, write for admin only)
+- `plans/musician_events_api_documentation.md` (updated with differentiated access levels)
 **Status:** Completed
 **Category:** Security Improvement
 

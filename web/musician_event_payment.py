@@ -14,7 +14,7 @@ from typing import Annotated, List
 from decimal import Decimal
 from fastapi import APIRouter, HTTPException, Depends
 from auth.auth import get_current_user as get_auth_current_user
-from auth.roles import RoleChecker
+from auth.roles import RoleChecker, RoleAndPermissionChecker
 from schemas.musician_event_payment import (
     MusicianEventPaymentCreate,
     MusicianEventPaymentResponse,
@@ -28,7 +28,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/events")
 
 # Authorization dependencies
-require_musician_or_admin = RoleChecker(allowed_roles=["musician", "auxiliar_musician", "admin"])
+musician_roles = ["musician", "auxiliar_musician"]
+admin_roles = ["admin"]
+require_read_musician_event_payment = RoleAndPermissionChecker(
+    required_roles=musician_roles + admin_roles,
+    required_permissions=["read:musician_event_payment"]
+)
+require_write_musician_event_payment = RoleAndPermissionChecker(
+    required_roles=admin_roles,
+    required_permissions=["write:musician_event_payment"]
+)
 require_user_or_admin = RoleChecker(allowed_roles=["user", "admin"])
 
 
@@ -48,7 +57,7 @@ def get_current_user(current_user: Annotated[dict, Depends(get_auth_current_user
 @router.post(
     "/{event_id}/musicians/{musician_id}/payments",
     response_model=MusicianEventPaymentResponse,
-    dependencies=[Depends(require_musician_or_admin)],
+    dependencies=[Depends(require_write_musician_event_payment)],
     summary="Add payment to musician for event",
     description="Create a new payment record for a musician assigned to an event."
 )
@@ -92,7 +101,7 @@ def create_musician_payment(
 @router.get(
     "/{event_id}/musicians/{musician_id}/payments",
     response_model=List[MusicianEventPaymentResponse],
-    dependencies=[Depends(require_musician_or_admin)],
+    dependencies=[Depends(require_read_musician_event_payment)],
     summary="List payments for musician in event",
     description="Retrieve all payment records for a specific musician in an event."
 )
@@ -131,7 +140,7 @@ def get_musician_payments(
 @router.get(
     "/{event_id}/musicians/{musician_id}/payments/summary",
     response_model=MusicianPaymentSummaryResponse,
-    dependencies=[Depends(require_musician_or_admin)],
+    dependencies=[Depends(require_read_musician_event_payment)],
     summary="Get payment summary for musician in event",
     description="Retrieve payment summary (total paid, count) for a specific musician in an event."
 )

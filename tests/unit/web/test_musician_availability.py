@@ -23,7 +23,7 @@ def test_get_by_musician_success(mocker):
     """Test get_by_musician() returns availability list for authorized user"""
     # Arrange
     musician_id = 1
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     mock_availabilities = [
         MusicianAvailabilityResponse(
             id=1, musician_id=1, unavailable_date=date.today() + timedelta(days=1),
@@ -46,7 +46,7 @@ def test_get_by_musician_unauthorized(mocker):
     """Test get_by_musician() raises HTTPException for unauthorized access"""
     # Arrange
     musician_id = 2
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     mock_service = mocker.patch('web.musician_availability.service.get_by_musician')
     mock_service.side_effect = UnauthorizedError("You can only view your own availability")
 
@@ -62,7 +62,7 @@ def test_get_by_musician_database_error(mocker):
     """Test get_by_musician() handles database errors"""
     # Arrange
     musician_id = 1
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     mock_service = mocker.patch('web.musician_availability.service.get_by_musician')
     mock_service.side_effect = DatabaseError("Database error")
 
@@ -79,7 +79,7 @@ def test_check_availability_success(mocker):
     # Arrange
     musician_id = 1
     check_date = date.today() + timedelta(days=1)
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     mock_service = mocker.patch('web.musician_availability.service.check_availability')
     mock_service.return_value = True
 
@@ -96,7 +96,7 @@ def test_check_availability_database_error(mocker):
     # Arrange
     musician_id = 1
     check_date = date.today() + timedelta(days=1)
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     mock_service = mocker.patch('web.musician_availability.service.check_availability')
     mock_service.side_effect = DatabaseError("Database error")
 
@@ -110,7 +110,7 @@ def test_check_availability_database_error(mocker):
 def test_create_availability_success(mocker):
     """Test create_availability() creates and returns availability"""
     # Arrange
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     availability_data = MusicianAvailabilityCreate(
         musician_id=1,
         unavailable_date=date.today() + timedelta(days=1),
@@ -135,7 +135,7 @@ def test_create_availability_success(mocker):
 def test_create_availability_unauthorized(mocker):
     """Test create_availability() raises HTTPException for unauthorized access"""
     # Arrange
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     availability_data = MusicianAvailabilityCreate(
         musician_id=2,
         unavailable_date=date.today() + timedelta(days=1)
@@ -153,7 +153,7 @@ def test_create_availability_unauthorized(mocker):
 def test_create_availability_conflict(mocker):
     """Test create_availability() raises HTTPException for conflicts"""
     # Arrange
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     availability_data = MusicianAvailabilityCreate(
         musician_id=1,
         unavailable_date=date.today() + timedelta(days=1)
@@ -171,7 +171,7 @@ def test_create_availability_conflict(mocker):
 def test_create_availability_validation_error(mocker):
     """Test create_availability() raises HTTPException for service validation errors"""
     # Arrange
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     availability_data = MusicianAvailabilityCreate(
         musician_id=1,
         unavailable_date=date.today() + timedelta(days=1)
@@ -189,7 +189,7 @@ def test_create_availability_validation_error(mocker):
 def test_create_bulk_availability_success(mocker):
     """Test create_bulk_availability() creates multiple availabilities"""
     # Arrange
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     availabilities_data = [
         MusicianAvailabilityCreate(
             musician_id=1,
@@ -223,7 +223,7 @@ def test_update_availability_success(mocker):
     """Test update_availability() updates and returns availability"""
     # Arrange
     availability_id = 1
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     update_data = MusicianAvailabilityUpdate(reason="Updated reason")
     mock_response = MusicianAvailabilityResponse(
         id=1, musician_id=1, unavailable_date=date.today() + timedelta(days=1),
@@ -248,7 +248,7 @@ def test_update_availability_not_found(mocker):
     """Test update_availability() raises HTTPException when not found"""
     # Arrange
     availability_id = 999
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     update_data = MusicianAvailabilityUpdate(reason="Updated reason")
     mock_service = mocker.patch('web.musician_availability.service.update')
     mock_service.side_effect = NotFoundError("Availability entry not found")
@@ -268,7 +268,7 @@ def test_delete_availability_success(mocker):
     """Test delete_availability() returns success message"""
     # Arrange
     availability_id = 1
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     mock_service = mocker.patch('web.musician_availability.service.delete')
     mock_service.return_value = True
 
@@ -284,7 +284,7 @@ def test_delete_availability_not_found(mocker):
     """Test delete_availability() raises HTTPException when not found"""
     # Arrange
     availability_id = 999
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     mock_service = mocker.patch('web.musician_availability.service.delete')
     mock_service.return_value = False
 
@@ -300,7 +300,7 @@ def test_delete_by_musician_and_date_success(mocker):
     # Arrange
     musician_id = 1
     delete_date = date.today() + timedelta(days=1)
-    current_user = {"id": 1, "role": "musician"}
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
     mock_service = mocker.patch('web.musician_availability.service.delete_by_musician_and_date')
     mock_service.return_value = True
 
@@ -320,7 +320,7 @@ def test_get_all_by_date_admin_success(mocker):
     """Test get_all_by_date() returns availability list for admin"""
     # Arrange
     check_date = date.today() + timedelta(days=1)
-    current_user = {"id": 1, "role": "admin"}
+    current_user = {"id": 1, "role": "admin", "permissions": ["read:musician_availability", "write:musician_availability", "delete:musician_availability"]}
     mock_availabilities = [
         MusicianAvailabilityResponse(
             id=1, musician_id=1, unavailable_date=check_date,
@@ -342,7 +342,7 @@ def test_get_all_by_date_admin_database_error(mocker):
     """Test get_all_by_date() handles database errors for admin"""
     # Arrange
     check_date = date.today() + timedelta(days=1)
-    current_user = {"id": 1, "role": "admin"}
+    current_user = {"id": 1, "role": "admin", "permissions": ["read:musician_availability", "write:musician_availability", "delete:musician_availability"]}
     mock_service = mocker.patch('web.musician_availability.service.get_all_by_date')
     mock_service.side_effect = DatabaseError("Database error")
 
@@ -351,3 +351,113 @@ def test_get_all_by_date_admin_database_error(mocker):
         get_all_by_date(current_user=current_user, check_date=check_date)
 
     assert exc_info.value.status_code == 500
+
+
+def test_get_by_musician_all_roles_authorized_with_permission(mocker):
+    """Test get_by_musician() allows all valid roles with proper permissions"""
+    # Arrange
+    musician_id = 1
+    mock_availabilities = [
+        MusicianAvailabilityResponse(
+            id=1, musician_id=1, unavailable_date=date.today() + timedelta(days=1),
+            reason="Holiday", created_at=datetime.now(), updated_at=datetime.now()
+        )
+    ]
+    mock_service = mocker.patch('web.musician_availability.service.get_by_musician')
+    mock_service.return_value = mock_availabilities
+
+    # Test admin access
+    admin_user = {"id": 1, "role": "admin", "permissions": ["read:musician_availability"]}
+    result = get_by_musician(current_user=admin_user, musician_id=musician_id)
+    assert len(result) == 1
+
+    # Test musician access
+    musician_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
+    result = get_by_musician(current_user=musician_user, musician_id=musician_id)
+    assert len(result) == 1
+
+    # Test auxiliar_musician access
+    aux_musician_user = {"id": 1, "role": "auxiliar_musician", "permissions": ["read:musician_availability"]}
+    result = get_by_musician(current_user=aux_musician_user, musician_id=musician_id)
+    assert len(result) == 1
+
+
+def test_create_availability_all_roles_can_write_with_permission(mocker):
+    """Test create_availability() allows all valid roles to create with proper permissions"""
+    # Arrange
+    availability_data = MusicianAvailabilityCreate(
+        musician_id=1,
+        unavailable_date=date.today() + timedelta(days=1),
+        reason="Holiday"
+    )
+
+    mock_response = MusicianAvailabilityResponse(
+        id=1, musician_id=1, unavailable_date=availability_data.unavailable_date,
+        reason="Holiday", created_at=datetime.now(), updated_at=datetime.now()
+    )
+
+    mock_service = mocker.patch('web.musician_availability.service.create')
+    mock_service.return_value = mock_response
+
+    # Test admin can create
+    admin_user = {"id": 1, "role": "admin", "permissions": ["write:musician_availability"]}
+    result = create_availability(current_user=admin_user, availability_data=availability_data)
+    assert result.id == 1
+
+    # Test musician can create
+    musician_user = {"id": 1, "role": "musician", "permissions": ["write:musician_availability"]}
+    result = create_availability(current_user=musician_user, availability_data=availability_data)
+    assert result.id == 1
+
+    # Test auxiliar_musician can create
+    aux_musician_user = {"id": 1, "role": "auxiliar_musician", "permissions": ["write:musician_availability"]}
+    result = create_availability(current_user=aux_musician_user, availability_data=availability_data)
+    assert result.id == 1
+
+
+def test_create_availability_denies_wrong_role(mocker):
+    """Test create_availability() denies access for invalid roles"""
+    # Arrange
+    availability_data = MusicianAvailabilityCreate(
+        musician_id=1,
+        unavailable_date=date.today() + timedelta(days=1),
+        reason="Holiday"
+    )
+
+    # Test user role denied
+    user_with_permission = {"id": 1, "role": "user", "permissions": ["write:musician_availability"]}
+
+    # Mock the service to simulate authorization failure
+    mock_service = mocker.patch('web.musician_availability.service.create')
+    mock_service.side_effect = UnauthorizedError("Access denied. Required role")
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        create_availability(current_user=user_with_permission, availability_data=availability_data)
+
+    assert exc_info.value.status_code == 403
+    assert "Access denied. Required role" in exc_info.value.detail
+
+
+def test_create_availability_denies_missing_permission(mocker):
+    """Test create_availability() denies access when permission is missing"""
+    # Arrange
+    availability_data = MusicianAvailabilityCreate(
+        musician_id=1,
+        unavailable_date=date.today() + timedelta(days=1),
+        reason="Holiday"
+    )
+
+    # Test admin without permission
+    admin_without_permission = {"id": 1, "role": "admin", "permissions": []}
+
+    # Mock the service to simulate permission failure
+    mock_service = mocker.patch('web.musician_availability.service.create')
+    mock_service.side_effect = UnauthorizedError("Missing required permission")
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        create_availability(current_user=admin_without_permission, availability_data=availability_data)
+
+    assert exc_info.value.status_code == 403
+    assert "Missing required permission" in exc_info.value.detail

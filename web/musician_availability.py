@@ -21,7 +21,7 @@ from typing import Annotated, List
 from datetime import date
 from fastapi import APIRouter, HTTPException, Depends
 from auth.auth import get_current_user as get_auth_current_user
-from auth.roles import RoleChecker
+from auth.roles import RoleChecker, RoleAndPermissionChecker
 from schemas.musician_availability import (
     MusicianAvailabilityCreate,
     MusicianAvailabilityUpdate,
@@ -37,8 +37,20 @@ router = APIRouter(prefix="/api/musician-availability")
 admin_router = APIRouter(prefix="/api/admin/musician-availability")
 
 # Authorization dependencies
+musician_roles = ["admin", "musician", "auxiliar_musician"]
+require_read_musician_availability = RoleAndPermissionChecker(
+    required_roles=musician_roles,
+    required_permissions=["read:musician_availability"]
+)
+require_write_musician_availability = RoleAndPermissionChecker(
+    required_roles=musician_roles,
+    required_permissions=["write:musician_availability"]
+)
+require_delete_musician_availability = RoleAndPermissionChecker(
+    required_roles=musician_roles,
+    required_permissions=["delete:musician_availability"]
+)
 require_admin = RoleChecker(allowed_roles=["admin"])
-require_musician_or_auxiliar = RoleChecker(allowed_roles=["musician", "auxiliar_musician", "admin"])
 
 
 def get_current_user(current_user: Annotated[dict, Depends(get_auth_current_user)]) -> dict:
@@ -56,7 +68,7 @@ def get_current_user(current_user: Annotated[dict, Depends(get_auth_current_user
 
 @router.get("/{musician_id}", response_model=List[MusicianAvailabilityResponse])
 def get_by_musician(
-    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
+    current_user: Annotated[dict, Depends(require_read_musician_availability)],
     musician_id: int
 ) -> List[MusicianAvailabilityResponse]:
     """
@@ -85,7 +97,7 @@ def get_by_musician(
 
 @router.get("/check/{musician_id}/{check_date}", response_model=bool)
 def check_availability(
-    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
+    current_user: Annotated[dict, Depends(require_read_musician_availability)],
     musician_id: int,
     check_date: date
 ) -> bool:
@@ -113,7 +125,7 @@ def check_availability(
 
 @router.post("", response_model=MusicianAvailabilityResponse, status_code=201)
 def create_availability(
-    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
+    current_user: Annotated[dict, Depends(require_write_musician_availability)],
     availability_data: MusicianAvailabilityCreate
 ) -> MusicianAvailabilityResponse:
     """
@@ -148,7 +160,7 @@ def create_availability(
 
 @router.post("/bulk", response_model=List[MusicianAvailabilityResponse], status_code=201)
 def create_bulk_availability(
-    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
+    current_user: Annotated[dict, Depends(require_write_musician_availability)],
     availabilities_data: List[MusicianAvailabilityCreate]
 ) -> List[MusicianAvailabilityResponse]:
     """
@@ -184,7 +196,7 @@ def create_bulk_availability(
 
 @router.patch("/{availability_id}", response_model=MusicianAvailabilityResponse)
 def update_availability(
-    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
+    current_user: Annotated[dict, Depends(require_write_musician_availability)],
     availability_id: int,
     availability_data: MusicianAvailabilityUpdate
 ) -> MusicianAvailabilityResponse:
@@ -221,7 +233,7 @@ def update_availability(
 
 @router.delete("/{availability_id}")
 def delete_availability(
-    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
+    current_user: Annotated[dict, Depends(require_delete_musician_availability)],
     availability_id: int
 ) -> dict:
     """
@@ -256,7 +268,7 @@ def delete_availability(
 
 @router.delete("/{musician_id}/{delete_date}")
 def delete_by_musician_and_date(
-    current_user: Annotated[dict, Depends(require_musician_or_auxiliar)],
+    current_user: Annotated[dict, Depends(require_delete_musician_availability)],
     musician_id: int,
     delete_date: date
 ) -> dict:

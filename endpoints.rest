@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjQyOTg0OH0.NkrY8OM8cP77n35QJJUY9RuScit8ZRSXnj13ppivrFA
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjYXJsb3MuaGlndWVyYUBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjYsInJvbGVfaWQiOjUsImV4cCI6MTc3NjQzMTExOH0.xEJOAU3yIhLHYhlf9JkI4_UJiJj_eUT4vfqBqxXcPPY
 
 ###
 GET {{api}}/permissions?skip=0&limit=8
@@ -185,8 +185,8 @@ POST {{api}}/users/login
 Content-Type: application/json
 
 {
-  "email": "admin@example.com",
-  "password": "admin"
+  "email": "carlos.higuera@example.com",
+  "password": "higuera"
 }
 
 ### Get Current User Info
@@ -371,10 +371,11 @@ Content-Type: application/json
 }
 
 ### EVENT MUSICIAN ENDPOINTS ###
-### Note: Access levels vary by operation type
-### Read operations (GET): Available to admin, musician, and auxiliar_musician roles
-### Write operations (POST/PATCH/DELETE): Admin role only
-### Musicians can view assignments but only admins can create/modify them
+### Note: Differentiated role and permission-based access control
+### Read operations (GET): Require 'read:event_musician' permission + musician/auxiliar_musician/admin role
+### Write operations (POST/PATCH): Require 'write:event_musician' permission + admin role only
+### Delete operations (DELETE): Require 'delete:event_musician' permission + admin role only
+### Musicians can view assignments but only admins can create/modify/delete assignments
 
 ### Get musicians assigned to an event
 GET {{api}}/events/3/musicians
@@ -389,7 +390,7 @@ Content-Type: application/json
 
 {
   "event_id": 3,
-  "musician_id": 5,
+  "musician_id": 6,
   "role": "Pianist",
   "salary": 400.00,
   "payment_status": "PENDING"
@@ -514,9 +515,10 @@ GET {{api}}/events/3/payments/summary
 Authorization: Bearer {{user_token}}
 
 ### MUSICIAN EVENT PAYMENT ENDPOINTS ###
-### Note: These endpoints manage payments to individual musicians for specific events
-### Only users with roles 'admin', 'musician', or 'auxiliar_musician' can access these endpoints
-### Musicians can only view/manage their own payments, admins can access all
+### Note: Differentiated role and permission-based access control
+### Read operations (GET): Require 'read:musician_event_payment' permission + musician/auxiliar_musician/admin role
+### Write operations (POST): Require 'write:musician_event_payment' permission + admin role only
+### Musicians can view their payment information, only admins can create payments
 ### payment_date defaults to current time if not provided
 
 ### Add payment to musician for event (ADVANCE)
@@ -575,8 +577,12 @@ GET {{api}}/events/3/musicians/5/payments/summary
 Authorization: Bearer {{user_token}}
 
 ### MUSICIAN AVAILABILITY ENDPOINTS ###
-### Note: Only users with roles 'musician', 'auxiliar_musician', or 'admin' can access these endpoints
-### Musicians and auxiliar_musicians can only manage their own availability, admins can manage all
+### Note: Strict role and permission-based access control
+### Requires BOTH appropriate role (admin/musician/auxiliar_musician) AND specific permission
+### Read operations (GET): Require 'read:musician_availability' permission + valid role
+### Write operations (POST/PATCH): Require 'write:musician_availability' permission + valid role
+### Delete operations (DELETE): Require 'delete:musician_availability' permission + valid role
+### Users can manage their own availability based on assigned permissions
 
 ### Get availability for a specific musician (musicians/auxiliar_musicians can only view their own, admin can view any)
 GET {{api}}/musician-availability/6

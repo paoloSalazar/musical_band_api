@@ -12,14 +12,46 @@ The musician events feature extends the existing event payment system to track i
 
 All endpoints require JWT authentication via `Authorization: Bearer <token>` header.
 
-### User Roles
-- **admin**: Full access to all features
-- **musician**: Can manage their own availability and view/manage their own payments
-- **auxiliar_musician**: Same as musician role (can manage their own availability and payments)
+### Role and Permission-Based Access Control
 
-**Note**: This feature separates read and write permissions:
-- **Read access**: Musicians can view assignments and their own data
-- **Write access**: Only administrators can create, update, or delete assignments
+The API uses **RoleAndPermissionChecker** for strict access control, requiring users to have BOTH the appropriate role AND the required permissions:
+
+#### Required Roles:
+- `admin`
+- `musician`
+- `auxiliar_musician`
+
+#### Permissions by Feature:
+- **event_musician**:
+  - `read:event_musician` - View musician assignments
+  - `write:event_musician` - Create/update assignments (admin only)
+  - `delete:event_musician` - Delete assignments (admin only)
+
+- **musician_availability**:
+  - `read:musician_availability` - View availability schedules
+  - `write:musician_availability` - Create/update availability entries
+  - `delete:musician_availability` - Delete availability entries
+
+- **musician_event_payment**:
+  - `read:musician_event_payment` - View payment information
+  - `write:musician_event_payment` - Create payment records (admin only)
+
+#### Permission Assignment by Role:
+
+**Admin Role:**
+- All permissions enabled for all features
+
+**Musician & Auxiliar Musician Roles:**
+- **Musician Availability**: All permissions (`read`, `write`, `delete`)
+- **Event Musician**: Read permission only (`read:event_musician`)
+- **Musician Event Payment**: Read permission only (`read:musician_event_payment`)
+
+**Feature-Specific Access:**
+- **Musician Availability**: All roles (admin, musician, auxiliar_musician) have full permissions
+- **Event Musician Management**: Musicians can view assignments, only admins can create/modify/delete
+- **Musician Payments**: Musicians can view their payments, only admins can create payments
+
+**Note**: This differentiated access control provides appropriate permissions based on operational needs while maintaining security.
 
 ## API Base URL
 ```
@@ -33,7 +65,7 @@ http://localhost:8000/api
 ### 1.1 Get Musician Availability
 **Endpoint:** `GET /musician-availability/{musician_id}`
 
-**Authorization:** Admin, Musician (own only), Auxiliar Musician (own only)
+**Authorization:** Requires `read:musician_availability` permission + admin/musician/auxiliar_musician role (all roles have full availability permissions)
 
 **Description:** Retrieve all future unavailable dates for a specific musician. **Performance optimized** to only return availabilities with dates >= today.
 
@@ -79,7 +111,7 @@ GET /api/musician-availability/6
 ### 1.2 Check Musician Availability
 **Endpoint:** `GET /musician-availability/check/{musician_id}/{date}`
 
-**Authorization:** Admin, Musician, Auxiliar Musician
+**Authorization:** Requires `read:event_musician` permission
 
 **Description:** Check if a musician is available on a specific date.
 
@@ -100,7 +132,7 @@ true
 ### 1.3 Create Musician Availability
 **Endpoint:** `POST /musician-availability`
 
-**Authorization:** Admin, Musician (own only), Auxiliar Musician (own only)
+**Authorization:** Requires `read:musician_availability` permission + admin/musician/auxiliar_musician role (all roles have full availability permissions)
 
 **Description:** Create a new unavailable date entry for a musician.
 
@@ -144,7 +176,7 @@ POST /api/musician-availability
 ### 1.4 Create Bulk Musician Availability
 **Endpoint:** `POST /musician-availability/bulk`
 
-**Authorization:** Admin, Musician (own only), Auxiliar Musician (own only)
+**Authorization:** Requires `read:musician_availability` permission + admin/musician/auxiliar_musician role (all roles have full availability permissions)
 
 **Description:** Create multiple unavailable date entries for a musician.
 
@@ -199,7 +231,7 @@ POST /api/musician-availability/bulk
 ### 1.5 Update Musician Availability
 **Endpoint:** `PATCH /musician-availability/{availability_id}`
 
-**Authorization:** Admin, Musician (own only), Auxiliar Musician (own only)
+**Authorization:** Requires `read:musician_availability` permission + admin/musician/auxiliar_musician role (all roles have full availability permissions)
 
 **Description:** Update an existing availability entry.
 
@@ -235,7 +267,7 @@ PATCH /api/musician-availability/1
 ### 1.6 Delete Musician Availability
 **Endpoint:** `DELETE /musician-availability/{availability_id}`
 
-**Authorization:** Admin, Musician (own only), Auxiliar Musician (own only)
+**Authorization:** Requires `read:musician_availability` permission + admin/musician/auxiliar_musician role (all roles have full availability permissions)
 
 **Description:** Delete an availability entry.
 
@@ -254,7 +286,7 @@ DELETE /api/musician-availability/1
 ### 1.7 Delete Musician Availability by Date
 **Endpoint:** `DELETE /musician-availability/{musician_id}/{date}`
 
-**Authorization:** Admin, Musician (own only), Auxiliar Musician (own only)
+**Authorization:** Requires `read:musician_availability` permission + admin/musician/auxiliar_musician role (all roles have full availability permissions)
 
 **Description:** Delete availability for a specific musician and date.
 
@@ -273,7 +305,7 @@ DELETE /api/musician-availability/5/2026-04-18
 ### 1.8 Get All Unavailable Musicians (Admin Only)
 **Endpoint:** `GET /admin/musician-availability/date/{date}`
 
-**Authorization:** Admin only
+**Authorization:** Requires `write:event_musician` permission
 
 **Description:** Get all musicians unavailable on a specific date.
 
@@ -308,7 +340,7 @@ GET /api/admin/musician-availability/date/2026-04-21
 ### 2.1 Get Musicians Assigned to Event
 **Endpoint:** `GET /events/{event_id}/musicians`
 
-**Authorization:** Admin, Musician, Auxiliar Musician
+**Authorization:** Requires `read:event_musician` permission + musician/auxiliar_musician/admin role
 
 **Description:** Get all musicians assigned to a specific event. Includes musician name and lastname fields for UI convenience. Musicians can view assignments but cannot modify them.
 
@@ -355,7 +387,7 @@ GET /api/events/3/musicians
 ### 2.2 Assign Musician to Event
 **Endpoint:** `POST /events/{event_id}/musicians`
 
-**Authorization:** Admin only
+**Authorization:** Requires `write:event_musician` permission + admin role
 
 **Description:** Assign a musician to an event with role and salary.
 
@@ -407,7 +439,7 @@ POST /api/events/3/musicians
 ### 2.3 Update Musician Assignment
 **Endpoint:** `PATCH /events/{event_id}/musicians/{musician_id}`
 
-**Authorization:** Admin only
+**Authorization:** Requires `write:event_musician` permission + admin role
 
 **Description:** Update a musician's role and/or salary for an event.
 
@@ -441,7 +473,7 @@ PATCH /api/events/6/musicians/5
 ### 2.4 Remove Musician from Event
 **Endpoint:** `DELETE /events/{event_id}/musicians/{musician_id}`
 
-**Authorization:** Admin only
+**Authorization:** Requires `delete:event_musician` permission + admin role
 
 **Description:** Remove a musician assignment from an event.
 
@@ -460,7 +492,7 @@ DELETE /api/events/6/musicians/5
 ### 2.5 Get Musicians Summary for Event
 **Endpoint:** `GET /events/{event_id}/musicians/summary`
 
-**Authorization:** Admin, Musician, Auxiliar Musician
+**Authorization:** Requires `read:event_musician` permission
 
 **Description:** Get cost summary of all musicians assigned to an event. Includes individual musician details with names for UI display.
 
@@ -553,7 +585,7 @@ GET /api/events/musicians/5/assignments
 ### 3.1 Add Payment to Musician
 **Endpoint:** `POST /events/{event_id}/musicians/{musician_id}/payments`
 
-**Authorization:** Admin, Musician, Auxiliar Musician
+**Authorization:** Requires `write:musician_event_payment` permission + admin role
 
 **Description:** Add a payment to a specific musician for an event.
 
@@ -613,7 +645,7 @@ POST /api/events/3/musicians/5/payments
 ### 3.2 Get Payments for Musician in Event
 **Endpoint:** `GET /events/{event_id}/musicians/{musician_id}/payments`
 
-**Authorization:** Admin, Musician (own payments only), Auxiliar Musician (own payments only)
+**Authorization:** Requires `read:musician_event_payment` permission + musician/auxiliar_musician/admin role
 
 **Description:** Get all payments for a specific musician in an event. **Access restricted** to only musician-related roles.
 
@@ -662,7 +694,7 @@ GET /api/events/3/musicians/5/payments
 ### 3.3 Get Payment Summary for Musician in Event
 **Endpoint:** `GET /events/{event_id}/musicians/{musician_id}/payments/summary`
 
-**Authorization:** Admin, Musician (own payments only), Auxiliar Musician (own payments only)
+**Authorization:** Requires `read:musician_event_payment` permission + musician/auxiliar_musician/admin role
 
 **Description:** Get payment summary for a musician in a specific event. **Access restricted** to only musician-related roles.
 
@@ -781,6 +813,18 @@ Common HTTP status codes:
 - Use pagination for large result sets if implemented in future
 
 ## Version History
+
+### v1.2.0 (2026-04-18)
+- **Security**: Implemented differentiated role and permission-based access control using RoleAndPermissionChecker
+  - **Musician Availability**: All roles (admin/musician/auxiliar_musician) have full permissions for all operations
+  - **Event Musician Management**:
+    - Read operations: musician/auxiliar_musician roles + admin
+    - Write/Delete operations: admin role only
+  - **Musician Payments**:
+    - Read operations: musician/auxiliar_musician roles + admin
+    - Write operations: admin role only
+  - Permissions: `read/write/delete:event_musician`, `read/write/delete:musician_availability`, `read/write:musician_event_payment`
+- **Authorization**: Dual-validation with role-specific permission assignments
 
 ### v1.1.0 (2026-04-17)
 - **Performance**: Added database filtering for future availability queries
