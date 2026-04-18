@@ -32,7 +32,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/events")
 
 # Authorization dependencies
-require_user_or_admin = RoleChecker(allowed_roles=["user", "admin"])
+require_musician_or_admin = RoleChecker(allowed_roles=["musician", "auxiliar_musician", "admin"])
+require_admin_only = RoleChecker(allowed_roles=["admin"])
 
 
 def get_current_user(current_user: Annotated[dict, Depends(get_auth_current_user)]) -> dict:
@@ -50,7 +51,7 @@ def get_current_user(current_user: Annotated[dict, Depends(get_auth_current_user
 
 @router.get("/{event_id}/musicians", response_model=List[EventMusicianResponse])
 def get_event_musicians(
-    current_user: Annotated[dict, Depends(require_user_or_admin)],
+    current_user: Annotated[dict, Depends(require_musician_or_admin)],
     event_id: int
 ) -> List[EventMusicianResponse]:
     """
@@ -82,7 +83,7 @@ def get_event_musicians(
 
 @router.post("/{event_id}/musicians", response_model=EventMusicianResponse, status_code=201)
 def assign_musician_to_event(
-    current_user: Annotated[dict, Depends(require_user_or_admin)],
+    current_user: Annotated[dict, Depends(require_admin_only)],
     event_id: int,
     musician_data: EventMusicianCreate
 ) -> EventMusicianResponse:
@@ -122,7 +123,7 @@ def assign_musician_to_event(
 
 @router.patch("/{event_id}/musicians/{musician_id}", response_model=EventMusicianResponse)
 def update_event_musician(
-    current_user: Annotated[dict, Depends(require_user_or_admin)],
+    current_user: Annotated[dict, Depends(require_admin_only)],
     event_id: int,
     musician_id: int,
     musician_data: EventMusicianUpdate
@@ -161,7 +162,7 @@ def update_event_musician(
 
 @router.delete("/{event_id}/musicians/{musician_id}")
 def remove_musician_from_event(
-    current_user: Annotated[dict, Depends(require_user_or_admin)],
+    current_user: Annotated[dict, Depends(require_admin_only)],
     event_id: int,
     musician_id: int
 ) -> dict:
@@ -198,7 +199,7 @@ def remove_musician_from_event(
 
 @router.get("/musicians/{musician_id}/assignments", response_model=List[EventMusicianResponse])
 def get_musician_assignments(
-    current_user: Annotated[dict, Depends(require_user_or_admin)],
+    current_user: Annotated[dict, Depends(require_musician_or_admin)],
     musician_id: int
 ) -> List[EventMusicianResponse]:
     """
@@ -227,7 +228,7 @@ def get_musician_assignments(
 
 @router.get("/{event_id}/musicians/summary", response_model=EventMusiciansSummaryResponse)
 def get_event_musicians_summary(
-    current_user: Annotated[dict, Depends(require_user_or_admin)],
+    current_user: Annotated[dict, Depends(require_musician_or_admin)],
     event_id: int
 ) -> EventMusiciansSummaryResponse:
     """

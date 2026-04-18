@@ -24,15 +24,17 @@ This document tracks fixes, improvements, and issues related to musician events 
 **Status:** Completed  
 **Category:** Error Handling Improvement
 
-### Access Control Restriction: Musician Payment Endpoints
-**Date:** 2026-04-17  
+### Access Control Enhancement: Hierarchical Permissions for Event Musician Management
+**Date:** 2026-04-17
 **Endpoints:**
-- GET /api/events/{event_id}/musicians/{musician_id}/payments
-- GET /api/events/{event_id}/musicians/{musician_id}/payments/summary
-**Description:** Restricted access to these endpoints from all authenticated users to only admin, musician, and auxiliar_musician roles. For musicians and auxiliar_musicians, access is limited to their own payment information only. Admins can access all payment information.
+- GET /api/events/{event_id}/musicians* (view operations)
+- POST/PATCH/DELETE /api/events/{event_id}/musicians* (management operations)
+- GET /api/events/{event_id}/musicians/{musician_id}/payments*
+**Description:** Implemented hierarchical access control where musicians can view assignments and payments but only admins can create, update, or delete assignments. All client/user roles completely removed from musician management features.
 **Files Changed:**
-- `web/musician_event_payment.py` (changed dependencies from require_user_or_admin to require_musician_or_admin for both GET endpoints)
-- `services/musician_event_payment.py` (updated authorization logic in get_payments_for_event and get_payment_summary_for_musician_event functions)
+- `web/event_musician.py` (separated read/write permissions - GET for musicians, POST/PATCH/DELETE for admins only)
+- `web/musician_event_payment.py` (restricted all endpoints to musician roles only)
+- `services/musician_event_payment.py` (updated authorization logic)
 **Status:** Completed
 **Category:** Security Improvement
 

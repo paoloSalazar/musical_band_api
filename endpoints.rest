@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjQyNjI2OH0.ObcIINsN9y34rmqJQ11rZ4FUuZI9dDOavqxHwVEZC_g
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjQyOTg0OH0.NkrY8OM8cP77n35QJJUY9RuScit8ZRSXnj13ppivrFA
 
 ###
 GET {{api}}/permissions?skip=0&limit=8
@@ -371,8 +371,10 @@ Content-Type: application/json
 }
 
 ### EVENT MUSICIAN ENDPOINTS ###
-### Note: Only users with roles 'user' or 'admin' can access these endpoints
-### Users can only manage musicians for their own events, admins can manage all
+### Note: Access levels vary by operation type
+### Read operations (GET): Available to admin, musician, and auxiliar_musician roles
+### Write operations (POST/PATCH/DELETE): Admin role only
+### Musicians can view assignments but only admins can create/modify them
 
 ### Get musicians assigned to an event
 GET {{api}}/events/3/musicians
@@ -513,7 +515,8 @@ Authorization: Bearer {{user_token}}
 
 ### MUSICIAN EVENT PAYMENT ENDPOINTS ###
 ### Note: These endpoints manage payments to individual musicians for specific events
-### Users with roles 'user' or 'admin' can access these endpoints
+### Only users with roles 'admin', 'musician', or 'auxiliar_musician' can access these endpoints
+### Musicians can only view/manage their own payments, admins can access all
 ### payment_date defaults to current time if not provided
 
 ### Add payment to musician for event (ADVANCE)

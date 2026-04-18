@@ -48,7 +48,7 @@ def get_current_user(current_user: Annotated[dict, Depends(get_auth_current_user
 @router.post(
     "/{event_id}/musicians/{musician_id}/payments",
     response_model=MusicianEventPaymentResponse,
-    dependencies=[Depends(require_user_or_admin)],
+    dependencies=[Depends(require_musician_or_admin)],
     summary="Add payment to musician for event",
     description="Create a new payment record for a musician assigned to an event."
 )
