@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjYXJsb3MuaGlndWVyYUBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjYsInJvbGVfaWQiOjUsImV4cCI6MTc3NjQzMTExOH0.xEJOAU3yIhLHYhlf9JkI4_UJiJj_eUT4vfqBqxXcPPY
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjY4NDc2NX0.2xWPx2A7udDLyDSUCoXLy0vVQgW1LlM3sQVyiUD2VVM
 
 ###
 GET {{api}}/permissions?skip=0&limit=8
@@ -122,11 +122,11 @@ Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "juan",
-  "lastname": "lopez",
+  "name": "admin",
+  "lastname": "admin",
   "second_lastname": "villarroel",
-  "email": "juan.lopez@example.com",
-  "password": "lopez",
+  "email": "admin@example.com",
+  "password": "admin",
   "phone_number": "1234567890",
   "role_id": 1
 }
@@ -185,8 +185,8 @@ POST {{api}}/users/login
 Content-Type: application/json
 
 {
-  "email": "carlos.higuera@example.com",
-  "password": "higuera"
+  "email": "admin@example.com",
+  "password": "admin"
 }
 
 ### Get Current User Info

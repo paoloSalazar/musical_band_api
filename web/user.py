@@ -347,7 +347,7 @@ async def create(user: UserCreate) -> UserResponse:
         return new_user
     except ConflictError:
         logger.warning(f"User with email {user.email} already exists")
-        raise HTTPException(status_code=409, detail="User already exists")
+        raise HTTPException(status_code=409, detail=f"User {user.email} already exists")
     except DatabaseError as e:
         logger.error(f"Database error in create: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
