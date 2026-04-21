@@ -344,6 +344,7 @@ def delete(user_id: int) -> bool:
 
     Raises:
         NotFoundError: If user is not found.
+        ConflictError: If user has related records preventing deletion.
         DatabaseError: If database operation fails.
     """
     try:
@@ -360,6 +361,9 @@ def delete(user_id: int) -> bool:
         else:
             logger.warning(f"User with id {user_id} not found during deletion")
             raise NotFoundError(f"User with id {user_id} not found")
+    except ConflictError:
+        # Re-raise ConflictError for foreign key violations
+        raise
     except (DatabaseError, DatabaseConnectionError) as e:
         logger.error("Service error in delete")
         raise DatabaseError("Service error")

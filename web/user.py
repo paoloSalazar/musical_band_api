@@ -263,6 +263,7 @@ def delete(current_user: Annotated[dict, Depends(get_current_user)], user_id: in
     Raises:
         HTTPException: 403 if user tries to delete themselves.
         HTTPException: 404 if user not found.
+        HTTPException: 409 if user has related records preventing deletion.
         HTTPException: 500 if database error occurs.
     """
     # Check if current user is trying to delete themselves
@@ -270,7 +271,7 @@ def delete(current_user: Annotated[dict, Depends(get_current_user)], user_id: in
     if current_user_id == user_id:
         logger.warning(f"User {current_user.get('sub')} attempted to delete themselves")
         raise HTTPException(status_code=403, detail="Cannot delete your own account")
-    
+
     try:
         service.delete(user_id)
         logger.info(f"API request: Deleted user with id {user_id} by {current_user.get('sub')}")
@@ -278,6 +279,9 @@ def delete(current_user: Annotated[dict, Depends(get_current_user)], user_id: in
     except NotFoundError:
         logger.warning(f"User with id {user_id} not found for deletion")
         raise HTTPException(status_code=404, detail="User not found")
+    except ConflictError as e:
+        logger.warning(f"Conflict error deleting user with id {user_id}: {str(e)}")
+        raise HTTPException(status_code=409, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error in delete: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

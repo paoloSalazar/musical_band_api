@@ -13,10 +13,11 @@ Functions:
 import logging
 from config.database import SessionLocal
 from models.user import User
-from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError, IntegrityError
+from pg8000.dbapi import ProgrammingError
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-from exceptions import DatabaseError, DatabaseConnectionError
+from exceptions import DatabaseError, DatabaseConnectionError, ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -239,6 +240,7 @@ def delete(user_id: int) -> bool:
 
     Raises:
         DatabaseConnectionError: If database connection fails.
+        ConflictError: If user has related records preventing deletion.
         DatabaseError: If database operation fails.
     """
     db = SessionLocal()
@@ -254,8 +256,19 @@ def delete(user_id: int) -> bool:
         db.rollback()
         raise DatabaseConnectionError("Database connection failed")
     except SQLAlchemyError as e:
-        logger.error(f"Database error while deleting user '{user_id}'")
+        logger.error(f"Database error while deleting user '{user_id}': {str(e)}")
         db.rollback()
-        raise DatabaseError("Failed to delete user")
+
+        # Check if this is a constraint violation (PostgreSQL error codes)
+        error_str = str(e).upper()
+        if ("'C': '23503'" in error_str or '23503' in error_str or
+            "'C': '23502'" in error_str or '23502' in error_str or
+            "'C': '23505'" in error_str or '23505' in error_str or
+            "'C': '23514'" in error_str or '23514' in error_str):
+            # This is a constraint violation - provide user-friendly message
+            raise ConflictError("This user cannot be deleted because they have associated events, musician assignments, or payment records. Please remove these associations first or contact an administrator.")
+        else:
+            # This is some other database error
+            raise DatabaseError("Failed to delete user")
     finally:
         db.close()

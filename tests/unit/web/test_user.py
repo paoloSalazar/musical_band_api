@@ -101,8 +101,25 @@ def test_delete_user_not_found(mocker):
     from fastapi import HTTPException
     with pytest.raises(HTTPException) as exc_info:
         delete(current_user=mock_current_user, user_id=999)
-    
+
     assert exc_info.value.status_code == 404
+
+
+def test_delete_user_constraint_violation(mocker):
+    """Test delete() returns 409 when user has related records preventing deletion"""
+    # Arrange - Mock service.delete to raise ConflictError
+    mock_service = mocker.patch('web.user.service.delete')
+    from exceptions import ConflictError
+    mock_service.side_effect = ConflictError("This user cannot be deleted because they have associated events, musician assignments, or payment records. Please remove these associations first or contact an administrator.")
+    mock_current_user = {"sub": "admin@example.com", "role": "admin", "id": 1}
+
+    # Act & Assert
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        delete(current_user=mock_current_user, user_id=2)
+
+    assert exc_info.value.status_code == 409
+    assert "associated events, musician assignments, or payment records" in exc_info.value.detail
 
 
 def test_get_users_with_data(mocker):
