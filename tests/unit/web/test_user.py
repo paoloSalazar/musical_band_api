@@ -242,7 +242,7 @@ async def test_create_user_conflict(mocker):
         await create(input_data)
 
     assert exc_info.value.status_code == 409
-    assert "User already exists" in exc_info.value.detail
+    assert "john.doe@example.com already exists" in exc_info.value.detail
     mock_service.assert_called_once()
     # Verify service was called with UserCreate object
     call_args = mock_service.call_args[0][0]

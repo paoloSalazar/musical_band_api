@@ -333,7 +333,7 @@ def test_replace_user_role_database_error(mocker):
     mock_session.rollback.assert_called_once()  # Rollback should be called on error
 
 def test_delete_user_role_success(mocker):
-    """Test delete() when role exists"""
+    """Test delete() when role exists and has no integrity constraints"""
     # Arrange - Mock SessionLocal and query
     existing_role = UserRole(id=1, name="admin", description="Administrator")
 
@@ -345,6 +345,10 @@ def test_delete_user_role_success(mocker):
 
     mock_session_local = mocker.patch('data.user_role.SessionLocal')
     mock_session_local.return_value = mock_session
+
+    # Mock integrity checker to allow deletion
+    mock_integrity_checker = mocker.patch('data.user_role.check_integrity_before_deletion')
+    mock_integrity_checker.return_value = None  # Safe to delete
 
     # Act - Call data function
     result = data.delete("admin")
@@ -393,6 +397,10 @@ def test_delete_user_role_database_error(mocker):
     mock_session_local = mocker.patch('data.user_role.SessionLocal')
     mock_session_local.return_value = mock_session
 
+    # Mock integrity checker to allow deletion (we want to test the commit error)
+    mock_integrity_checker = mocker.patch('data.user_role.check_integrity_before_deletion')
+    mock_integrity_checker.return_value = None  # Safe to delete
+
     # Act & Assert - Call data function and expect DatabaseError
     with pytest.raises(DatabaseError) as exc_info:
         data.delete("admin")
@@ -405,13 +413,12 @@ def test_delete_user_role_database_error(mocker):
 
 def test_delete_user_role_with_permissions(mocker):
     """Test delete() raises ConflictError when role has permissions assigned"""
-    # Arrange - Mock a role that has permissions assigned
-    permission1 = Permission(id=1, name="read:users", description="Read users")
-    permission2 = Permission(id=2, name="write:users", description="Write users")
-    
+    # Arrange - Mock role exists and integrity checker returns error
     existing_role = UserRole(id=1, name="admin", description="Administrator")
-    # Set up the permissions relationship
-    existing_role.permissions = [permission1, permission2]
+
+    # Mock the integrity checker to return an error about permissions
+    mock_integrity_checker = mocker.patch('data.user_role.check_integrity_before_deletion')
+    mock_integrity_checker.return_value = "This role cannot be deleted because it has 2 permissions assigned ('read:users', 'write:users'). Please remove these permissions from the role first."
 
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
@@ -426,11 +433,11 @@ def test_delete_user_role_with_permissions(mocker):
     with pytest.raises(ConflictError) as exc_info:
         data.delete("admin")
 
-    assert "admin" in str(exc_info.value)
+    assert "2 permissions assigned" in str(exc_info.value)
     assert "read:users" in str(exc_info.value)
     assert "write:users" in str(exc_info.value)
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
-    # Verify delete was NOT called
+    # Verify delete and commit were NOT called due to integrity check
     mock_session.delete.assert_not_called()
     mock_session.commit.assert_not_called()

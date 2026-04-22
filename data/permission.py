@@ -24,8 +24,9 @@ import logging
 from config.database import SessionLocal
 from models.permission import Permission
 from models.user_role import UserRole
-from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError, IntegrityError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from exceptions import DatabaseError, DatabaseConnectionError, ConflictError
+from data.integrity_checker import check_integrity_before_deletion
 
 logger = logging.getLogger(__name__)
 
@@ -239,17 +240,12 @@ def delete_by_name(name: str) -> bool:
         db_permission = db.query(Permission).filter(Permission.name == name).first()
         if not db_permission:
             return False
-        
-        # Check if permission is assigned to any roles BEFORE attempting delete
-        # This prevents cascade delete and gives a friendly error message
-        if db_permission.roles:
-            assigned_roles = [role.name for role in db_permission.roles]
-            roles_str = "', '".join(assigned_roles)
-            raise ConflictError(
-                f"Permission '{name}' is already assigned to role(s): '{roles_str}'. "
-                f"Remove the permission from these roles before deleting."
-            )
-        
+
+        # Check integrity constraints BEFORE attempting delete
+        integrity_error = check_integrity_before_deletion('permission', name)
+        if integrity_error:
+            raise ConflictError(integrity_error)
+
         db.delete(db_permission)
         db.commit()
         return True
@@ -257,38 +253,20 @@ def delete_by_name(name: str) -> bool:
         logger.error(f"Database connection error while deleting permission '{name}'")
         db.rollback()
         raise DatabaseConnectionError("Database connection failed")
-    except IntegrityError as e:
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while deleting permission '{name}': {str(e)}")
         db.rollback()
-        # Check if this is a foreign key constraint violation
-        error_msg = str(e).lower()
-        if 'foreign key constraint' in error_msg or 'restrict' in error_msg:
-            # Get the roles that have this permission assigned
-            assigned_roles = []
-            try:
-                db2 = SessionLocal()
-                permission = db2.query(Permission).filter(Permission.name == name).first()
-                if permission:
-                    assigned_roles = [role.name for role in permission.roles]
-                db2.close()
-            except Exception:
-                pass
-            
-            if assigned_roles:
-                roles_str = "', '".join(assigned_roles)
-                raise ConflictError(
-                    f"Permission '{name}' is already assigned to role(s): '{roles_str}'. "
-                    f"Remove the permission from these roles before deleting."
-                )
-            raise ConflictError(f"Permission '{name}' cannot be deleted because it is in use")
-        logger.error(f"Integrity error while deleting permission '{name}': {e}")
-        raise DatabaseError("Failed to delete permission due to data integrity issue")
+
+        # Check for constraint violations that might slip through our integrity check
+        error_str = str(e).upper()
+        if ("'C': '23503'" in error_str or '23503' in error_str or
+            "'C': '23502'" in error_str or '23502' in error_str):
+            raise ConflictError("This permission cannot be deleted because it is assigned to roles. Please remove this permission from all roles first.")
+        else:
+            raise DatabaseError("Failed to delete permission")
     except ConflictError:
         # Re-raise ConflictError as-is
         raise
-    except SQLAlchemyError as e:
-        logger.error(f"Database error while deleting permission '{name}'")
-        db.rollback()
-        raise DatabaseError("Failed to delete permission")
     finally:
         db.close()
 

@@ -13,11 +13,10 @@ Functions:
 import logging
 from config.database import SessionLocal
 from models.user import User
-from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError, IntegrityError
-from pg8000.dbapi import ProgrammingError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from sqlalchemy.orm import selectinload
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 from exceptions import DatabaseError, DatabaseConnectionError, ConflictError
+from data.integrity_checker import check_integrity_before_deletion
 
 logger = logging.getLogger(__name__)
 
@@ -246,11 +245,17 @@ def delete(user_id: int) -> bool:
     db = SessionLocal()
     try:
         db_user = db.query(User).filter(User.id == user_id).first()
-        if db_user:
-            db.delete(db_user)
-            db.commit()
-            return True
-        return False
+        if not db_user:
+            return False
+
+        # Check integrity constraints BEFORE attempting delete
+        integrity_error = check_integrity_before_deletion('user', user_id)
+        if integrity_error:
+            raise ConflictError(integrity_error)
+
+        db.delete(db_user)
+        db.commit()
+        return True
     except (OperationalError, InterfaceError) as e:
         logger.error(f"Database connection error while deleting user '{user_id}'")
         db.rollback()
@@ -259,16 +264,15 @@ def delete(user_id: int) -> bool:
         logger.error(f"Database error while deleting user '{user_id}': {str(e)}")
         db.rollback()
 
-        # Check if this is a constraint violation (PostgreSQL error codes)
+        # Check for constraint violations that might slip through our integrity check
         error_str = str(e).upper()
         if ("'C': '23503'" in error_str or '23503' in error_str or
-            "'C': '23502'" in error_str or '23502' in error_str or
-            "'C': '23505'" in error_str or '23505' in error_str or
-            "'C': '23514'" in error_str or '23514' in error_str):
-            # This is a constraint violation - provide user-friendly message
+            "'C': '23502'" in error_str or '23502' in error_str):
             raise ConflictError("This user cannot be deleted because they have associated events, musician assignments, or payment records. Please remove these associations first or contact an administrator.")
         else:
-            # This is some other database error
             raise DatabaseError("Failed to delete user")
+    except ConflictError:
+        # Re-raise ConflictError as-is
+        raise
     finally:
         db.close()

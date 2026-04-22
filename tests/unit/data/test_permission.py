@@ -421,18 +421,18 @@ def test_delete_permission_database_error(mocker):
 
 def test_delete_by_name_permission_assigned_to_roles(mocker):
     """Test delete_by_name() raises ConflictError when permission is assigned to roles"""
-    # Arrange - Mock permission that has roles assigned
-    role_admin = UserRole(id=1, name="admin", description="Administrator")
-    role_moderator = UserRole(id=2, name="moderator", description="Moderator")
-    
+    # Arrange - Mock permission exists and integrity checker returns error
     existing_permission = Permission(
         id=1,
         name="read:user_roles",
         description="Permission to read user roles"
     )
-    # Set up the roles relationship
-    existing_permission.roles = [role_admin, role_moderator]
 
+    # Mock the integrity checker to return an error
+    mock_integrity_checker = mocker.patch('data.permission.check_integrity_before_deletion')
+    mock_integrity_checker.return_value = "This permission cannot be deleted because it is assigned to 2 roles ('admin', 'moderator'). Please remove this permission from these roles first."
+
+    # Mock permission exists
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
@@ -446,12 +446,12 @@ def test_delete_by_name_permission_assigned_to_roles(mocker):
     with pytest.raises(ConflictError) as exc_info:
         data.delete_by_name("read:user_roles")
 
-    assert "read:user_roles" in str(exc_info.value)
+    assert "assigned to 2 roles" in str(exc_info.value)
     assert "admin" in str(exc_info.value)
     assert "moderator" in str(exc_info.value)
     mock_session_local.assert_called_once()
     mock_session.close.assert_called_once()
-    # Verify delete and commit were NOT called
+    # Verify delete and commit were NOT called due to integrity check
     mock_session.delete.assert_not_called()
     mock_session.commit.assert_not_called()
 
