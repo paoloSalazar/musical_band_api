@@ -172,13 +172,15 @@ class TestEventPaymentDataModify:
 class TestEventPaymentDataDelete:
     """Tests for deleting payments"""
     
+    @patch('data.event_payment.check_integrity_before_deletion')
     @patch('data.event_payment.SessionLocal')
-    def test_delete_payment_success(self, mock_session_local):
+    def test_delete_payment_success(self, mock_session_local, mock_integrity_check):
         """Test deleting a payment"""
         # Arrange
         mock_db = MagicMock()
         mock_session_local.return_value = mock_db
-        
+        mock_integrity_check.return_value = None  # No integrity violations
+
         mock_payment = EventPayment(
             id=1,
             event_id=1,
@@ -189,11 +191,12 @@ class TestEventPaymentDataDelete:
         mock_db.query.return_value.filter.return_value.first.return_value = mock_payment
         mock_db.delete.return_value = None
         mock_db.commit.return_value = None
-        
+
         # Act
         result = payment_data.delete(1)
-        
+
         # Assert
         assert result is True
+        mock_integrity_check.assert_called_once_with('event_payment', 1)
         mock_db.delete.assert_called_once_with(mock_payment)
         mock_db.commit.assert_called_once()

@@ -27,7 +27,7 @@ def check_integrity_before_deletion(entity_type: str, entity_id: int | str) -> O
     Check all integrity constraints for an entity before deletion.
 
     Args:
-        entity_type: Type of entity ('user', 'role', 'permission', etc.)
+        entity_type: Type of entity ('user', 'role', 'permission', 'event_payment', etc.)
         entity_id: Primary key or unique identifier of the entity
 
     Returns:
@@ -42,6 +42,8 @@ def check_integrity_before_deletion(entity_type: str, entity_id: int | str) -> O
         return _check_role_integrity(entity_id)
     elif entity_type == 'permission':
         return _check_permission_integrity(entity_id)
+    elif entity_type == 'event_payment':
+        return _check_event_payment_integrity(entity_id)
     else:
         raise ValueError(f"Unknown entity type: {entity_type}")
 
@@ -221,3 +223,21 @@ def _check_permission_integrity(permission_identifier: int | str) -> Optional[st
         return "Unable to verify permission integrity. Please contact an administrator."
     finally:
         db.close()
+
+
+def _check_event_payment_integrity(payment_id: int) -> Optional[str]:
+    """
+    Check if an event payment can be safely deleted.
+
+    EventPayment is a leaf entity with no relationships that would prevent deletion.
+    All payments can be safely deleted as they don't have dependent records.
+
+    Args:
+        payment_id: The payment's ID
+
+    Returns:
+        None (always safe to delete)
+    """
+    # EventPayment is a leaf entity - no relationships prevent deletion
+    # Future: Could add business logic checks (e.g., payment status, age, etc.)
+    return None
