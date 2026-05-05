@@ -48,6 +48,8 @@ def check_integrity_before_deletion(entity_type: str, entity_id: int | str) -> O
         return _check_event_integrity(entity_id)
     elif entity_type == 'event_musician':
         return _check_event_musician_integrity(entity_id)
+    elif entity_type == 'musician_event_payment':
+        return _check_musician_event_payment_integrity(entity_id)
     else:
         raise ValueError(f"Unknown entity type: {entity_type}")
 
@@ -338,3 +340,26 @@ def _check_event_musician_integrity(assignment_id: int) -> Optional[str]:
         return "Unable to verify musician assignment integrity. Please contact an administrator."
     finally:
         db.close()
+
+
+def _check_musician_event_payment_integrity(payment_id: int) -> Optional[str]:
+    """
+    Check if a musician event payment can be safely deleted.
+
+    MusicianEventPayment is a leaf entity with proper composite foreign key constraints
+    ensuring it can only exist if there's a corresponding EventMusician assignment.
+    Since assignment integrity is checked separately, payments can generally be deleted.
+
+    Args:
+        payment_id: The payment's ID
+
+    Returns:
+        None (always safe to delete, but future business rules could be added)
+    """
+    # MusicianEventPayment is a leaf entity - no other entities depend on it
+    # The composite foreign key (event_id, musician_id) ensures referential integrity
+    # Future business rules could include:
+    # - Cannot delete TOTAL payments (final settlements)
+    # - Cannot delete payments older than X days/months
+    # - Cannot delete payments with certain statuses
+    return None
