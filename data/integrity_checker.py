@@ -46,6 +46,8 @@ def check_integrity_before_deletion(entity_type: str, entity_id: int | str) -> O
         return _check_event_payment_integrity(entity_id)
     elif entity_type == 'event':
         return _check_event_integrity(entity_id)
+    elif entity_type == 'event_musician':
+        return _check_event_musician_integrity(entity_id)
     else:
         raise ValueError(f"Unknown entity type: {entity_type}")
 
@@ -292,5 +294,47 @@ def _check_event_integrity(event_id: int) -> Optional[str]:
         logger.error(f"Error checking event integrity for event_id {event_id}: {e}")
         # If we can't check integrity, err on the side of caution
         return "Unable to verify event integrity. Please contact an administrator."
+    finally:
+        db.close()
+
+
+def _check_event_musician_integrity(assignment_id: int) -> Optional[str]:
+    """
+    Check if an event musician assignment can be safely deleted.
+
+    Checks all relationships that could prevent assignment deletion:
+    - Payments made to this musician for this event
+
+    Args:
+        assignment_id: The assignment's ID
+
+    Returns:
+        Error message if deletion would violate constraints, None if safe
+    """
+    db = SessionLocal()
+    try:
+        # Get the assignment to find event_id and musician_id
+        assignment = db.query(EventMusician).filter(EventMusician.id == assignment_id).first()
+        if not assignment:
+            return None  # Assignment doesn't exist, but that's handled elsewhere
+
+        # Check if there are any payments for this specific event-musician combination
+        payments_count = db.query(MusicianEventPayment).filter(
+            MusicianEventPayment.event_id == assignment.event_id,
+            MusicianEventPayment.musician_id == assignment.musician_id
+        ).count()
+
+        if payments_count > 0:
+            if payments_count == 1:
+                return "This musician assignment cannot be deleted because there is 1 payment record for this musician and event. Please remove the payment record first."
+            else:
+                return f"This musician assignment cannot be deleted because there are {payments_count} payment records for this musician and event. Please remove all payment records first."
+
+        return None  # Safe to delete
+
+    except Exception as e:
+        logger.error(f"Error checking event musician integrity for assignment_id {assignment_id}: {e}")
+        # If we can't check integrity, err on the side of caution
+        return "Unable to verify musician assignment integrity. Please contact an administrator."
     finally:
         db.close()

@@ -56,4 +56,12 @@ class TestIntegrityChecker:
             mock_check.assert_called_once_with(1)
             assert result is None
 
-    # TODO: Add more tests for _check_event_integrity and other entities once implemented
+    def test_check_integrity_before_deletion_event_musician_calls_correct_function(self):
+        """Test that event_musician entity type calls _check_event_musician_integrity"""
+        with patch('data.integrity_checker._check_event_musician_integrity') as mock_check:
+            mock_check.return_value = None
+            result = check_integrity_before_deletion('event_musician', 1)
+            mock_check.assert_called_once_with(1)
+            assert result is None
+
+    # TODO: Add more tests for integrity functions once implemented

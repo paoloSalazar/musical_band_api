@@ -21,6 +21,8 @@ from models.event_musician import EventMusician
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from sqlalchemy.orm import selectinload
 from exceptions import DatabaseError, DatabaseConnectionError
+from data.integrity_checker import check_integrity_before_deletion
+from exceptions import ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -326,37 +328,54 @@ def update_payment_status(event_id: int, musician_id: int, status: str) -> bool:
         db.close()
 
 
-def delete(musician_id: int) -> bool:
+def delete(assignment_id: int) -> bool:
     """
     Delete an event musician assignment from the database.
 
     Args:
-        musician_id: The ID of the assignment to delete.
+        assignment_id: The ID of the assignment to delete.
 
     Returns:
         True if deleted, False if not found.
 
     Raises:
         DatabaseConnectionError: If database connection fails.
+        ConflictError: If assignment has payments preventing deletion.
         DatabaseError: If database operation fails.
     """
     db = SessionLocal()
     try:
-        db_musician = db.query(EventMusician).filter(
-            EventMusician.id == musician_id
+        db_assignment = db.query(EventMusician).filter(
+            EventMusician.id == assignment_id
         ).first()
-        if db_musician:
-            db.delete(db_musician)
-            db.commit()
-            return True
-        return False
+        if not db_assignment:
+            return False
+
+        # Check integrity constraints BEFORE attempting delete
+        integrity_error = check_integrity_before_deletion('event_musician', assignment_id)
+        if integrity_error:
+            raise ConflictError(integrity_error)
+
+        db.delete(db_assignment)
+        db.commit()
+        return True
     except (OperationalError, InterfaceError) as e:
-        logger.error(f"Database connection error while deleting assignment '{musician_id}'")
+        logger.error(f"Database connection error while deleting assignment '{assignment_id}'")
         db.rollback()
         raise DatabaseConnectionError("Database connection failed")
     except SQLAlchemyError as e:
-        logger.error(f"Database error while deleting assignment '{musician_id}'")
+        logger.error(f"Database error while deleting assignment '{assignment_id}': {str(e)}")
         db.rollback()
-        raise DatabaseError("Failed to delete event musician")
+
+        # Check for constraint violations that might slip through our integrity check
+        error_str = str(e).upper()
+        if ("'C': '23503'" in error_str or '23503' in error_str or
+            "'C': '23502'" in error_str or '23502' in error_str):
+            raise ConflictError("This musician assignment cannot be deleted because it has associated payment records. Please remove all payment records first.")
+        else:
+            raise DatabaseError("Failed to delete event musician")
+    except ConflictError:
+        # Re-raise ConflictError as-is
+        raise
     finally:
         db.close()

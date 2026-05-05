@@ -375,7 +375,7 @@ def test_update_event_musician_not_found(mocker):
 def test_delete_event_musician_found(mocker):
     """Test delete() when musician assignment exists"""
     # Arrange
-    musician_id = 1
+    assignment_id = 1
     existing_musician = EventMusician(
         id=1,
         event_id=1,
@@ -392,13 +392,16 @@ def test_delete_event_musician_found(mocker):
     mock_query.first.return_value = existing_musician
 
     mock_session_local = mocker.patch('data.event_musician.SessionLocal')
+    mock_integrity_check = mocker.patch('data.event_musician.check_integrity_before_deletion')
     mock_session_local.return_value = mock_session
+    mock_integrity_check.return_value = None  # No integrity violations
 
     # Act
-    result = data.delete(musician_id)
+    result = data.delete(assignment_id)
 
     # Assert
     assert result is True
+    mock_integrity_check.assert_called_once_with('event_musician', assignment_id)
     mock_session.delete.assert_called_once_with(existing_musician)
     mock_session.commit.assert_called_once()
     mock_session.close.assert_called_once()
