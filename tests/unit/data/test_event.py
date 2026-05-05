@@ -189,13 +189,15 @@ class TestEventDataModify:
 class TestEventDataDelete:
     """Tests for deleting events in data layer"""
     
+    @patch('data.event.check_integrity_before_deletion')
     @patch('data.event.SessionLocal')
-    def test_delete_event_success(self, mock_session_local):
+    def test_delete_event_success(self, mock_session_local, mock_integrity_check):
         """Test successful event deletion"""
         # Arrange
         mock_db = MagicMock()
         mock_session_local.return_value = mock_db
-        
+        mock_integrity_check.return_value = None  # No integrity violations
+
         mock_event = Event(
             id=1,
             name="Event to Delete",
@@ -207,12 +209,13 @@ class TestEventDataDelete:
         mock_db.query.return_value.filter.return_value.first.return_value = mock_event
         mock_db.delete.return_value = None
         mock_db.commit.return_value = None
-        
+
         # Act
         result = event_data.delete(1)
-        
+
         # Assert
         assert result is True
+        mock_integrity_check.assert_called_once_with('event', 1)
         mock_db.delete.assert_called_once_with(mock_event)
         mock_db.commit.assert_called_once()
 

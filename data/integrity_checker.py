@@ -44,6 +44,8 @@ def check_integrity_before_deletion(entity_type: str, entity_id: int | str) -> O
         return _check_permission_integrity(entity_id)
     elif entity_type == 'event_payment':
         return _check_event_payment_integrity(entity_id)
+    elif entity_type == 'event':
+        return _check_event_integrity(entity_id)
     else:
         raise ValueError(f"Unknown entity type: {entity_type}")
 
@@ -241,3 +243,54 @@ def _check_event_payment_integrity(payment_id: int) -> Optional[str]:
     # EventPayment is a leaf entity - no relationships prevent deletion
     # Future: Could add business logic checks (e.g., payment status, age, etc.)
     return None
+
+
+def _check_event_integrity(event_id: int) -> Optional[str]:
+    """
+    Check if an event can be safely deleted.
+
+    Checks all relationships that could prevent event deletion:
+    - Event payments made for this event
+    - Musician assignments to this event
+    - Musician payments for this event
+
+    Args:
+        event_id: The event's ID
+
+    Returns:
+        Error message if deletion would violate constraints, None if safe
+    """
+    db = SessionLocal()
+    try:
+        # Check event payments
+        event_payments_count = db.query(EventPayment).filter(EventPayment.event_id == event_id).count()
+        if event_payments_count > 0:
+            if event_payments_count == 1:
+                return "This event cannot be deleted because it has 1 payment record. Please remove this payment record first."
+            else:
+                return f"This event cannot be deleted because it has {event_payments_count} payment records. Please remove these payment records first."
+
+        # Check musician assignments
+        assignments_count = db.query(EventMusician).filter(EventMusician.event_id == event_id).count()
+        if assignments_count > 0:
+            if assignments_count == 1:
+                return "This event cannot be deleted because it has 1 musician assigned. Please remove this assignment first."
+            else:
+                return f"This event cannot be deleted because it has {assignments_count} musicians assigned. Please remove these assignments first."
+
+        # Check musician payments
+        musician_payments_count = db.query(MusicianEventPayment).filter(MusicianEventPayment.event_id == event_id).count()
+        if musician_payments_count > 0:
+            if musician_payments_count == 1:
+                return "This event cannot be deleted because it has 1 musician payment record. Please remove this payment record first."
+            else:
+                return f"This event cannot be deleted because it has {musician_payments_count} musician payment records. Please remove these payment records first."
+
+        return None  # Safe to delete
+
+    except Exception as e:
+        logger.error(f"Error checking event integrity for event_id {event_id}: {e}")
+        # If we can't check integrity, err on the side of caution
+        return "Unable to verify event integrity. Please contact an administrator."
+    finally:
+        db.close()

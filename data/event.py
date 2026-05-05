@@ -19,6 +19,8 @@ from models.event import Event
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from sqlalchemy.orm import joinedload
 from exceptions import DatabaseError, DatabaseConnectionError
+from data.integrity_checker import check_integrity_before_deletion
+from exceptions import ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +180,7 @@ def delete(event_id: int) -> bool:
 
     Raises:
         DatabaseConnectionError: If database connection fails.
+        ConflictError: If event has related records preventing deletion.
         DatabaseError: If database operation fails.
     """
     db = SessionLocal()
@@ -185,6 +188,11 @@ def delete(event_id: int) -> bool:
         event = db.query(Event).filter(Event.id == event_id).first()
         if event is None:
             return False
+
+        # Check integrity constraints BEFORE attempting delete
+        integrity_error = check_integrity_before_deletion('event', event_id)
+        if integrity_error:
+            raise ConflictError(integrity_error)
 
         db.delete(event)
         db.commit()
@@ -197,7 +205,17 @@ def delete(event_id: int) -> bool:
     except SQLAlchemyError as e:
         logger.error(f"Database error while deleting event '{event_id}': {str(e)}")
         db.rollback()
-        raise DatabaseError("Failed to delete event")
+
+        # Check for constraint violations that might slip through our integrity check
+        error_str = str(e).upper()
+        if ("'C': '23503'" in error_str or '23503' in error_str or
+            "'C': '23502'" in error_str or '23502' in error_str):
+            raise ConflictError("This event cannot be deleted because it has associated payments, musician assignments, or musician payment records. Please remove these associations first.")
+        else:
+            raise DatabaseError("Failed to delete event")
+    except ConflictError:
+        # Re-raise ConflictError as-is
+        raise
     finally:
         db.close()
 
