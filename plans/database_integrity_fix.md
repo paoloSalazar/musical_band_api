@@ -1,12 +1,106 @@
-# Database Integrity Fix Plan - Events Table & Relationships
+# Database Integrity Fix Plan - Complete Database Schema
 
 ## 🎯 Overview
 
-Comprehensive database integrity fixes for the events table and all related entities. Issues are prioritized from High to Low criticality.
+Comprehensive database integrity fixes across ALL tables and relationships in the Musical Band API database. Issues are prioritized from High to Low criticality, covering events, users, roles, permissions, and all related entities.
 
 ---
 
 ## 🚨 HIGH PRIORITY ISSUES
+
+### Issue 0: Complete Database Schema Coverage
+#### 🎯 Problem Statement
+This document was originally focused only on musician_events relationships but needs to cover ALL database tables for complete integrity.
+
+#### 📊 **Tables Covered in Original Plan:**
+- ✅ events
+- ✅ event_payments
+- ✅ event_musicians
+- ✅ musician_event_payments
+
+#### 📊 **Tables MISSING from Original Plan:**
+- ❌ users
+- ❌ user_roles
+- ❌ permissions
+- ❌ user_details
+- ❌ musician_availability
+
+#### Required State ✅
+- Complete coverage of all database tables
+- Consistent integrity constraints across entire schema
+- Unified approach to referential integrity
+
+---
+
+## 🚨 CRITICAL PRIORITY ISSUES (Users & Roles)
+
+### Issue A: User Deletion Cascade Prevention
+
+#### 🎯 Problem Statement
+User deletion could leave orphaned records across multiple related tables, causing data inconsistency and broken relationships.
+
+#### Current State ❌
+- Users have relationships to: events, event_payments, event_musicians, musician_event_payments, user_details, musician_availability
+- No database-level cascade prevention configured
+- User deletion possible when related records exist
+
+#### Required State ✅
+- User deletion blocked when dependent records exist
+- Clear error messages for all relationship types
+- Application-level validation before deletion attempts
+
+#### 🛠️ Implementation Plan
+
+##### Phase 1: Analyze User Relationships
+###### Tasks:
+1. **Audit all foreign keys pointing to users table:**
+   ```sql
+   SELECT tc.table_name, tc.constraint_name, kcu.column_name
+   FROM information_schema.table_constraints tc
+   JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+   WHERE tc.constraint_type = 'FOREIGN KEY'
+   AND tc.table_schema = 'public'
+   AND kcu.table_name != 'users'
+   AND kcu.referenced_table_name = 'users';
+   ```
+
+2. **Document relationship impact** for each dependent table
+
+##### Phase 2: Configure Foreign Key Constraints
+###### Tasks:
+1. **Update FK constraints to use RESTRICT instead of CASCADE**
+2. **Ensure application integrity checker handles all relationships**
+
+### Issue B: Role-Based Access Control Integrity
+
+#### 🎯 Problem Statement
+Role and permission deletions could break user access control and leave orphaned relationships.
+
+#### Current State ❌
+- Users assigned to roles (users.role_id → user_roles.id)
+- Roles assigned to permissions (role_permissions)
+- No cascade prevention for role/permission deletions
+
+#### Required State ✅
+- Role deletion blocked if users are assigned
+- Permission deletion blocked if roles are assigned
+- Clear dependency messages
+
+#### 🛠️ Implementation Plan
+
+##### Phase 1: Role Deletion Constraints
+###### Tasks:
+1. **Ensure FK from users to user_roles uses RESTRICT**
+2. **Application validation** prevents role deletion when users assigned
+
+##### Phase 2: Permission Deletion Constraints
+###### Tasks:
+1. **Ensure FK constraints prevent orphaned role_permissions**
+2. **Application validation** for permission deletion
+
+---
+
+## 🚨 HIGH PRIORITY ISSUES (Original Musician Events)
 
 ### Issue 1: Orphaned Payment Records (Musician Event Payments)
 
@@ -326,51 +420,155 @@ payment_status in event_musicians stored as VARCHAR instead of proper enum type.
 - Proper enum type in database
 - Consistent status value enforcement
 
+### Issue 8: Event Creation in the Past (Database-Level Validation)
+
+#### 🎯 Problem Statement
+Users can create events with start_datetime in the past, which should be prevented at database level for data integrity.
+
+#### Current State ❌
+- No database constraint prevents past event creation
+- Only application-level validation (currently missing)
+- Invalid events can be inserted directly into database
+
+#### Required State ✅
+- Database-level check constraint prevents past events
+- Consistent validation regardless of application logic
+- Clear error messages for constraint violations
+
+#### 🛠️ Implementation Plan
+
+##### Phase 1: Constraint Design & Testing
+###### Tasks:
+1. **Design check constraint** for events table:
+   ```sql
+   ALTER TABLE events ADD CONSTRAINT chk_event_not_in_past
+   CHECK (start_datetime >= CURRENT_TIMESTAMP);
+   ```
+   *Note: This uses transaction start time, which may allow events slightly in the past if transaction starts near creation time. For stricter enforcement, consider application-level validation.*
+
+2. **Test constraint behavior** on development database
+   - Attempt to insert past events
+   - Verify constraint blocks invalid inserts
+   - Test edge cases (events at exact current time)
+
+##### Phase 2: Migration Implementation
+###### Tasks:
+1. **Create Alembic migration**
+   ```bash
+   alembic revision -m "add_event_past_validation_constraint"
+   ```
+
+2. **Migration content:**
+   ```python
+   def upgrade():
+       op.create_check_constraint(
+           'chk_event_not_in_past',
+           'events',
+           'start_datetime >= CURRENT_TIMESTAMP'
+       )
+
+   def downgrade():
+       op.drop_constraint('chk_event_not_in_past', 'events')
+   ```
+
+3. **Handle existing data** (if any past events exist)
+   - Check for existing past events
+   - Clean up or document if found
+
+##### Phase 3: Application Coordination
+###### Tasks:
+1. **Update application validation** to match database constraint
+2. **Error handling** for constraint violations in application logs
+3. **Update tests** to expect database-level errors
+
+##### Phase 4: Testing & Deployment
+###### Tasks:
+1. **Unit tests** for constraint behavior
+2. **Integration tests** with application error handling
+3. **Staging deployment** and verification
+4. **Production deployment** with monitoring
+
 ---
 
 ## 📊 Overall Risk Assessment
 
+### **Critical Risk 🚨 Addressed:**
+- **Complete Data Integrity** - All tables covered with appropriate constraints
+- **User Management Integrity** - Role/permission relationships protected
+- **Financial Data Protection** - Payment constraints prevent corruption
+
 ### **High Risk ✅ Addressed:**
 - **Data corruption** - Composite FK prevents orphaned payments
 - **Financial inconsistency** - Business rules enforced at database level
+- **Access Control Integrity** - User/role/permission relationships protected
 
 ### **Medium Risk ⚠️ Mitigated:**
 - **Data duplication** - Unique constraints prevent duplicates
-- **Orphaned records** - Restrict delete behavior
+- **Orphaned records** - Restrict delete behavior across all tables
 - **Scheduling conflicts** - Availability validation
+- **Relationship Integrity** - All FK relationships properly constrained
 
 ### **Low Risk ✅ Acceptable:**
 - **Invalid dates** - Check constraints for datetime validation
+- **Past events** - Database constraints prevent invalid scheduling
 - **Payment inconsistencies** - Business rule triggers
 - **Status validation** - Enum types for consistency
+- **Data Type Validation** - Appropriate constraints on all columns
 
 ---
 
 ## ⏱️ Consolidated Timeline Summary
 
-| Priority | Issue | Est. Time | Dependencies |
-|----------|-------|-----------|--------------|
-| **HIGH** | Orphaned Payment Records | 2.25-3 days | None |
-| **MEDIUM** | Unique Constraints | 0.5-1 day | After High |
-| **MEDIUM** | Cascade Delete | 0.5 days | After High |
-| **MEDIUM** | Availability Validation | 0.5 days | After High |
-| **LOW** | Datetime Validation | 0.25 days | After Medium |
-| **LOW** | Payment Rules | 0.5 days | After Medium |
-| **LOW** | Status Enum | 0.25 days | After Medium |
-| **Total** | | **4.25-6 days** | |
+| Priority | Issue Category | Issue | Est. Time | Dependencies |
+|----------|----------------|-------|-----------|--------------|
+| **CRITICAL** | User Management | User Deletion Constraints | 1-1.5 days | None |
+| **CRITICAL** | Access Control | Role/Permission Integrity | 1-1.5 days | None |
+| **HIGH** | Musician Events | Orphaned Payment Records | 2.25-3 days | After Critical |
+| **MEDIUM** | Data Quality | Unique Constraints | 0.5-1 day | After High |
+| **MEDIUM** | Referential Integrity | Cascade Delete Behavior | 0.5 days | After High |
+| **MEDIUM** | Business Logic | Availability Validation | 0.5 days | After High |
+| **LOW** | Data Validation | Datetime Validation | 0.25 days | After Medium |
+| **LOW** | Data Validation | Event Past Validation | 0.5 days | After Medium |
+| **LOW** | Business Logic | Payment Rules | 0.5 days | After Medium |
+| **LOW** | Data Types | Status Enum Consistency | 0.25 days | After Medium |
+| **Total** | | | **6.75-10 days** | |
 
 ---
 
 ## 🚀 Business Impact
 
-This comprehensive fix ensures:
-- **Complete data integrity** across all event-related tables
-- **Financial accuracy** with proper payment constraints
-- **Operational reliability** with scheduling validation
-- **Regulatory compliance** with audit trails
-- **System stability** with database-level enforcement
+This comprehensive database integrity overhaul ensures:
+- **Complete Data Integrity** across ALL database tables and relationships
+- **Financial Accuracy** with payment constraints and business rules
+- **Access Control Security** with protected user/role/permission relationships
+- **Operational Reliability** with scheduling and availability validation
+- **Regulatory Compliance** with audit trails and data consistency
+- **System Stability** with database-level enforcement and application validation
+- **Data Quality Assurance** with constraints preventing corruption and inconsistencies
 
 ---
 
-**Ready for phased implementation starting with high-priority issues.**</content>
+## 📋 Implementation Strategy
+
+### Phase 1: Critical Infrastructure (Users & Access Control)
+- User deletion constraints
+- Role/permission integrity
+- **Est. Time: 2-3 days**
+
+### Phase 2: Core Business Logic (Musician Events)
+- Orphaned payment records fix
+- Composite foreign key implementation
+- **Est. Time: 2.25-3 days**
+
+### Phase 3: Data Quality & Validation
+- Unique constraints, cascade behavior, availability validation
+- **Est. Time: 1.5-2.5 days**
+
+### Phase 4: Advanced Features
+- Datetime validation, payment business rules, enum consistency
+- **Est. Time: 1-1.5 days**
+
+---
+
+**Ready for comprehensive phased implementation covering entire database schema.**</content>
 <parameter name="filePath">plans/database_integrity_fix_plan.md

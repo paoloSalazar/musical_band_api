@@ -368,7 +368,11 @@ def create(event_create: EventCreate) -> EventResponse:
         # Validate event dates
         if event_create.start_datetime >= event_create.end_datetime:
             raise ConflictError("End datetime must be after start datetime")
-        
+
+        # Validate event is not in the past
+        if event_create.start_datetime < datetime.now():
+            raise ConflictError("Cannot create events in the past")
+
         # Check for conflicting events
         if event_create.user_id is not None:
             check_event_conflict(

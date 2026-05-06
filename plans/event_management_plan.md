@@ -243,6 +243,18 @@ All authenticated users can access all events to check availability. This is ach
    - Permission checks
    - Role-based access
 
+## Issues Found During Testing
+
+### Issue 1: Event Creation in the Past
+- **Description**: Users can currently create events with start_datetime in the past, which should not be allowed.
+- **Current Status**: Validation not implemented in `services/event.py` create function.
+- **Impact**: Allows invalid events to be scheduled.
+- **Fix Plan**:
+  1. Add validation in `services/event.py` create function to check if `event_create.start_datetime < datetime.now()`.
+  2. Raise `ConflictError` with message "Cannot create events in the past".
+  3. Add unit test in `tests/unit/services/test_event.py` for this validation.
+  4. Update API documentation to reflect this constraint.
+
 ## Implementation Order
 
 1. **Migration** - Update database schema
