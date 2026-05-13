@@ -4,10 +4,12 @@ from fastapi import HTTPException
 from schemas.musician_availability import (
     MusicianAvailabilityCreate,
     MusicianAvailabilityUpdate,
-    MusicianAvailabilityResponse
+    MusicianAvailabilityResponse,
+    MusicianAvailabilityMonthlyResponse
 )
 from web.musician_availability import (
     get_by_musician,
+    get_musician_availability_by_month,
     check_availability,
     create_availability,
     create_bulk_availability,
@@ -461,3 +463,112 @@ def test_create_availability_denies_missing_permission(mocker):
 
     assert exc_info.value.status_code == 403
     assert "Missing required permission" in exc_info.value.detail
+
+
+def test_get_musician_availability_by_month_success(mocker):
+    """Test get_musician_availability_by_month() returns monthly availability"""
+    # Arrange
+    musician_id = 1
+    year = 2024
+    month = 5
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
+
+    from schemas.musician_availability import MusicianAvailabilityMonthlyItem
+
+    mock_response = MusicianAvailabilityMonthlyResponse(
+        musician_id=musician_id,
+        year=year,
+        month=month,
+        unavailable_dates=[
+            MusicianAvailabilityMonthlyItem(id=1, unavailable_date=date(2026, 5, 15), reason="Holiday"),
+            MusicianAvailabilityMonthlyItem(id=2, unavailable_date=date(2026, 5, 20), reason="Sick")
+        ]
+    )
+    mock_service = mocker.patch('web.musician_availability.service.get_musician_availability_by_month')
+    mock_service.return_value = mock_response
+
+    # Act
+    result = get_musician_availability_by_month(
+        current_user=current_user,
+        musician_id=musician_id,
+        year=year,
+        month=month
+    )
+
+    # Assert
+    assert result.musician_id == musician_id
+    assert result.year == year
+    assert result.month == month
+    assert len(result.unavailable_dates) == 2
+    mock_service.assert_called_once_with(musician_id, year, month, current_user)
+
+
+def test_get_musician_availability_by_month_unauthorized(mocker):
+    """Test get_musician_availability_by_month() raises HTTPException for unauthorized access"""
+    # Arrange
+    musician_id = 2  # Different musician
+    year = 2024
+    month = 5
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
+
+    mock_service = mocker.patch('web.musician_availability.service.get_musician_availability_by_month')
+    mock_service.side_effect = UnauthorizedError("You can only view your own availability")
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        get_musician_availability_by_month(
+            current_user=current_user,
+            musician_id=musician_id,
+            year=year,
+            month=month
+        )
+
+    assert exc_info.value.status_code == 403
+    assert "You can only view your own availability" in exc_info.value.detail
+
+
+def test_get_musician_availability_by_month_validation_error(mocker):
+    """Test get_musician_availability_by_month() raises HTTPException for validation errors"""
+    # Arrange
+    musician_id = 1
+    year = 2024
+    month = 13  # Invalid month
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
+
+    mock_service = mocker.patch('web.musician_availability.service.get_musician_availability_by_month')
+    mock_service.side_effect = ValidationError("Month must be between 1 and 12")
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        get_musician_availability_by_month(
+            current_user=current_user,
+            musician_id=musician_id,
+            year=year,
+            month=month
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "Month must be between 1 and 12" in exc_info.value.detail
+
+
+def test_get_musician_availability_by_month_database_error(mocker):
+    """Test get_musician_availability_by_month() raises HTTPException for database errors"""
+    # Arrange
+    musician_id = 1
+    year = 2024
+    month = 5
+    current_user = {"id": 1, "role": "musician", "permissions": ["read:musician_availability"]}
+
+    mock_service = mocker.patch('web.musician_availability.service.get_musician_availability_by_month')
+    mock_service.side_effect = DatabaseError("Database error")
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        get_musician_availability_by_month(
+            current_user=current_user,
+            musician_id=musician_id,
+            year=year,
+            month=month
+        )
+
+    assert exc_info.value.status_code == 500

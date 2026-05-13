@@ -167,12 +167,34 @@ Implemented specific role-based access control for musician availability endpoin
 - Maintains admin oversight capabilities for system management
 - Blocks access at the API level before reaching business logic
 
-### Sub-Phase 1.12: Integration Testing
+### Monthly Availability Endpoint Implementation
+#### Overview
+This sub-phase adds an endpoint to retrieve musician availability dates by month, enabling calendar views and scheduling interfaces to display unavailable dates for a given musician.
+
 #### Tasks:
-1. Write and run integration tests for availability feature
-   - Full availability management workflows
-   - Authorization rules: musicians set own availability, visibility restrictions
-   - End-to-end scenarios
+1. **Update Data Layer** (`data/musician_availability.py`):
+   - Add `get_musician_availability_by_month(musician_id, year, month)` function
+   - Query unavailable dates within the specified month range
+   - Return list of dates for calendar integration
+
+2. **Update Service Layer** (`services/musician_availability.py`):
+   - Add business logic for monthly availability retrieval
+   - Include authorization checks (own availability or admin access)
+   - Format dates appropriately for API response
+
+3. **Update Web Layer** (`web/musician_availability.py`):
+   - Add `GET /api/musicians/{musician_id}/availability/month/{year}/{month}` endpoint
+   - Validate year/month parameters (valid ranges, future dates)
+   - Return availability data with proper HTTP status codes
+
+4. **Update Schemas** (`schemas/musician_availability.py`):
+   - Add `MusicianAvailabilityMonthlyResponse` schema
+   - Include month/year metadata and list of unavailable dates
+
+5. **Add Tests**:
+   - Unit tests for data/service layer functions
+   - Integration tests for the new endpoint
+   - Test authorization rules and parameter validation
 
 #### Estimated Time: 0.5 days
 #### Dependencies: Sub-Phase 1.11 complete

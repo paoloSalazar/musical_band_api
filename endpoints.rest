@@ -1,6 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjY4NDc2NX0.2xWPx2A7udDLyDSUCoXLy0vVQgW1LlM3sQVyiUD2VVM
-
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb256YWxvLnJleWVzQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6NSwicm9sZV9pZCI6NCwiZXhwIjoxNzc4NjQ3OTY5fQ.QWicDsd1wGmfv-oESrv8lAO_Gm-4aW49IGQF0MeqyLY
 ###
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
@@ -591,6 +590,29 @@ Authorization: Bearer {{user_token}}
 ### Check if a musician is available on a specific date
 GET {{api}}/musician-availability/check/5/2026-04-15
 Authorization: Bearer {{user_token}}
+
+### Get musician availability dates by month (for calendar integration)
+GET {{api}}/musician-availability/5/month/2026/5
+Authorization: Bearer {{user_token}}
+
+### Example response:
+# {
+#   "musician_id": 5,
+#   "year": 2026,
+#   "month": 5,
+#   "unavailable_dates": [
+#     {
+#       "id": 30,
+#       "unavailable_date": "2026-05-13",
+#       "reason": "Lage Weekend"
+#     },
+#     {
+#       "id": 31,
+#       "unavailable_date": "2026-05-14",
+#       "reason": "Evento Familiar"
+#     }
+#   ]
+# }
 
 ### Create a new availability entry (musicians/auxiliar_musicians can only create for themselves, admin can create for any)
 POST {{api}}/musician-availability

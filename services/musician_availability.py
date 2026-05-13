@@ -6,6 +6,7 @@ including validation, authorization, and data transformation.
 
 Functions:
     - get_by_musician: Get availability for a musician (with authorization)
+    - get_musician_availability_by_month: Get monthly availability for a musician (with authorization)
     - get_all_by_date: Get all musicians unavailable on a date (admin only)
     - create: Create new availability entry (musician only)
     - create_bulk: Create multiple entries (musician only)
@@ -22,7 +23,8 @@ from schemas.musician_availability import (
     MusicianAvailabilityCreate,
     MusicianAvailabilityUpdate,
     MusicianAvailabilityResponse,
-    MusicianAvailabilitySummaryResponse
+    MusicianAvailabilitySummaryResponse,
+    MusicianAvailabilityMonthlyResponse
 )
 import data.musician_availability as data
 import data.user as user_data
@@ -75,6 +77,57 @@ def get_by_musician(musician_id: int, current_user: dict) -> List[MusicianAvaila
         return availabilities
     except (DatabaseError, DatabaseConnectionError) as e:
         logger.error(f"Service error in get_by_musician for musician {musician_id}")
+        raise DatabaseError("Service error")
+
+
+def get_musician_availability_by_month(musician_id: int, year: int, month: int, current_user: dict) -> MusicianAvailabilityMonthlyResponse:
+    """
+    Retrieve all unavailable dates for a musician within a specific month.
+
+    Authorization:
+    - Musicians and auxiliar_musicians can only view their own availability
+    - Admins can view anyone's availability
+
+    Args:
+        musician_id: The ID of the musician.
+        year: The year to query.
+        month: The month to query (1-12).
+        current_user: Current authenticated user dict with 'id', 'role', 'permissions'.
+
+    Returns:
+        MusicianAvailabilityMonthlyResponse with unavailable dates for the month.
+
+    Raises:
+        UnauthorizedError: If user lacks permission to view availability.
+        ValidationError: If year/month are invalid.
+        DatabaseError: If database operation fails.
+    """
+    # Validate year and month
+    if not (1 <= month <= 12):
+        raise ValidationError("Month must be between 1 and 12")
+    if year < 2000 or year > 2100:
+        raise ValidationError("Year must be between 2000 and 2100")
+
+    # Authorization check
+    current_user_id = current_user.get('id')
+    user_role = current_user.get('role')
+
+    if user_role not in ['admin'] and current_user_id != musician_id:
+        logger.warning(f"User {current_user_id} with role {user_role} attempted to view monthly availability for musician {musician_id}")
+        raise UnauthorizedError("You can only view your own availability")
+
+    try:
+        unavailable_dates = data.get_musician_availability_by_month(musician_id, year, month)
+        response = MusicianAvailabilityMonthlyResponse(
+            musician_id=musician_id,
+            year=year,
+            month=month,
+            unavailable_dates=unavailable_dates
+        )
+        logger.info(f"Retrieved {len(unavailable_dates)} unavailable dates for musician {musician_id} in {year}-{month}")
+        return response
+    except (DatabaseError, DatabaseConnectionError) as e:
+        logger.error(f"Service error in get_musician_availability_by_month for musician {musician_id} in {year}-{month}")
         raise DatabaseError("Service error")
 
 

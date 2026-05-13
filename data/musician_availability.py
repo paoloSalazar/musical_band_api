@@ -7,6 +7,7 @@ Functions:
     - get_by_musician: Get availability by musician ID
     - get_by_musician_and_date: Get specific availability entry
     - get_all_by_date: Get all musicians unavailable on a specific date
+    - get_musician_availability_by_month: Get unavailable dates for a musician in a specific month
     - create: Create new availability entry
     - create_bulk: Create multiple availability entries
     - update: Update existing availability entry
@@ -20,6 +21,7 @@ from models.musician_availability import MusicianAvailability
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from sqlalchemy.orm import selectinload
 from datetime import date
+import calendar
 from exceptions import DatabaseError, DatabaseConnectionError
 
 logger = logging.getLogger(__name__)
@@ -354,5 +356,49 @@ def delete_by_musician_and_date(musician_id: int, unavailable_date: date) -> boo
         logger.error(f"Database error while deleting availability for musician '{musician_id}' on '{unavailable_date}'")
         db.rollback()
         raise DatabaseError("Failed to delete musician availability")
+    finally:
+        db.close()
+
+
+def get_musician_availability_by_month(musician_id: int, year: int, month: int) -> list[MusicianAvailability]:
+    """
+    Retrieve all availability entries for a musician within a specific month.
+
+    Args:
+        musician_id: The ID of the musician.
+        year: The year to query.
+        month: The month to query (1-12).
+
+    Returns:
+        List of MusicianAvailability objects for the specified month.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+
+    Example:
+        >>> availabilities = get_musician_availability_by_month(1, 2024, 5)
+        >>> for av in availabilities:
+        ...     print(f"ID: {av.id}, Date: {av.unavailable_date}, Reason: {av.reason}")
+    """
+    # Calculate start and end dates for the month
+    _, last_day = calendar.monthrange(year, month)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, last_day)
+
+    db = SessionLocal()
+    try:
+        result = db.query(MusicianAvailability).filter(
+            MusicianAvailability.musician_id == musician_id,
+            MusicianAvailability.unavailable_date >= start_date,
+            MusicianAvailability.unavailable_date <= end_date
+        ).all()
+        return result
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while getting monthly availability for musician '{musician_id}' in {year}-{month}")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while getting monthly availability for musician '{musician_id}' in {year}-{month}")
+        raise DatabaseError("Failed to get musician monthly availability")
     finally:
         db.close()
