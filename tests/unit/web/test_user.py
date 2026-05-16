@@ -1,5 +1,5 @@
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Query
 from schemas.user import UserResponse, UserCreate, UserUpdate, UserPasswordUpdate, UserResponseWithRole, UserPaginationResponse, UserProfileUpdate
 from web.user import get_all, get_one, create, modify, modify_password, get_current_user_info, get_one_by_id, modify_by_id, delete, modify_me
 from exceptions import NotFoundError, ConflictError, DatabaseError
@@ -14,12 +14,12 @@ def test_get_users_empty_list(mocker):
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
 
     # Act - Call function directly
-    result = get_all(current_user=mock_current_user)
+    result = get_all(current_user=mock_current_user, roles=None)
 
     # Assert - Check result is empty pagination response
     assert result.data == []
     assert result.total == 0
-    mock_service.assert_called_once()
+    mock_service.assert_called_once_with(skip=0, limit=20, order_by=None, roles=None)
 
 
 def test_get_users_with_order_by(mocker):
@@ -34,12 +34,12 @@ def test_get_users_with_order_by(mocker):
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
 
     # Act - Call function with order_by parameter
-    result = get_all(current_user=mock_current_user, skip=0, limit=20, order_by='name')
+    result = get_all(current_user=mock_current_user, skip=0, limit=20, order_by='name', roles=None)
 
     # Assert
     assert len(result.data) == 2
     assert result.total == 2
-    mock_service.assert_called_once_with(skip=0, limit=20, order_by='name')
+    mock_service.assert_called_once_with(skip=0, limit=20, order_by='name', roles=None)
 
 
 def test_get_users_without_order_by(mocker):
@@ -53,11 +53,11 @@ def test_get_users_without_order_by(mocker):
     mock_current_user = {"sub": "test@example.com", "role": "admin"}
 
     # Act - Call function without order_by parameter
-    result = get_all(current_user=mock_current_user, skip=0, limit=20)
+    result = get_all(current_user=mock_current_user, skip=0, limit=20, roles=None)
 
     # Assert
     assert len(result.data) == 1
-    mock_service.assert_called_once_with(skip=0, limit=20, order_by=None)
+    mock_service.assert_called_once_with(skip=0, limit=20, order_by=None, roles=None)
 
 
 def test_delete_user_success(mocker):
@@ -737,7 +737,7 @@ def test_create_user_rbac_denies_non_admin_without_permission(mocker):
         required_roles=["admin"],
         required_permissions=["write:users"]
     )
-    
+
     # Simulate regular user without admin role or write:users permission
     mock_regular_user = {
         "id": 3,
@@ -746,10 +746,88 @@ def test_create_user_rbac_denies_non_admin_without_permission(mocker):
         "role_id": 2,
         "permissions": []
     }
-    
+
     # Act & Assert - Should raise HTTPException for lacking admin role
     with pytest.raises(HTTPException) as exc_info:
         checker._check_role_and_permission(mock_regular_user)
-    
+
     assert exc_info.value.status_code == 403
     assert "Access denied" in exc_info.value.detail
+
+
+def test_get_users_with_role_filter_musician(mocker):
+    """Test get_all() filters users by single role 'musician'"""
+    # Arrange - Mock service to return only musician users
+    musician_users = [
+        UserResponseWithRole(id=1, name="John", lastname="Doe", email="john@example.com", role_id=2, role="musician"),
+        UserResponseWithRole(id=2, name="Jane", lastname="Smith", email="jane@example.com", role_id=2, role="musician")
+    ]
+    mock_service = mocker.patch('web.user.service.get_all_paginated')
+    mock_service.return_value = UserPaginationResponse(data=musician_users, total=2, skip=0, limit=20)
+    mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+
+    # Act - Call function with role filter
+    result = get_all(current_user=mock_current_user, roles=["musician"])
+
+    # Assert
+    assert len(result.data) == 2
+    assert all(user.role == "musician" for user in result.data)
+    mock_service.assert_called_once_with(skip=0, limit=20, order_by=None, roles=["musician"])
+
+
+def test_get_users_with_role_filter_multiple_roles(mocker):
+    """Test get_all() filters users by multiple roles"""
+    # Arrange - Mock service to return users with musician or auxiliar_musician roles
+    mixed_users = [
+        UserResponseWithRole(id=1, name="John", lastname="Doe", email="john@example.com", role_id=2, role="musician"),
+        UserResponseWithRole(id=2, name="Jane", lastname="Smith", email="jane@example.com", role_id=3, role="auxiliar_musician")
+    ]
+    mock_service = mocker.patch('web.user.service.get_all_paginated')
+    mock_service.return_value = UserPaginationResponse(data=mixed_users, total=2, skip=0, limit=20)
+    mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+
+    # Act - Call function with multiple role filters
+    result = get_all(current_user=mock_current_user, roles=["musician", "auxiliar_musician"])
+
+    # Assert
+    assert len(result.data) == 2
+    roles = {user.role for user in result.data}
+    assert roles == {"musician", "auxiliar_musician"}
+    mock_service.assert_called_once_with(skip=0, limit=20, order_by=None, roles=["musician", "auxiliar_musician"])
+
+
+def test_get_users_with_role_filter_invalid_role(mocker):
+    """Test get_all() with invalid role raises 400"""
+    # Arrange - Mock service to raise an error for invalid role
+    mock_service = mocker.patch('web.user.service.get_all_paginated')
+    mock_service.side_effect = ValueError("Invalid role: invalid_role")
+    mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+
+    # Act & Assert - Should raise HTTPException 400
+    with pytest.raises(HTTPException) as exc_info:
+        get_all(current_user=mock_current_user, roles=["invalid_role"])
+
+    assert exc_info.value.status_code == 400
+    assert "Invalid role" in exc_info.value.detail
+
+
+def test_get_users_pagination_with_role_filter(mocker):
+    """Test get_all() preserves pagination with role filter"""
+    # Arrange - Mock service to return paginated results with role filter
+    paginated_users = [
+        UserResponseWithRole(id=1, name="John", lastname="Doe", email="john@example.com", role_id=2, role="musician"),
+        UserResponseWithRole(id=2, name="Jane", lastname="Smith", email="jane@example.com", role_id=2, role="musician")
+    ]
+    mock_service = mocker.patch('web.user.service.get_all_paginated')
+    mock_service.return_value = UserPaginationResponse(data=paginated_users, total=5, skip=2, limit=2)
+    mock_current_user = {"sub": "admin@example.com", "role": "admin"}
+
+    # Act - Call function with pagination and role filter
+    result = get_all(current_user=mock_current_user, skip=2, limit=2, roles=["musician"])
+
+    # Assert
+    assert len(result.data) == 2
+    assert result.total == 5
+    assert result.skip == 2
+    assert result.limit == 2
+    mock_service.assert_called_once_with(skip=2, limit=2, order_by=None, roles=["musician"])

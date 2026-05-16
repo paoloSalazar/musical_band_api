@@ -15,6 +15,8 @@ from config.database import SessionLocal
 from models.user import User
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from models.user_role import UserRole
 from exceptions import DatabaseError, DatabaseConnectionError, ConflictError
 from data.integrity_checker import check_integrity_before_deletion
 
@@ -111,7 +113,7 @@ def get_all() -> list[User]:
         db.close()
 
 
-def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = None) -> tuple[list[User], int]:
+def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = None, roles: list[str] | None = None) -> tuple[list[User], int]:
     """
     Retrieve users from the database with pagination and join with roles.
 
@@ -129,19 +131,24 @@ def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = Non
     """
     db = SessionLocal()
     try:
-        # Get total count
-        total = db.query(User).count()
-        
-        # Build query with optional ordering
+        # Build query with optional role filtering
         query = db.query(User).options(selectinload(User.role))
-        
+        total_query = db.query(User)
+
+        if roles:
+            query = query.filter(User.role.has(UserRole.name.in_(roles)))
+            total_query = total_query.filter(User.role.has(UserRole.name.in_(roles)))
+
+        # Get total count
+        total = total_query.count()
+
         # Apply ordering if order_by is provided
         if order_by:
             # Get the attribute from the User model
             order_column: InstrumentedAttribute | None = getattr(User, order_by, None)
             if order_column is not None:
                 query = query.order_by(order_column)
-        
+
         # Apply pagination
         users = query.offset(skip).limit(limit).all()
         return users, total

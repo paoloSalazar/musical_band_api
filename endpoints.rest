@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb256YWxvLnJleWVzQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6NSwicm9sZV9pZCI6NCwiZXhwIjoxNzc4NjQ3OTY5fQ.QWicDsd1wGmfv-oESrv8lAO_Gm-4aW49IGQF0MeqyLY
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3ODg2MTY5NH0.m-09KZ826BM-15YThNwWHF0CsXpKqGdQ5NsjnJU13SU
 ###
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
@@ -114,6 +114,43 @@ Authorization: Bearer {{user_token}}
 ### Get all users (requires authentication)
 GET {{api}}/users/
 Authorization: Bearer {{user_token}}
+
+### Get users filtered by single role (e.g., musicians)
+GET {{api}}/users/?role=musician
+Authorization: Bearer {{user_token}}
+
+### Get users filtered by multiple roles (e.g., musicians and auxiliar_musicians)
+GET {{api}}/users/?roles=musician&roles=auxiliar_musician
+Authorization: Bearer {{user_token}}
+
+### Example response for role filtering:
+# {
+#   "data": [
+#     {
+#       "id": 2,
+#       "name": "John",
+#       "lastname": "Doe",
+#       "second_lastname": null,
+#       "email": "john.doe@example.com",
+#       "phone_number": "+1234567890",
+#       "role_id": 2,
+#       "role": "musician"
+#     },
+#     {
+#       "id": 3,
+#       "name": "Jane",
+#       "lastname": "Smith",
+#       "second_lastname": null,
+#       "email": "jane.smith@example.com",
+#       "phone_number": "+0987654321",
+#       "role_id": 3,
+#       "role": "auxiliar_musician"
+#     }
+#   ],
+#   "total": 2,
+#   "skip": 0,
+#   "limit": 20
+# }
 
 ### Post a new user
 POST {{api}}/users/

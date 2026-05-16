@@ -15,6 +15,7 @@ Functions:
 import logging
 from schemas.user import UserResponse, UserCreate, UserUpdate, UserResponseWithRole, UserPaginationResponse
 import data.user as data
+import data.user_role as user_role_data
 from models.user import User as DBUser
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError, ConflictError, UnauthorizedError
 from auth.auth import get_password_hash, verify_password
@@ -42,7 +43,7 @@ def get_all() -> list[UserResponse]:
         raise DatabaseError("Service error")
 
 
-def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = None) -> UserPaginationResponse:
+def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = None, roles: list[str] | None = None) -> UserPaginationResponse:
     """
     Retrieve users from the database with pagination.
 
@@ -58,7 +59,14 @@ def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = Non
         DatabaseError: If database operation fails.
     """
     try:
-        db_users, total = data.get_all_paginated(skip=skip, limit=limit, order_by=order_by)
+        # Validate roles if provided
+        if roles:
+            existing_roles = {role.name for role in user_role_data.get_all()}
+            invalid_roles = set(roles) - existing_roles
+            if invalid_roles:
+                raise ValueError(f"Invalid role(s): {', '.join(invalid_roles)}")
+
+        db_users, total = data.get_all_paginated(skip=skip, limit=limit, order_by=order_by, roles=roles)
         users = [
             UserResponseWithRole(
                 id=user.id,

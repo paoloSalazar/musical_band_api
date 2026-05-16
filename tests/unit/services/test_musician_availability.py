@@ -557,8 +557,8 @@ def test_get_musician_availability_by_month_success(mocker):
     current_user = {'id': 1, 'role': 'musician'}
 
     expected_availabilities = [
-        MusicianAvailability(id=1, musician_id=1, unavailable_date=date(2026, 5, 15), reason="Holiday"),
-        MusicianAvailability(id=2, musician_id=1, unavailable_date=date(2026, 5, 20), reason="Sick")
+        MusicianAvailability(id=1, musician_id=1, unavailable_date=date(2026, 5, 20), reason="Holiday"),
+        MusicianAvailability(id=2, musician_id=1, unavailable_date=date(2026, 5, 25), reason="Sick")
     ]
     mock_data_get = mocker.patch('services.musician_availability.data.get_musician_availability_by_month')
     mock_data_get.return_value = expected_availabilities
@@ -572,7 +572,7 @@ def test_get_musician_availability_by_month_success(mocker):
     assert result.month == month
     assert len(result.unavailable_dates) == 2
     assert result.unavailable_dates[0].id == 1
-    assert result.unavailable_dates[0].unavailable_date == date(2026, 5, 15)
+    assert result.unavailable_dates[0].unavailable_date == date(2026, 5, 20)
     assert result.unavailable_dates[0].reason == "Holiday"
     mock_data_get.assert_called_once_with(musician_id, year, month)
 

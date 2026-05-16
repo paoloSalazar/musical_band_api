@@ -231,8 +231,8 @@ def test_get_musician_availability_by_month_found(mocker):
     mock_query.filter.return_value = mock_query
 
     expected_availabilities = [
-        MusicianAvailability(id=1, musician_id=1, unavailable_date=date(2026, 5, 15), reason="Holiday"),
-        MusicianAvailability(id=2, musician_id=1, unavailable_date=date(2026, 5, 20), reason="Sick")
+        MusicianAvailability(id=1, musician_id=1, unavailable_date=date(2026, 5, 20), reason="Holiday"),
+        MusicianAvailability(id=2, musician_id=1, unavailable_date=date(2026, 5, 25), reason="Sick")
     ]
     mock_query.all.return_value = expected_availabilities
 
