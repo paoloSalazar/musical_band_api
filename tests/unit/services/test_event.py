@@ -634,4 +634,44 @@ class TestEventServiceCalendar:
         
         # Assert
         assert len(result) == 1
-        mock_data_by_month.assert_called_once_with(2026, 3, 1)
+        mock_data_by_month.assert_called_once_with(
+            2026, 3, 1,
+            current_user_role=None, current_user_id=None
+        )
+
+
+class TestEventServiceMusicianFiltering:
+    """TDD tests for service layer musician role filtering"""
+
+    @patch('services.event.data.get_paginated')
+    def test_get_paginated_passes_role_to_data_layer(self, mock_data_paginated):
+        """Service must forward role/user_id to data layer"""
+        mock_data_paginated.return_value = ([], 0)
+
+        event_service.get_paginated(
+            page=1, limit=20,
+            current_user_role="musician",
+            current_user_id=5
+        )
+
+        mock_data_paginated.assert_called_once_with(
+            page=1, limit=20, status=None, search=None, user_id=None,
+            start_after=None, end_before=None, sort_by="created_at", order="desc",
+            current_user_role="musician", current_user_id=5
+        )
+
+    @patch('services.event.data.get_events_by_month')
+    def test_get_by_month_passes_role_to_data_layer(self, mock_data_month):
+        """Calendar service must also forward musician role params"""
+        mock_data_month.return_value = []
+
+        event_service.get_by_month(
+            2026, 5,
+            current_user_role="auxiliar_musician",
+            current_user_id=7
+        )
+
+        mock_data_month.assert_called_once_with(
+            2026, 5, None,
+            current_user_role="auxiliar_musician", current_user_id=7
+        )
