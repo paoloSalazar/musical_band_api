@@ -15,8 +15,8 @@ Endpoints:
 import logging
 from typing import Annotated, Optional
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, Request, Query
-from auth.auth import decode_access_token
+from fastapi import APIRouter, HTTPException, Depends, Query
+from auth.auth import get_current_user
 from auth.roles import RoleAndPermissionChecker
 from schemas.event import EventCreate, EventResponse, EventUpdate, EventStatusEnum, PaginatedEventResponse, EventSetPrice
 import services.event as event_service
@@ -25,23 +25,6 @@ from exceptions import NotFoundError, DatabaseError, ConflictError
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/events")
-
-
-async def get_current_user(request: Request) -> dict:
-    """
-    Verify JWT token and return current user information.
-    """
-    authorization = request.headers.get("Authorization")
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Authorization header missing")
-
-    token = authorization.replace("Bearer ", "")
-    payload = decode_access_token(token)
-
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-    return payload
 
 
 @router.get("/")
@@ -89,7 +72,7 @@ def get_all(
             sort_by=sort_by,
             order=order,
             current_user_role=current_user.get("role"),
-            current_user_id=current_user.get("user_id")
+            current_user_id=current_user.get("id")
         )
         logger.info(f"API request: Retrieved page {page} ({len(result.items)} items) by {current_user.get('sub')}")
         return result
@@ -123,7 +106,7 @@ def get_calendar(
         events = event_service.get_by_month(
             year, month, user_id,
             current_user_role=current_user.get("role"),
-            current_user_id=current_user.get("user_id")
+            current_user_id=current_user.get("id")
         )
         logger.info(f"API request: Retrieved {len(events)} events for {year}-{month:02d} by {current_user.get('sub')}")
         return events

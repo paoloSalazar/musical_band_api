@@ -1,7 +1,6 @@
 """Tests for event endpoints in web layer (TDD for musician filtering)."""
 
 from unittest.mock import MagicMock, patch
-from datetime import datetime
 import web.event as event_web
 
 
@@ -14,10 +13,10 @@ class TestEventWebMusicianFiltering:
         mock_service.return_value = MagicMock(items=[], total=0, page=1, limit=20, total_pages=0)
 
         # Simulate current_user payload from get_current_user
-        current_user = {"sub": "musician@example.com", "role": "musician", "user_id": 5}
+        current_user = {"sub": "musician@example.com", "role": "musician", "id": 5}
 
         # Call the endpoint function directly
-        result = event_web.get_all(
+        event_web.get_all(
             current_user=current_user,
             page=1, limit=20,
             status=None, search=None, user_id=None,
@@ -36,7 +35,7 @@ class TestEventWebMusicianFiltering:
         """Calendar endpoint must also forward musician role"""
         mock_service.return_value = []
 
-        current_user = {"sub": "aux@example.com", "role": "auxiliar_musician", "user_id": 7}
+        current_user = {"sub": "aux@example.com", "role": "auxiliar_musician", "id": 7}
 
         event_web.get_calendar(
             current_user=current_user,
