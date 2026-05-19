@@ -685,3 +685,17 @@ This sub-phase implements date-based restrictions for payment timing to ensure p
 - Database Administrator: For migration reviews
 - QA Engineer: For testing and validation
 - DevOps: For deployment support
+
+## IMPROVEMENTS
+
+### Musician Availability Event Assignment Validation (Phase 1)
+
+Implementation Plan Addition (Phase 1 Musician Availability):
+
+1. **Sub-Phase 1.7 (Data Layer)**: Extend `data/musician_availability.py` with `check_musician_event_assignment(musician_id, date)` – query `event_musician` (or events join) for active assignments on that date.
+2. **Sub-Phase 1.9 (Services Layer)**: In `services/musician_availability.py` create/update functions: call above check; if assigned, raise 400/409 with "Cannot mark unavailable – already assigned to event on this date".
+3. **Sub-Phase 1.11 (Web Layer)**: Propagate error in POST `/availability`; update docs/tests for new conflict case.
+4. **Dependencies/Notes**: Requires EventMusician table (Phase 2) or forward-ref; place validation after musician role check; TDD tests in 1.8/1.10; no code edits now.
+
+**Event Name in Error Message**:
+Yes, include event name by joining `event_musician` + `events` in the data-layer check (return event name or None). Pass it to the service error: "Cannot mark date unavailable – assigned to event '{name}' on this date".

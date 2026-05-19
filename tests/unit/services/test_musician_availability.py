@@ -291,6 +291,34 @@ def test_create_conflict(mocker):
     assert "Availability already exists" in str(exc_info.value)
 
 
+def test_create_event_assignment_conflict(mocker):
+    """Test create() raises ConflictError when musician assigned to event on that date (includes event name)"""
+    # Arrange
+    current_user = {'id': 1, 'role': 'musician'}
+    availability_data = MusicianAvailabilityCreate(
+        musician_id=1,
+        unavailable_date=date.today() + timedelta(days=1),
+        reason="Holiday"
+    )
+
+    mock_musician = Mock()
+    mock_musician.id = 1
+    mock_user_data_get = mocker.patch('services.musician_availability.user_data.get_one_by_id')
+    mock_user_data_get.return_value = mock_musician
+
+    mock_data_get_existing = mocker.patch('services.musician_availability.data.get_by_musician_and_date')
+    mock_data_get_existing.return_value = None
+
+    mock_check_assignment = mocker.patch('services.musician_availability.data.check_musician_event_assignment')
+    mock_check_assignment.return_value = "Wedding Gig"
+
+    # Act & Assert
+    with pytest.raises(ConflictError) as exc_info:
+        create(availability_data, current_user)
+
+    assert "assigned to event 'Wedding Gig'" in str(exc_info.value)
+
+
 def test_create_bulk_success(mocker):
     """Test create_bulk() creates multiple availabilities"""
     # Arrange

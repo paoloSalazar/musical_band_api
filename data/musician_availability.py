@@ -402,3 +402,49 @@ def get_musician_availability_by_month(musician_id: int, year: int, month: int) 
         raise DatabaseError("Failed to get musician monthly availability")
     finally:
         db.close()
+
+
+def check_musician_event_assignment(musician_id: int, check_date: date) -> str | None:
+    """
+    Check if musician is assigned to an event on the given date.
+
+    Joins event_musicians and events to return the event name if assigned
+    (date falls within event start/end), else None.
+
+    Args:
+        musician_id: The ID of the musician.
+        check_date: The date to check for assignment.
+
+    Returns:
+        Event name (str) if assigned, None otherwise.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    from models.event_musician import EventMusician
+    from models.event import Event
+    from datetime import datetime, time
+
+    db = SessionLocal()
+    try:
+        # Compare using full day boundaries to handle datetime vs date
+        day_start = datetime.combine(check_date, time.min)
+        day_end = datetime.combine(check_date, time.max)
+
+        result = db.query(Event.name).join(
+            EventMusician, EventMusician.event_id == Event.id
+        ).filter(
+            EventMusician.musician_id == musician_id,
+            Event.start_datetime <= day_end,
+            Event.end_datetime >= day_start
+        ).first()
+        return result[0] if result else None
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while checking event assignment for musician '{musician_id}' on '{check_date}'")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while checking event assignment for musician '{musician_id}' on '{check_date}'")
+        raise DatabaseError("Failed to check musician event assignment")
+    finally:
+        db.close()

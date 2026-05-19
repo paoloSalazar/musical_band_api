@@ -245,6 +245,13 @@ def create(availability_create: MusicianAvailabilityCreate, current_user: dict) 
         logger.error("Service error checking existing availability")
         raise DatabaseError("Service error")
 
+    # New validation: block unavailable date if musician assigned to event that day
+    event_name = data.check_musician_event_assignment(
+        availability_create.musician_id, availability_create.unavailable_date
+    )
+    if event_name:
+        raise ConflictError(f"Cannot mark date unavailable – assigned to event '{event_name}' on this date")
+
     try:
         db_availability = MusicianAvailability(
             musician_id=availability_create.musician_id,
@@ -323,6 +330,12 @@ def create_bulk(availabilities_create: List[MusicianAvailabilityCreate], current
 
     if conflict_dates:
         raise ConflictError(f"Availability already exists for dates: {', '.join(conflict_dates)}")
+
+    # New validation: block any date where musician is assigned to an event
+    for av_create in availabilities_create:
+        event_name = data.check_musician_event_assignment(musician_id, av_create.unavailable_date)
+        if event_name:
+            raise ConflictError(f"Cannot mark date unavailable – assigned to event '{event_name}' on {av_create.unavailable_date}")
 
     try:
         db_availabilities = [
