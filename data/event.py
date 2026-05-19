@@ -16,6 +16,7 @@ from datetime import datetime
 from decimal import Decimal
 from config.database import SessionLocal
 from models.event import Event
+from models.event_musician import EventMusician
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from sqlalchemy.orm import joinedload
 from exceptions import DatabaseError, DatabaseConnectionError
@@ -326,7 +327,9 @@ def get_paginated(
     start_after: datetime = None,
     end_before: datetime = None,
     sort_by: str = "created_at",
-    order: str = "desc"
+    order: str = "desc",
+    current_user_role: str | None = None,
+    current_user_id: int | None = None
 ) -> tuple[list[Event], int]:
     """
     Retrieve paginated and filtered events from the database.
@@ -352,6 +355,10 @@ def get_paginated(
     db = SessionLocal()
     try:
         query = db.query(Event).options(joinedload(Event.user))
+
+        # Role-based filtering for musicians
+        if current_user_role in ("musician", "auxiliar_musician") and current_user_id is not None:
+            query = query.join(EventMusician).filter(EventMusician.musician_id == current_user_id)
         
         # Apply filters
         if status:
@@ -402,7 +409,11 @@ def get_paginated(
         db.close()
 
 
-def get_events_by_month(year: int, month: int, user_id: int | None = None) -> list[Event]:
+def get_events_by_month(
+    year: int, month: int, user_id: int | None = None,
+    current_user_role: str | None = None,
+    current_user_id: int | None = None
+) -> list[Event]:
     """
     Retrieve events for a specific month (calendar view).
 
@@ -431,6 +442,10 @@ def get_events_by_month(year: int, month: int, user_id: int | None = None) -> li
             Event.start_datetime >= start_date,
             Event.start_datetime < end_date
         )
+
+        # Role-based filtering for musicians (calendar view)
+        if current_user_role in ("musician", "auxiliar_musician") and current_user_id is not None:
+            query = query.join(EventMusician).filter(EventMusician.musician_id == current_user_id)
         
         if user_id is not None:
             query = query.filter(Event.user_id == user_id)
