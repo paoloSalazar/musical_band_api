@@ -87,7 +87,9 @@ def get_all(
             start_after=start_after,
             end_before=end_before,
             sort_by=sort_by,
-            order=order
+            order=order,
+            current_user_role=current_user.get("role"),
+            current_user_id=current_user.get("user_id")
         )
         logger.info(f"API request: Retrieved page {page} ({len(result.items)} items) by {current_user.get('sub')}")
         return result
@@ -118,7 +120,11 @@ def get_calendar(
         List of EventResponse objects for the specified month.
     """
     try:
-        events = event_service.get_by_month(year, month, user_id)
+        events = event_service.get_by_month(
+            year, month, user_id,
+            current_user_role=current_user.get("role"),
+            current_user_id=current_user.get("user_id")
+        )
         logger.info(f"API request: Retrieved {len(events)} events for {year}-{month:02d} by {current_user.get('sub')}")
         return events
     except DatabaseError as e:
