@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb256YWxvLnJleWVzQGV4YW1wbGUuY29tIiwidXNlcl9pZCI6NSwicm9sZV9pZCI6NCwiZXhwIjoxNzc5MTc5MDUyfQ.cxBoUtsTznM2MyBkN3PFTKl0kyCC4TUC9EZI5LAfRBA
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3OTIxODQ4NX0.wTZ8yhxJ1Mswupqs_AgMuEtF8myO0tEpnGArtxx3-lY
 ###
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
@@ -562,14 +562,14 @@ Authorization: Bearer {{user_token}}
 ### payment_date defaults to current time if not provided
 
 ### Add payment to musician for event (ADVANCE)
-POST {{api}}/events/3/musicians/5/payments
+POST {{api}}/events/6/musicians/5/payments
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "event_id": 1,
+  "event_id": 6,
   "musician_id": 5,
-  "amount": 300.00,
+  "amount": 100.00,
   "payment_type": "ADVANCE",
   "notes": "Advance payment for guitarist"
 }

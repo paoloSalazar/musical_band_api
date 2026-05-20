@@ -161,7 +161,7 @@ def create(current_user: Annotated[dict, Depends(get_current_user)], event: Even
             start_datetime=event.start_datetime,
             end_datetime=event.end_datetime,
             is_all_day=event.is_all_day,
-            user_id=current_user.get("user_id", 1)  # Default to 1 if not in token
+            user_id=current_user.get("id", 1)  # Default to 1 if not in token
         )
         
         created_event = event_service.create(event_data)
