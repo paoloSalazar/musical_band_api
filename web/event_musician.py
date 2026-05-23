@@ -189,7 +189,7 @@ def remove_musician_from_event(
         Success message.
 
     Raises:
-        HTTPException: 403 if unauthorized, 404 if not found, 500 if database error.
+        HTTPException: 403 if unauthorized, 404 if not found, 409 if conflict (e.g. payments exist), 500 if database error.
     """
     try:
         success = service.remove_musician_by_event_musician(event_id, musician_id, current_user)
@@ -204,6 +204,9 @@ def remove_musician_from_event(
     except UnauthorizedError as e:
         logger.warning(f"Unauthorized access attempt: {str(e)}")
         raise HTTPException(status_code=403, detail=str(e))
+    except ConflictError as e:
+        logger.warning(f"Conflict error in remove_musician_from_event: {str(e)}")
+        raise HTTPException(status_code=409, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error in remove_musician_from_event: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

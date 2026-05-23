@@ -331,6 +331,8 @@ def remove_musician(assignment_id: int, current_user: dict) -> bool:
 
     try:
         return data.delete(assignment_id)
+    except ConflictError as e:
+        raise e
     except DatabaseError as e:
         logger.error(f"Failed to remove musician assignment {assignment_id}")
         raise e
@@ -367,6 +369,8 @@ def remove_musician_by_event_musician(event_id: int, musician_id: int, current_u
 
     try:
         return data.delete(assignment.id)
+    except ConflictError as e:
+        raise e
     except DatabaseError as e:
         logger.error(f"Failed to remove musician {musician_id} from event {event_id}")
         raise e

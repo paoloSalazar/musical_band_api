@@ -328,9 +328,9 @@ def _check_event_musician_integrity(assignment_id: int) -> Optional[str]:
 
         if payments_count > 0:
             if payments_count == 1:
-                return "This musician assignment cannot be deleted because there is 1 payment record for this musician and event. Please remove the payment record first."
+                return "This musician assignment cannot be deleted because there is 1 payment record for this musician and event."
             else:
-                return f"This musician assignment cannot be deleted because there are {payments_count} payment records for this musician and event. Please remove all payment records first."
+                return f"This musician assignment cannot be deleted because there are {payments_count} payment records for this musician and event."
 
         return None  # Safe to delete
 
