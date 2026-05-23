@@ -357,7 +357,7 @@ def get_paginated(
         query = db.query(Event).options(joinedload(Event.user))
 
         # Role-based filtering for musicians
-        if current_user_role in ("musician", "auxiliar_musician") and current_user_id is not None:
+        if current_user_role in ("musician", "auxiliar_musician", "helper") and current_user_id is not None:
             query = query.join(EventMusician).filter(EventMusician.musician_id == current_user_id)
         
         # Apply filters

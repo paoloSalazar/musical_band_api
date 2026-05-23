@@ -383,6 +383,11 @@ def test_get_by_musician_all_roles_authorized_with_permission(mocker):
     result = get_by_musician(current_user=aux_musician_user, musician_id=musician_id)
     assert len(result) == 1
 
+    # Test helper access
+    helper_user = {"id": 1, "role": "helper", "permissions": ["read:musician_availability"]}
+    result = get_by_musician(current_user=helper_user, musician_id=musician_id)
+    assert len(result) == 1
+
 
 def test_create_availability_all_roles_can_write_with_permission(mocker):
     """Test create_availability() allows all valid roles to create with proper permissions"""
@@ -414,6 +419,11 @@ def test_create_availability_all_roles_can_write_with_permission(mocker):
     # Test auxiliar_musician can create
     aux_musician_user = {"id": 1, "role": "auxiliar_musician", "permissions": ["write:musician_availability"]}
     result = create_availability(current_user=aux_musician_user, availability_data=availability_data)
+    assert result.id == 1
+
+    # Test helper can create
+    helper_user = {"id": 1, "role": "helper", "permissions": ["write:musician_availability"]}
+    result = create_availability(current_user=helper_user, availability_data=availability_data)
     assert result.id == 1
 
 

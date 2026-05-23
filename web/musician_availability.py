@@ -39,7 +39,7 @@ router = APIRouter(prefix="/api/musician-availability")
 admin_router = APIRouter(prefix="/api/admin/musician-availability")
 
 # Authorization dependencies
-musician_roles = ["admin", "musician", "auxiliar_musician"]
+musician_roles = ["admin", "musician", "auxiliar_musician", "helper"]
 require_read_musician_availability = RoleAndPermissionChecker(
     required_roles=musician_roles,
     required_permissions=["read:musician_availability"]

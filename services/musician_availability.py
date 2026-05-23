@@ -46,7 +46,7 @@ def get_by_musician(musician_id: int, current_user: dict) -> List[MusicianAvaila
     Retrieve all availability entries for a specific musician.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only view their own availability
+    - Musicians, auxiliar_musicians, and helpers can only view their own availability
     - Admins can view anyone's availability
 
     Args:
@@ -85,7 +85,7 @@ def get_musician_availability_by_month(musician_id: int, year: int, month: int, 
     Retrieve all unavailable dates for a musician within a specific month.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only view their own availability
+    - Musicians, auxiliar_musicians, and helpers can only view their own availability
     - Admins can view anyone's availability
 
     Args:
@@ -200,7 +200,7 @@ def create(availability_create: MusicianAvailabilityCreate, current_user: dict) 
     Create a new availability entry for a musician.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only create availability for themselves
+    - Musicians, auxiliar_musicians, and helpers can only create availability for themselves
     - Admins can create availability for any musician
 
     Args:
@@ -272,7 +272,7 @@ def create_bulk(availabilities_create: List[MusicianAvailabilityCreate], current
     Create multiple availability entries for a musician.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only create availability for themselves
+    - Musicians, auxiliar_musicians, and helpers can only create availability for themselves
     - Admins can create availability for any musician
 
     Args:
@@ -361,7 +361,7 @@ def update(availability_id: int, availability_update: MusicianAvailabilityUpdate
     Update an existing availability entry.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only update their own availability
+    - Musicians, auxiliar_musicians, and helpers can only update their own availability
     - Admins can update anyone's availability
 
     Args:
@@ -428,7 +428,7 @@ def delete(availability_id: int, current_user: dict) -> bool:
     Delete an availability entry.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only delete their own availability
+    - Musicians, auxiliar_musicians, and helpers can only delete their own availability
     - Admins can delete anyone's availability
 
     Args:
@@ -476,7 +476,7 @@ def delete_by_musician_and_date(musician_id: int, unavailable_date: date, curren
     Delete a specific availability entry by musician and date.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only delete their own availability
+    - Musicians, auxiliar_musicians, and helpers can only delete their own availability
     - Admins can delete anyone's availability
 
     Args:
