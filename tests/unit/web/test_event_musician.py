@@ -78,10 +78,10 @@ def test_get_event_musicians_not_found(mocker):
 
 
 def test_get_musician_assignments_success(mocker):
-    """Test get_musician_assignments() returns assignments for musician"""
+    """Test get_musician_assignments() returns assignments for musician (includes helper role)"""
     # Arrange
     musician_id = 2
-    current_user = {"id": 2, "role": "musician"}
+    current_user = {"id": 2, "role": "helper"}  # helper can view own assignments (via updated _can_view_musician_assignments)
     mock_assignments = [
         EventMusicianResponse(
             id=1, event_id=1, musician_id=2, role="Lead Guitarist",

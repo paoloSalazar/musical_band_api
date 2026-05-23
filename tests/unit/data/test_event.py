@@ -240,7 +240,7 @@ class TestEventDataDelete:
 
 
 class TestEventDataMusicianFiltering:
-    """TDD tests for musician/auxiliar_musician role-based filtering"""
+    """TDD tests for performer (musician/auxiliar_musician/helper) role-based filtering"""
 
     @patch('data.event.SessionLocal')
     def test_get_paginated_musician_returns_only_assigned_events(self, mock_session_local):
@@ -293,7 +293,7 @@ class TestEventDataMusicianFiltering:
 
     @patch('data.event.SessionLocal')
     def test_get_by_month_musician_filters_by_assignment(self, mock_session_local):
-        """Calendar view for musician must also respect assignment filter"""
+        """Calendar view for performer (helper) must also respect assignment filter"""
         mock_db = MagicMock()
         mock_session_local.return_value = mock_db
         mock_query = MagicMock()
@@ -305,7 +305,7 @@ class TestEventDataMusicianFiltering:
 
         events = event_data.get_events_by_month(
             year=2026, month=5,
-            current_user_role="auxiliar_musician",
+            current_user_role="helper",
             current_user_id=7
         )
 

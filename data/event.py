@@ -356,7 +356,7 @@ def get_paginated(
     try:
         query = db.query(Event).options(joinedload(Event.user))
 
-        # Role-based filtering for musicians
+        # Role-based filtering for performers (musician, auxiliar_musician, helper)
         if current_user_role in ("musician", "auxiliar_musician", "helper") and current_user_id is not None:
             query = query.join(EventMusician).filter(EventMusician.musician_id == current_user_id)
         
@@ -443,8 +443,8 @@ def get_events_by_month(
             Event.start_datetime < end_date
         )
 
-        # Role-based filtering for musicians (calendar view)
-        if current_user_role in ("musician", "auxiliar_musician") and current_user_id is not None:
+        # Role-based filtering for performers (musician, auxiliar_musician, helper) (calendar view)
+        if current_user_role in ("musician", "auxiliar_musician", "helper") and current_user_id is not None:
             query = query.join(EventMusician).filter(EventMusician.musician_id == current_user_id)
         
         if user_id is not None:

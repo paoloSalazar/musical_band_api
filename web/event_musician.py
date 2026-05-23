@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/events")
 
 # Authorization dependencies
-musician_roles = ["musician", "auxiliar_musician"]
+musician_roles = ["musician", "auxiliar_musician", "helper"]
 admin_roles = ["admin"]
 require_read_event_musician = RoleAndPermissionChecker(
     required_roles=musician_roles + admin_roles,

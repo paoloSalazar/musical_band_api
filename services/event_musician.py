@@ -147,9 +147,9 @@ def assign_musician(assignment_data, current_user: dict) -> EventMusicianRespons
     except DatabaseError:
         raise NotFoundError(f"Musician with id {assignment_data.musician_id} not found")
 
-    # Validate that the user has musician role
-    if musician.role.name not in ['musician', 'auxiliar_musician']:
-        raise ValidationError("Only users with musician or auxiliar_musician roles can be assigned to events")
+    # Validate that the user has performer role (musician, auxiliar_musician or helper)
+    if musician.role.name not in ['musician', 'auxiliar_musician', 'helper']:
+        raise ValidationError("Only users with musician, auxiliar_musician or helper roles can be assigned to events")
 
     # Check if already assigned
     if data.is_assigned_to_event(assignment_data.event_id, assignment_data.musician_id):
@@ -419,5 +419,5 @@ def _can_manage_event_musicians(event, current_user: dict) -> bool:
 
 def _can_view_musician_assignments(musician_id: int, current_user: dict) -> bool:
     """Check if user can view musician assignments."""
-    return (current_user.get('role') in ['admin', 'musician', 'auxiliar_musician'] and
+    return (current_user.get('role') in ['admin', 'musician', 'auxiliar_musician', 'helper'] and
             (current_user.get('role') == 'admin' or musician_id == current_user.get('id')))
