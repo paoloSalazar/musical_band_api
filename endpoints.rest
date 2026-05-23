@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3OTIxODQ4NX0.wTZ8yhxJ1Mswupqs_AgMuEtF8myO0tEpnGArtxx3-lY
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3OTUyMjY5N30.G4k0ZShcGx1XV02r9shv5ulffVGFkiY8deym8BqVki4
 ###
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
@@ -120,7 +120,7 @@ GET {{api}}/users/?role=musician
 Authorization: Bearer {{user_token}}
 
 ### Get users filtered by multiple roles (e.g., musicians and auxiliar_musicians)
-GET {{api}}/users/?roles=musician&roles=auxiliar_musician
+GET {{api}}/users/?roles=musician&order_by=last_name
 Authorization: Bearer {{user_token}}
 
 ### Example response for role filtering:
