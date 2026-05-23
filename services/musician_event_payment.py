@@ -170,12 +170,19 @@ def create_musician_payment(
             )
 
     # Create payment record
+    # Ensure payment_date is always UTC-aware (schema should already do this)
+    payment_date = payment_data_input.payment_date
+    if payment_date.tzinfo is None:
+        payment_date = payment_date.replace(tzinfo=timezone.utc)
+    elif payment_date.tzinfo != timezone.utc:
+        payment_date = payment_date.astimezone(timezone.utc)
+
     payment = MusicianEventPayment(
         event_id=payment_data_input.event_id,
         musician_id=payment_data_input.musician_id,
         amount=payment_data_input.amount,
         payment_type=PaymentType(payment_data_input.payment_type.value),
-        payment_date=payment_data_input.payment_date,
+        payment_date=payment_date,
         notes=payment_data_input.notes
     )
 
@@ -236,8 +243,8 @@ def get_payments_for_event(event_id: int, musician_id: int, current_user: dict) 
     if user_role == 'admin':
         # Admins can view all payments
         pass
-    elif user_role in ['musician', 'auxiliar_musician']:
-        # Musicians can only view their own payments
+    elif user_role in ['musician', 'auxiliar_musician', 'helper']:
+        # Performers (musician, auxiliar_musician, helper) can only view their own payments
         if current_user['id'] != musician_id:
             raise UnauthorizedError("You can only view your own payment information")
     else:
@@ -329,8 +336,8 @@ def get_payment_summary_for_musician_event(
     if user_role == 'admin':
         # Admins can view all payments
         pass
-    elif user_role in ['musician', 'auxiliar_musician']:
-        # Musicians can only view their own payments
+    elif user_role in ['musician', 'auxiliar_musician', 'helper']:
+        # Performers (musician, auxiliar_musician, helper) can only view their own payments
         if current_user['id'] != musician_id:
             raise UnauthorizedError("You can only view your own payment information")
     else:

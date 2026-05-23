@@ -837,11 +837,11 @@ def test_get_payments_for_event_admin_success(mocker):
 
 
 def test_get_payments_for_event_musician_success(mocker):
-    """Test get_payments_for_event() returns payments for musician viewing own payments"""
+    """Test get_payments_for_event() returns payments for performer (helper) viewing own payments"""
     # Arrange
     event_id = 1
     musician_id = 2
-    current_user = {'id': 2, 'role': 'musician'}
+    current_user = {'id': 2, 'role': 'helper'}  # helper treated same as musician/auxiliar_musician for own payments
 
     mock_event = Mock()
     mock_event.id = 1
@@ -969,11 +969,11 @@ def test_get_payment_summary_for_musician_event_admin_success(mocker):
 
 
 def test_get_payment_summary_for_musician_event_musician_success(mocker):
-    """Test get_payment_summary_for_musician_event() returns summary for musician viewing own payments"""
+    """Test get_payment_summary_for_musician_event() returns summary for performer (helper) viewing own payments"""
     # Arrange
     event_id = 1
     musician_id = 2
-    current_user = {'id': 2, 'role': 'musician'}
+    current_user = {'id': 2, 'role': 'helper'}  # helper treated same as musician/auxiliar_musician for own payments
 
     mock_event = Mock()
     mock_event.id = 1

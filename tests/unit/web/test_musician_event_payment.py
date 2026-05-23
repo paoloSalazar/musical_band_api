@@ -264,11 +264,11 @@ def test_get_musician_payment_summary_not_found(mocker):
 
 
 def test_get_musician_payments_musician_authorized(mocker):
-    """Test get_musician_payments() allows musician with proper permissions"""
+    """Test get_musician_payments() allows performer (helper) with proper permissions"""
     # Arrange
     event_id = 1
     musician_id = 2
-    current_user = {"id": 2, "role": "musician", "permissions": ["read:musician_event_payment"]}
+    current_user = {"id": 2, "role": "helper", "permissions": ["read:musician_event_payment"]}  # helper allowed same as musician/auxiliar_musician
     mock_payments = [
         MusicianEventPaymentResponse(
             id=1,
