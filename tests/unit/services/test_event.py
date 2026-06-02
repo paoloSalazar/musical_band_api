@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from datetime import datetime
+from datetime import datetime, timedelta
+from decimal import Decimal
 from models.event import Event, EventStatus
 import services.event as event_service
 from exceptions import NotFoundError, DatabaseError, ConflictError
@@ -18,8 +19,8 @@ class TestEventServiceCreate:
             name="Rock Concert",
             place="Madison Square Garden",
             description="An amazing rock concert",
-            start_datetime=datetime(2026, 3, 15, 20, 0),
-            end_datetime=datetime(2026, 3, 15, 23, 0),
+            start_datetime=datetime(2027, 3, 15, 20, 0),
+            end_datetime=datetime(2027, 3, 15, 23, 0),
             is_all_day=False,
             user_id=1,
             status=EventStatus.PENDING,
@@ -33,8 +34,8 @@ class TestEventServiceCreate:
             name="Rock Concert",
             place="Madison Square Garden",
             description="An amazing rock concert",
-            start_datetime=datetime(2026, 3, 15, 20, 0),
-            end_datetime=datetime(2026, 3, 15, 23, 0),
+            start_datetime=datetime(2027, 3, 15, 20, 0),
+            end_datetime=datetime(2027, 3, 15, 23, 0),
             is_all_day=False,
             user_id=1
         )
@@ -280,14 +281,14 @@ class TestEventConflictValidation:
         """Test creating an all-day event conflicts with existing all-day event on same date"""
         # Arrange
         from schemas.event import EventCreate
-        
+
         # Existing all-day event on the same date
         existing_event = Event(
             id=1,
             name="Existing Event",
             place="Place",
-            start_datetime=datetime(2026, 3, 22, 0, 0),
-            end_datetime=datetime(2026, 3, 22, 23, 59),
+            start_datetime=datetime(2027, 3, 22, 0, 0),
+            end_datetime=datetime(2027, 3, 22, 23, 59),
             is_all_day=True,
             user_id=1,
             status=EventStatus.PENDING,
@@ -295,12 +296,12 @@ class TestEventConflictValidation:
             updated_at=datetime(2026, 1, 1, 10, 0)
         )
         mock_get_events.return_value = [existing_event]
-        
+
         event_data = EventCreate(
             name="New All-Day Event",
             place="New Place",
-            start_datetime=datetime(2026, 3, 22, 0, 0),
-            end_datetime=datetime(2026, 3, 22, 23, 59),
+            start_datetime=datetime(2027, 3, 22, 0, 0),
+            end_datetime=datetime(2027, 3, 22, 23, 59),
             is_all_day=True,
             user_id=1
         )
@@ -320,8 +321,8 @@ class TestEventConflictValidation:
             id=1,
             name="Existing Partial Event",
             place="Place",
-            start_datetime=datetime(2026, 3, 22, 14, 0),
-            end_datetime=datetime(2026, 3, 22, 18, 0),
+            start_datetime=datetime(2027, 3, 22, 14, 0),
+            end_datetime=datetime(2027, 3, 22, 18, 0),
             is_all_day=False,
             user_id=1,
             status=EventStatus.PENDING,
@@ -329,12 +330,12 @@ class TestEventConflictValidation:
             updated_at=datetime(2026, 1, 1, 10, 0)
         )
         mock_get_events.return_value = [existing_event]
-        
+
         event_data = EventCreate(
             name="New All-Day Event",
             place="New Place",
-            start_datetime=datetime(2026, 3, 22, 0, 0),
-            end_datetime=datetime(2026, 3, 22, 23, 59),
+            start_datetime=datetime(2027, 3, 22, 0, 0),
+            end_datetime=datetime(2027, 3, 22, 23, 59),
             is_all_day=True,
             user_id=1
         )
@@ -354,8 +355,8 @@ class TestEventConflictValidation:
             id=1,
             name="Existing Event",
             place="Place",
-            start_datetime=datetime(2026, 3, 22, 19, 0),
-            end_datetime=datetime(2026, 3, 22, 23, 0),
+            start_datetime=datetime(2027, 3, 22, 19, 0),
+            end_datetime=datetime(2027, 3, 22, 23, 0),
             is_all_day=False,
             user_id=1,
             status=EventStatus.PENDING,
@@ -363,13 +364,13 @@ class TestEventConflictValidation:
             updated_at=datetime(2026, 1, 1, 10, 0)
         )
         mock_get_events.return_value = [existing_event]
-        
+
         # New event that overlaps: 18:00-22:00 overlaps with 19:00-23:00
         event_data = EventCreate(
             name="Overlapping Event",
             place="New Place",
-            start_datetime=datetime(2026, 3, 22, 18, 0),
-            end_datetime=datetime(2026, 3, 22, 22, 0),
+            start_datetime=datetime(2027, 3, 22, 18, 0),
+            end_datetime=datetime(2027, 3, 22, 22, 0),
             is_all_day=False,
             user_id=1
         )
@@ -390,8 +391,8 @@ class TestEventConflictValidation:
             id=1,
             name="Existing Event",
             place="Place",
-            start_datetime=datetime(2026, 3, 20, 19, 0),
-            end_datetime=datetime(2026, 3, 20, 23, 0),
+            start_datetime=datetime(2027, 3, 20, 19, 0),
+            end_datetime=datetime(2027, 3, 20, 23, 0),
             is_all_day=False,
             user_id=1,
             status=EventStatus.PENDING,
@@ -399,24 +400,24 @@ class TestEventConflictValidation:
             updated_at=datetime(2026, 1, 1, 10, 0)
         )
         mock_get_events.return_value = [existing_event]
-        
+
         event_data = EventCreate(
             name="New Event",
             place="New Place",
-            start_datetime=datetime(2026, 3, 22, 19, 0),
-            end_datetime=datetime(2026, 3, 22, 23, 0),
+            start_datetime=datetime(2027, 3, 22, 19, 0),
+            end_datetime=datetime(2027, 3, 22, 23, 0),
             is_all_day=False,
             user_id=1
         )
-        
+
         # Mock the create function
         with patch('services.event.data.create') as mock_create:
             mock_event = Event(
                 id=2,
                 name="New Event",
                 place="New Place",
-                start_datetime=datetime(2026, 3, 22, 19, 0),
-                end_datetime=datetime(2026, 3, 22, 23, 0),
+                start_datetime=datetime(2027, 3, 22, 19, 0),
+                end_datetime=datetime(2027, 3, 22, 23, 0),
                 is_all_day=False,
                 user_id=1,
                 status=EventStatus.PENDING,
@@ -433,7 +434,7 @@ class TestEventConflictValidation:
         """Test creating event with end datetime before start datetime raises error"""
         # Arrange
         from schemas.event import EventCreate
-        
+
         event_data = EventCreate(
             name="Invalid Event",
             place="Place",
@@ -442,11 +443,48 @@ class TestEventConflictValidation:
             is_all_day=False,
             user_id=1
         )
-        
+
         # Act & Assert
         with pytest.raises(ConflictError) as exc_info:
             event_service.create(event_data)
         assert "End datetime must be after start datetime" in str(exc_info.value)
+
+    @patch('services.event.data.create')
+    def test_create_event_in_past(self, mock_data_create):
+        """Test creating event with start datetime in the past raises error"""
+        # Arrange
+        from schemas.event import EventCreate
+
+        past_datetime = datetime.now() - timedelta(days=1)
+        event_data = EventCreate(
+            name="Past Event",
+            place="Place",
+            start_datetime=past_datetime,
+            end_datetime=past_datetime + timedelta(hours=2),
+            is_all_day=False,
+            user_id=1
+        )
+
+        mock_event = Event(
+            name="Past Event",
+            place="Place",
+            description=None,
+            start_datetime=past_datetime,
+            end_datetime=past_datetime + timedelta(hours=2),
+            is_all_day=False,
+            user_id=1,
+            status=EventStatus.PENDING,
+            price=Decimal("0.00"),
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        mock_event.id = 1
+        mock_data_create.return_value = mock_event
+
+        # Act & Assert
+        with pytest.raises(ConflictError) as exc_info:
+            event_service.create(event_data)
+        assert "Cannot create events in the past" in str(exc_info.value)
 
 
 class TestEventServicePaginated:
@@ -596,4 +634,44 @@ class TestEventServiceCalendar:
         
         # Assert
         assert len(result) == 1
-        mock_data_by_month.assert_called_once_with(2026, 3, 1)
+        mock_data_by_month.assert_called_once_with(
+            2026, 3, 1,
+            current_user_role=None, current_user_id=None
+        )
+
+
+class TestEventServiceMusicianFiltering:
+    """TDD tests for service layer musician role filtering"""
+
+    @patch('services.event.data.get_paginated')
+    def test_get_paginated_passes_role_to_data_layer(self, mock_data_paginated):
+        """Service must forward role/user_id to data layer"""
+        mock_data_paginated.return_value = ([], 0)
+
+        event_service.get_paginated(
+            page=1, limit=20,
+            current_user_role="musician",
+            current_user_id=5
+        )
+
+        mock_data_paginated.assert_called_once_with(
+            page=1, limit=20, status=None, search=None, user_id=None,
+            start_after=None, end_before=None, sort_by="created_at", order="desc",
+            current_user_role="musician", current_user_id=5
+        )
+
+    @patch('services.event.data.get_events_by_month')
+    def test_get_by_month_passes_role_to_data_layer(self, mock_data_month):
+        """Calendar service must also forward musician role params"""
+        mock_data_month.return_value = []
+
+        event_service.get_by_month(
+            2026, 5,
+            current_user_role="auxiliar_musician",
+            current_user_id=7
+        )
+
+        mock_data_month.assert_called_once_with(
+            2026, 5, None,
+            current_user_role="auxiliar_musician", current_user_id=7
+        )

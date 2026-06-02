@@ -22,6 +22,8 @@ from models.event import Event
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from sqlalchemy import func
 from exceptions import DatabaseError, DatabaseConnectionError
+from data.integrity_checker import check_integrity_before_deletion
+from exceptions import ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -181,24 +183,41 @@ def delete(payment_id: int) -> bool:
 
     Raises:
         DatabaseConnectionError: If database connection fails.
+        ConflictError: If payment has related records preventing deletion.
         DatabaseError: If database operation fails.
     """
     db = SessionLocal()
     try:
         payment = db.query(EventPayment).filter(EventPayment.id == payment_id).first()
-        if payment:
-            db.delete(payment)
-            db.commit()
-            return True
-        return False
+        if not payment:
+            return False
+
+        # Check integrity constraints BEFORE attempting delete
+        integrity_error = check_integrity_before_deletion('event_payment', payment_id)
+        if integrity_error:
+            raise ConflictError(integrity_error)
+
+        db.delete(payment)
+        db.commit()
+        return True
     except (OperationalError, InterfaceError) as e:
         db.rollback()
-        logger.error("Database connection error while deleting payment")
+        logger.error(f"Database connection error while deleting payment '{payment_id}'")
         raise DatabaseConnectionError("Database connection failed")
     except SQLAlchemyError as e:
         db.rollback()
-        logger.error(f"Database error while deleting payment: {e}")
-        raise DatabaseError("Failed to delete payment")
+        logger.error(f"Database error while deleting payment '{payment_id}': {str(e)}")
+
+        # Check for constraint violations that might slip through our integrity check
+        error_str = str(e).upper()
+        if ("'C': '23503'" in error_str or '23503' in error_str or
+            "'C': '23502'" in error_str or '23502' in error_str):
+            raise ConflictError("This payment cannot be deleted because it has associated records. Please remove these associations first.")
+        else:
+            raise DatabaseError("Failed to delete payment")
+    except ConflictError:
+        # Re-raise ConflictError as-is
+        raise
     finally:
         db.close()
 

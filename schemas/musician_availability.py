@@ -36,3 +36,22 @@ class MusicianAvailabilitySummaryResponse(BaseModel):
     total_unavailable_days: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MusicianAvailabilityMonthlyItem(BaseModel):
+    """Schema for individual availability item in monthly response"""
+    id: int
+    unavailable_date: date
+    reason: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MusicianAvailabilityMonthlyResponse(BaseModel):
+    """Schema for monthly availability queries"""
+    musician_id: int
+    year: int
+    month: int
+    unavailable_dates: list[MusicianAvailabilityMonthlyItem]
+
+    model_config = ConfigDict(from_attributes=True)

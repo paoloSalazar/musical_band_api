@@ -16,7 +16,9 @@ from models.user import User
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-from exceptions import DatabaseError, DatabaseConnectionError
+from models.user_role import UserRole
+from exceptions import DatabaseError, DatabaseConnectionError, ConflictError
+from data.integrity_checker import check_integrity_before_deletion
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +113,7 @@ def get_all() -> list[User]:
         db.close()
 
 
-def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = None) -> tuple[list[User], int]:
+def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = None, roles: list[str] | None = None) -> tuple[list[User], int]:
     """
     Retrieve users from the database with pagination and join with roles.
 
@@ -129,19 +131,24 @@ def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = Non
     """
     db = SessionLocal()
     try:
-        # Get total count
-        total = db.query(User).count()
-        
-        # Build query with optional ordering
+        # Build query with optional role filtering
         query = db.query(User).options(selectinload(User.role))
-        
+        total_query = db.query(User)
+
+        if roles:
+            query = query.filter(User.role.has(UserRole.name.in_(roles)))
+            total_query = total_query.filter(User.role.has(UserRole.name.in_(roles)))
+
+        # Get total count
+        total = total_query.count()
+
         # Apply ordering if order_by is provided
         if order_by:
             # Get the attribute from the User model
             order_column: InstrumentedAttribute | None = getattr(User, order_by, None)
             if order_column is not None:
                 query = query.order_by(order_column)
-        
+
         # Apply pagination
         users = query.offset(skip).limit(limit).all()
         return users, total
@@ -239,23 +246,40 @@ def delete(user_id: int) -> bool:
 
     Raises:
         DatabaseConnectionError: If database connection fails.
+        ConflictError: If user has related records preventing deletion.
         DatabaseError: If database operation fails.
     """
     db = SessionLocal()
     try:
         db_user = db.query(User).filter(User.id == user_id).first()
-        if db_user:
-            db.delete(db_user)
-            db.commit()
-            return True
-        return False
+        if not db_user:
+            return False
+
+        # Check integrity constraints BEFORE attempting delete
+        integrity_error = check_integrity_before_deletion('user', user_id)
+        if integrity_error:
+            raise ConflictError(integrity_error)
+
+        db.delete(db_user)
+        db.commit()
+        return True
     except (OperationalError, InterfaceError) as e:
         logger.error(f"Database connection error while deleting user '{user_id}'")
         db.rollback()
         raise DatabaseConnectionError("Database connection failed")
     except SQLAlchemyError as e:
-        logger.error(f"Database error while deleting user '{user_id}'")
+        logger.error(f"Database error while deleting user '{user_id}': {str(e)}")
         db.rollback()
-        raise DatabaseError("Failed to delete user")
+
+        # Check for constraint violations that might slip through our integrity check
+        error_str = str(e).upper()
+        if ("'C': '23503'" in error_str or '23503' in error_str or
+            "'C': '23502'" in error_str or '23502' in error_str):
+            raise ConflictError("This user cannot be deleted because they have associated events, musician assignments, or payment records. Please remove these associations first or contact an administrator.")
+        else:
+            raise DatabaseError("Failed to delete user")
+    except ConflictError:
+        # Re-raise ConflictError as-is
+        raise
     finally:
         db.close()

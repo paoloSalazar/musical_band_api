@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from unittest.mock import Mock
 from services.musician_availability import (
     get_by_musician,
+    get_musician_availability_by_month,
     get_all_by_date,
     check_availability,
     create,
@@ -26,7 +27,7 @@ from exceptions import (
 
 
 def test_get_by_musician_success(mocker):
-    """Test get_by_musician() returns availability list for authorized user"""
+    """Test get_by_musician() returns availability list for authorized user (covers musician, auxiliar_musician, helper roles via generic non-admin check)"""
     # Arrange
     musician_id = 1
     current_user = {'id': 1, 'role': 'musician'}
@@ -290,6 +291,34 @@ def test_create_conflict(mocker):
     assert "Availability already exists" in str(exc_info.value)
 
 
+def test_create_event_assignment_conflict(mocker):
+    """Test create() raises ConflictError when musician assigned to event on that date (includes event name)"""
+    # Arrange
+    current_user = {'id': 1, 'role': 'musician'}
+    availability_data = MusicianAvailabilityCreate(
+        musician_id=1,
+        unavailable_date=date.today() + timedelta(days=1),
+        reason="Holiday"
+    )
+
+    mock_musician = Mock()
+    mock_musician.id = 1
+    mock_user_data_get = mocker.patch('services.musician_availability.user_data.get_one_by_id')
+    mock_user_data_get.return_value = mock_musician
+
+    mock_data_get_existing = mocker.patch('services.musician_availability.data.get_by_musician_and_date')
+    mock_data_get_existing.return_value = None
+
+    mock_check_assignment = mocker.patch('services.musician_availability.data.check_musician_event_assignment')
+    mock_check_assignment.return_value = "Wedding Gig"
+
+    # Act & Assert
+    with pytest.raises(ConflictError) as exc_info:
+        create(availability_data, current_user)
+
+    assert "assigned to event 'Wedding Gig'" in str(exc_info.value)
+
+
 def test_create_bulk_success(mocker):
     """Test create_bulk() creates multiple availabilities"""
     # Arrange
@@ -545,3 +574,118 @@ def test_database_error_handling(mocker):
     # Act & Assert
     with pytest.raises(DatabaseError):
         get_by_musician(musician_id, current_user)
+
+
+def test_get_musician_availability_by_month_success(mocker):
+    """Test get_musician_availability_by_month() returns monthly availability"""
+    # Arrange
+    musician_id = 1
+    year = 2024
+    month = 5
+    current_user = {'id': 1, 'role': 'musician'}
+
+    expected_availabilities = [
+        MusicianAvailability(id=1, musician_id=1, unavailable_date=date.today() + timedelta(days=5), reason="Holiday"),
+        MusicianAvailability(id=2, musician_id=1, unavailable_date=date.today() + timedelta(days=10), reason="Sick")
+    ]
+    mock_data_get = mocker.patch('services.musician_availability.data.get_musician_availability_by_month')
+    mock_data_get.return_value = expected_availabilities
+
+    # Act
+    result = get_musician_availability_by_month(musician_id, year, month, current_user)
+
+    # Assert
+    assert result.musician_id == musician_id
+    assert result.year == year
+    assert result.month == month
+    assert len(result.unavailable_dates) == 2
+    assert result.unavailable_dates[0].id == 1
+    assert result.unavailable_dates[0].unavailable_date == date.today() + timedelta(days=5)
+    assert result.unavailable_dates[0].reason == "Holiday"
+    mock_data_get.assert_called_once_with(musician_id, year, month)
+
+
+def test_get_musician_availability_by_month_unauthorized(mocker):
+    """Test get_musician_availability_by_month() raises UnauthorizedError for non-owner"""
+    # Arrange
+    musician_id = 2  # Different musician
+    year = 2024
+    month = 5
+    current_user = {'id': 1, 'role': 'musician'}
+
+    # Act & Assert
+    with pytest.raises(UnauthorizedError) as exc_info:
+        get_musician_availability_by_month(musician_id, year, month, current_user)
+
+    assert "You can only view your own availability" in str(exc_info.value)
+
+
+def test_get_musician_availability_by_month_admin_access(mocker):
+    """Test get_musician_availability_by_month() allows admin to view any musician's availability"""
+    # Arrange
+    musician_id = 2  # Different musician
+    year = 2024
+    month = 5
+    current_user = {'id': 1, 'role': 'admin'}
+
+    expected_availabilities = [
+        MusicianAvailability(id=10, musician_id=2, unavailable_date=date(2026, 6, 10), reason="Meeting")
+    ]
+    mock_data_get = mocker.patch('services.musician_availability.data.get_musician_availability_by_month')
+    mock_data_get.return_value = expected_availabilities
+
+    # Act
+    result = get_musician_availability_by_month(musician_id, year, month, current_user)
+
+    # Assert
+    assert result.musician_id == musician_id
+    assert len(result.unavailable_dates) == 1
+    assert result.unavailable_dates[0].id == 10
+    assert result.unavailable_dates[0].reason == "Meeting"
+    mock_data_get.assert_called_once_with(musician_id, year, month)
+
+
+def test_get_musician_availability_by_month_invalid_month(mocker):
+    """Test get_musician_availability_by_month() validates month parameter"""
+    # Arrange
+    musician_id = 1
+    year = 2024
+    month = 13  # Invalid month
+    current_user = {'id': 1, 'role': 'musician'}
+
+    # Act & Assert
+    with pytest.raises(ValidationError) as exc_info:
+        get_musician_availability_by_month(musician_id, year, month, current_user)
+
+    assert "Month must be between 1 and 12" in str(exc_info.value)
+
+
+def test_get_musician_availability_by_month_invalid_year(mocker):
+    """Test get_musician_availability_by_month() validates year parameter"""
+    # Arrange
+    musician_id = 1
+    year = 1999  # Invalid year (too low)
+    month = 5
+    current_user = {'id': 1, 'role': 'musician'}
+
+    # Act & Assert
+    with pytest.raises(ValidationError) as exc_info:
+        get_musician_availability_by_month(musician_id, year, month, current_user)
+
+    assert "Year must be between 2000 and 2100" in str(exc_info.value)
+
+
+def test_get_musician_availability_by_month_database_error(mocker):
+    """Test get_musician_availability_by_month() handles database errors"""
+    # Arrange
+    musician_id = 1
+    year = 2024
+    month = 5
+    current_user = {'id': 1, 'role': 'musician'}
+
+    mock_data_get = mocker.patch('services.musician_availability.data.get_musician_availability_by_month')
+    mock_data_get.side_effect = DatabaseError("Database error")
+
+    # Act & Assert
+    with pytest.raises(DatabaseError):
+        get_musician_availability_by_month(musician_id, year, month, current_user)

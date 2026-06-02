@@ -214,6 +214,87 @@ def test_check_availability_unavailable(mocker):
 
     # Assert
     assert result is False
+    mock_session.delete.assert_not_called()
+    mock_session.commit.assert_not_called()
+    mock_session.close.assert_called_once()
+
+
+def test_get_musician_availability_by_month_found(mocker):
+    """Test get_musician_availability_by_month() when availabilities exist"""
+    # Arrange
+    musician_id = 1
+    year = 2024
+    month = 5
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+
+    expected_availabilities = [
+        MusicianAvailability(id=1, musician_id=1, unavailable_date=date.today() + timedelta(days=5), reason="Holiday"),
+        MusicianAvailability(id=2, musician_id=1, unavailable_date=date.today() + timedelta(days=10), reason="Sick")
+    ]
+    mock_query.all.return_value = expected_availabilities
+
+    mock_session_local = mocker.patch('data.musician_availability.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act
+    result = data.get_musician_availability_by_month(musician_id, year, month)
+
+    # Assert
+    assert result == expected_availabilities
+    mock_query.filter.assert_called_once()
+    mock_query.all.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+def test_get_musician_availability_by_month_no_availabilities(mocker):
+    """Test get_musician_availability_by_month() when no availabilities exist"""
+    # Arrange
+    musician_id = 1
+    year = 2024
+    month = 5
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+
+    mock_query.all.return_value = []
+
+    mock_session_local = mocker.patch('data.musician_availability.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act
+    result = data.get_musician_availability_by_month(musician_id, year, month)
+
+    # Assert
+    assert result == []
+    mock_query.filter.assert_called_once()
+    mock_query.all.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+def test_get_musician_availability_by_month_database_error(mocker):
+    """Test get_musician_availability_by_month() with database error"""
+    # Arrange
+    musician_id = 1
+    year = 2024
+    month = 5
+    mock_session = mocker.Mock()
+    mock_query = mocker.Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+
+    mock_query.all.side_effect = SQLAlchemyError("Database error")
+
+    mock_session_local = mocker.patch('data.musician_availability.SessionLocal')
+    mock_session_local.return_value = mock_session
+
+    # Act & Assert
+    with pytest.raises(DatabaseError):
+        data.get_musician_availability_by_month(musician_id, year, month)
+
     mock_session.close.assert_called_once()
 
 

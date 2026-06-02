@@ -214,7 +214,9 @@ def get_paginated(
     start_after: datetime | None = None,
     end_before: datetime | None = None,
     sort_by: str = "created_at",
-    order: str = "desc"
+    order: str = "desc",
+    current_user_role: str | None = None,
+    current_user_id: int | None = None
 ) -> PaginatedEventResponse:
     """
     Retrieve paginated and filtered events from the database.
@@ -251,7 +253,9 @@ def get_paginated(
             start_after=start_after,
             end_before=end_before,
             sort_by=sort_by,
-            order=order
+            order=order,
+            current_user_role=current_user_role,
+            current_user_id=current_user_id
         )
         
         result = []
@@ -297,7 +301,11 @@ def get_paginated(
         raise
 
 
-def get_by_month(year: int, month: int, user_id: int | None = None) -> list[EventResponse]:
+def get_by_month(
+    year: int, month: int, user_id: int | None = None,
+    current_user_role: str | None = None,
+    current_user_id: int | None = None
+) -> list[EventResponse]:
     """
     Retrieve events for a specific month (calendar view).
 
@@ -313,7 +321,11 @@ def get_by_month(year: int, month: int, user_id: int | None = None) -> list[Even
         DatabaseError: If database operation fails.
     """
     try:
-        events = data.get_events_by_month(year, month, user_id)
+        events = data.get_events_by_month(
+            year, month, user_id,
+            current_user_role=current_user_role,
+            current_user_id=current_user_id
+        )
         
         result = []
         for event in events:
@@ -368,7 +380,11 @@ def create(event_create: EventCreate) -> EventResponse:
         # Validate event dates
         if event_create.start_datetime >= event_create.end_datetime:
             raise ConflictError("End datetime must be after start datetime")
-        
+
+        # Validate event is not in the past
+        if event_create.start_datetime < datetime.now():
+            raise ConflictError("Cannot create events in the past")
+
         # Check for conflicting events
         if event_create.user_id is not None:
             check_event_conflict(

@@ -16,9 +16,12 @@ from datetime import datetime
 from decimal import Decimal
 from config.database import SessionLocal
 from models.event import Event
+from models.event_musician import EventMusician
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from sqlalchemy.orm import joinedload
 from exceptions import DatabaseError, DatabaseConnectionError
+from data.integrity_checker import check_integrity_before_deletion
+from exceptions import ConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +181,7 @@ def delete(event_id: int) -> bool:
 
     Raises:
         DatabaseConnectionError: If database connection fails.
+        ConflictError: If event has related records preventing deletion.
         DatabaseError: If database operation fails.
     """
     db = SessionLocal()
@@ -185,6 +189,11 @@ def delete(event_id: int) -> bool:
         event = db.query(Event).filter(Event.id == event_id).first()
         if event is None:
             return False
+
+        # Check integrity constraints BEFORE attempting delete
+        integrity_error = check_integrity_before_deletion('event', event_id)
+        if integrity_error:
+            raise ConflictError(integrity_error)
 
         db.delete(event)
         db.commit()
@@ -197,7 +206,17 @@ def delete(event_id: int) -> bool:
     except SQLAlchemyError as e:
         logger.error(f"Database error while deleting event '{event_id}': {str(e)}")
         db.rollback()
-        raise DatabaseError("Failed to delete event")
+
+        # Check for constraint violations that might slip through our integrity check
+        error_str = str(e).upper()
+        if ("'C': '23503'" in error_str or '23503' in error_str or
+            "'C': '23502'" in error_str or '23502' in error_str):
+            raise ConflictError("This event cannot be deleted because it has associated payments, musician assignments, or musician payment records. Please remove these associations first.")
+        else:
+            raise DatabaseError("Failed to delete event")
+    except ConflictError:
+        # Re-raise ConflictError as-is
+        raise
     finally:
         db.close()
 
@@ -308,7 +327,9 @@ def get_paginated(
     start_after: datetime = None,
     end_before: datetime = None,
     sort_by: str = "created_at",
-    order: str = "desc"
+    order: str = "desc",
+    current_user_role: str | None = None,
+    current_user_id: int | None = None
 ) -> tuple[list[Event], int]:
     """
     Retrieve paginated and filtered events from the database.
@@ -334,6 +355,10 @@ def get_paginated(
     db = SessionLocal()
     try:
         query = db.query(Event).options(joinedload(Event.user))
+
+        # Role-based filtering for performers (musician, auxiliar_musician, helper)
+        if current_user_role in ("musician", "auxiliar_musician", "helper") and current_user_id is not None:
+            query = query.join(EventMusician).filter(EventMusician.musician_id == current_user_id)
         
         # Apply filters
         if status:
@@ -384,7 +409,11 @@ def get_paginated(
         db.close()
 
 
-def get_events_by_month(year: int, month: int, user_id: int | None = None) -> list[Event]:
+def get_events_by_month(
+    year: int, month: int, user_id: int | None = None,
+    current_user_role: str | None = None,
+    current_user_id: int | None = None
+) -> list[Event]:
     """
     Retrieve events for a specific month (calendar view).
 
@@ -413,6 +442,10 @@ def get_events_by_month(year: int, month: int, user_id: int | None = None) -> li
             Event.start_datetime >= start_date,
             Event.start_datetime < end_date
         )
+
+        # Role-based filtering for performers (musician, auxiliar_musician, helper) (calendar view)
+        if current_user_role in ("musician", "auxiliar_musician", "helper") and current_user_id is not None:
+            query = query.join(EventMusician).filter(EventMusician.musician_id == current_user_id)
         
         if user_id is not None:
             query = query.filter(Event.user_id == user_id)

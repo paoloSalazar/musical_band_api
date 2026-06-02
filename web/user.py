@@ -15,7 +15,7 @@ Endpoints:
 
 import logging
 from typing import Annotated
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from auth.auth import decode_access_token
 from auth.auth import get_current_user as get_auth_current_user
 from auth.roles import RoleAndPermissionChecker
@@ -160,7 +160,7 @@ def modify_me(current_user: Annotated[dict, Depends(get_current_user)], user_upd
 
 
 @router.get("/")
-def get_all(current_user: Annotated[dict, Depends(get_current_user)], skip: int = 0, limit: int = 20, order_by: str | None = None) -> UserPaginationResponse:
+def get_all(current_user: Annotated[dict, Depends(get_current_user)], skip: int = 0, limit: int = 20, order_by: str | None = None, roles: list[str] | None = Query(None)) -> UserPaginationResponse:
     """
     Retrieve users from the database with pagination.
 
@@ -178,9 +178,12 @@ def get_all(current_user: Annotated[dict, Depends(get_current_user)], skip: int 
         HTTPException: 500 if database error occurs.
     """
     try:
-        result = service.get_all_paginated(skip=skip, limit=limit, order_by=order_by)
+        result = service.get_all_paginated(skip=skip, limit=limit, order_by=order_by, roles=roles)
         logger.info(f"API request: Retrieved {len(result.data)} users (total: {result.total}, skip: {skip}, limit: {limit}, order_by: {order_by}) by {current_user.get('sub')}")
         return result
+    except ValueError as e:
+        logger.warning(f"Invalid input in get_all: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error in get_all: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -263,6 +266,7 @@ def delete(current_user: Annotated[dict, Depends(get_current_user)], user_id: in
     Raises:
         HTTPException: 403 if user tries to delete themselves.
         HTTPException: 404 if user not found.
+        HTTPException: 409 if user has related records preventing deletion.
         HTTPException: 500 if database error occurs.
     """
     # Check if current user is trying to delete themselves
@@ -270,7 +274,7 @@ def delete(current_user: Annotated[dict, Depends(get_current_user)], user_id: in
     if current_user_id == user_id:
         logger.warning(f"User {current_user.get('sub')} attempted to delete themselves")
         raise HTTPException(status_code=403, detail="Cannot delete your own account")
-    
+
     try:
         service.delete(user_id)
         logger.info(f"API request: Deleted user with id {user_id} by {current_user.get('sub')}")
@@ -278,6 +282,9 @@ def delete(current_user: Annotated[dict, Depends(get_current_user)], user_id: in
     except NotFoundError:
         logger.warning(f"User with id {user_id} not found for deletion")
         raise HTTPException(status_code=404, detail="User not found")
+    except ConflictError as e:
+        logger.warning(f"Conflict error deleting user with id {user_id}: {str(e)}")
+        raise HTTPException(status_code=409, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error in delete: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

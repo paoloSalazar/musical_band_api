@@ -316,7 +316,7 @@ def test_assign_musician_already_assigned(mocker):
     mock_musician = Mock()
     mock_musician.id = 2
     mock_musician.role = Mock()
-    mock_musician.role.name = 'musician'
+    mock_musician.role.name = 'helper'  # proves 'helper' passes role validation for assignment (identical to musician/auxiliar_musician)
     mock_user_data_get = mocker.patch('services.event_musician.user_data.get_one_by_id')
     mock_user_data_get.return_value = mock_musician
 
@@ -351,7 +351,7 @@ def test_assign_musician_unavailable(mocker):
     mock_musician = Mock()
     mock_musician.id = 2
     mock_musician.role = Mock()
-    mock_musician.role.name = 'musician'
+    mock_musician.role.name = 'auxiliar_musician'
     mock_user_data_get = mocker.patch('services.event_musician.user_data.get_one_by_id')
     mock_user_data_get.return_value = mock_musician
 

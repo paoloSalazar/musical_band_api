@@ -22,7 +22,7 @@ def test_get_all_paginated_without_order_by(mocker):
     assert result.total == 0
     assert result.skip == 0
     assert result.limit == 20
-    mock_data.assert_called_once_with(skip=0, limit=20, order_by=None)
+    mock_data.assert_called_once_with(skip=0, limit=20, order_by=None, roles=None)
 
 
 def test_get_all_paginated_with_order_by(mocker):
@@ -38,7 +38,7 @@ def test_get_all_paginated_with_order_by(mocker):
     assert result.total == 0
     assert result.skip == 0
     assert result.limit == 20
-    mock_data.assert_called_once_with(skip=0, limit=20, order_by='name')
+    mock_data.assert_called_once_with(skip=0, limit=20, order_by='name', roles=None)
 
 
 def test_delete_user_success(mocker):
@@ -386,3 +386,62 @@ def test_modify_password_invalid_current(mocker):
         service.modify_password("john.doe@example.com", "wrongpassword", "newpassword")
     assert str(exc_info.value.args[0]) == "Current password is incorrect"
     mock_get_one.assert_called_once_with("john.doe@example.com")
+
+
+def test_get_all_paginated_with_roles_valid(mocker):
+    """Test get_all_paginated() with valid roles"""
+    # Arrange - Mock data.get_all_paginated and user_role_data.get_all
+    mock_data = mocker.patch('services.user.data.get_all_paginated')
+    mock_data.return_value = ([], 0)
+    mock_roles = mocker.patch('services.user.user_role_data.get_all')
+    mock_roles.return_value = [
+        type('Role', (), {'name': 'admin'})(),
+        type('Role', (), {'name': 'musician'})(),
+        type('Role', (), {'name': 'auxiliar_musician'})()
+    ]
+
+    # Act - Call service function with roles
+    result = service.get_all_paginated(skip=0, limit=20, roles=["musician"])
+
+    # Assert
+    assert result.total == 0
+    mock_data.assert_called_once_with(skip=0, limit=20, order_by=None, roles=["musician"])
+    mock_roles.assert_called_once()
+
+
+def test_get_all_paginated_with_roles_invalid(mocker):
+    """Test get_all_paginated() with invalid roles raises ValueError"""
+    # Arrange - Mock user_role_data.get_all to return only valid roles
+    mock_roles = mocker.patch('services.user.user_role_data.get_all')
+    mock_roles.return_value = [
+        type('Role', (), {'name': 'admin'})(),
+        type('Role', (), {'name': 'musician'})()
+    ]
+
+    # Act & Assert - Should raise ValueError
+    with pytest.raises(ValueError) as exc_info:
+        service.get_all_paginated(skip=0, limit=20, roles=["invalid_role"])
+
+    assert "Invalid role(s): invalid_role" in str(exc_info.value)
+    mock_roles.assert_called_once()
+
+
+def test_get_all_paginated_with_multiple_roles(mocker):
+    """Test get_all_paginated() with multiple valid roles"""
+    # Arrange - Mock data.get_all_paginated and user_role_data.get_all
+    mock_data = mocker.patch('services.user.data.get_all_paginated')
+    mock_data.return_value = ([], 0)
+    mock_roles = mocker.patch('services.user.user_role_data.get_all')
+    mock_roles.return_value = [
+        type('Role', (), {'name': 'admin'})(),
+        type('Role', (), {'name': 'musician'})(),
+        type('Role', (), {'name': 'auxiliar_musician'})()
+    ]
+
+    # Act - Call service function with multiple roles
+    result = service.get_all_paginated(skip=0, limit=20, roles=["musician", "auxiliar_musician"])
+
+    # Assert
+    assert result.total == 0
+    mock_data.assert_called_once_with(skip=0, limit=20, order_by=None, roles=["musician", "auxiliar_musician"])
+    mock_roles.assert_called_once()

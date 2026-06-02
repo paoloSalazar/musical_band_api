@@ -243,6 +243,18 @@ All authenticated users can access all events to check availability. This is ach
    - Permission checks
    - Role-based access
 
+## Issues Found During Testing
+
+### Issue 1: Event Creation in the Past
+- **Description**: Users can currently create events with start_datetime in the past, which should not be allowed.
+- **Current Status**: Validation not implemented in `services/event.py` create function.
+- **Impact**: Allows invalid events to be scheduled.
+- **Fix Plan**:
+  1. Add validation in `services/event.py` create function to check if `event_create.start_datetime < datetime.now()`.
+  2. Raise `ConflictError` with message "Cannot create events in the past".
+  3. Add unit test in `tests/unit/services/test_event.py` for this validation.
+  4. Update API documentation to reflect this constraint.
+
 ## Implementation Order
 
 1. **Migration** - Update database schema
@@ -252,3 +264,52 @@ All authenticated users can access all events to check availability. This is ach
 5. **Service** - Create service layer
 6. **Web** - Create API endpoints
 7. **Tests** - Add unit tests
+
+## IMPROVEMENTS
+
+### Role-Based Event Visibility for Musicians (Musician Event Filtering)
+
+**Requirement**: For users with roles `musician` or `auxiliar_musician`, `GET /api/events/` and `GET /api/events/calendar` must return **only** the events to which the musician is assigned (via `event_musician` table). Admin/client roles continue to see all events.
+
+**TDD Approach** (tests written before implementation in every layer):
+
+#### Phase 0: Current State Analysis
+- `web/event.py:47` (get_all) and `web/event.py:99` (get_calendar) call services without role awareness.
+- `services/event.py:208` (get_paginated) and `get_by_month` delegate to data layer.
+- `data/event.py:320` (get_paginated) and `get_events_by_month` perform unfiltered queries on `Event` only.
+- JWT payload already contains `role` and `user_id` via `get_current_user`.
+
+#### Phase 1: Data Layer (TDD)
+1. Write failing tests in `tests/unit/data/test_event.py`:
+   - `test_get_paginated_musician_returns_only_assigned_events`
+   - `test_get_paginated_auxiliar_musician_filters_correctly`
+   - `test_get_paginated_admin_returns_all_events`
+   - `test_get_by_month_musician_filters_by_assignment`
+2. Extend `data/event.py`:
+   - Add optional params `current_user_role: str | None = None`, `current_user_id: int | None = None`.
+   - When role ∈ {"musician", "auxiliar_musician"}: `JOIN event_musicians ON events.id = event_musicians.event_id WHERE event_musicians.musician_id = current_user_id`.
+   - Preserve pagination, sorting, all existing filters.
+3. Re-run tests until green.
+
+#### Phase 2: Service Layer (TDD)
+1. Add corresponding tests in `tests/unit/services/test_event.py`.
+2. Update `services/event.py:get_paginated` and `get_by_month` to accept and forward role/user_id to data layer.
+
+#### Phase 3: Web Layer (TDD)
+1. Add tests in `tests/unit/web/test_event.py` using mocked tokens for each role.
+2. Modify `web/event.py:get_all` and `get_calendar`:
+   - Extract `role = current_user.get("role")` and `user_id = current_user.get("user_id")`.
+   - Pass both to service calls.
+3. Update endpoint docstrings to document the new behavior.
+
+#### Phase 4: Integration, Docs & Validation
+- Add one integration test covering full musician flow (token → assigned events only).
+- Update `endpoints.rest` and API documentation.
+- Run full test suite + lint (`pytest`, `ruff`).
+- No new endpoint created; existing endpoints extended.
+
+**Success Criteria**
+- Zero breaking changes for admin/client flows.
+- Musicians see exactly their assigned events (via `event_musician`).
+- All layers covered by unit + integration tests (>90% coverage on modified paths).
+- Documentation and REST examples updated.

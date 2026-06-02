@@ -11,8 +11,11 @@ def test_get_all_paginated_without_order_by(mocker):
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
-    
-    # Mock count() and query chain
+
+    # Mock selectinload and count() and query chain
+    mock_selectinload = mocker.patch('sqlalchemy.orm.selectinload')
+    mock_selectinload.return_value = mocker.Mock()  # This will be passed to options()
+
     mock_query.count.return_value = 2
     mock_query.options.return_value = mock_query
     mock_query.offset.return_value = mock_query
@@ -41,8 +44,11 @@ def test_get_all_paginated_with_order_by(mocker):
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
-    
-    # Mock count() and query chain
+
+    # Mock selectinload and count() and query chain
+    mock_selectinload = mocker.patch('sqlalchemy.orm.selectinload')
+    mock_selectinload.return_value = mocker.Mock()  # This will be passed to options()
+
     mock_query.count.return_value = 2
     mock_query.options.return_value = mock_query
     mock_query.offset.return_value = mock_query
@@ -71,8 +77,11 @@ def test_get_all_paginated_with_invalid_order_by(mocker):
     mock_session = mocker.Mock()
     mock_query = mocker.Mock()
     mock_session.query.return_value = mock_query
-    
-    # Mock count() and query chain
+
+    # Mock selectinload and count() and query chain
+    mock_selectinload = mocker.patch('sqlalchemy.orm.selectinload')
+    mock_selectinload.return_value = mocker.Mock()  # This will be passed to options()
+
     mock_query.count.return_value = 2
     mock_query.options.return_value = mock_query
     mock_query.offset.return_value = mock_query
@@ -245,8 +254,8 @@ def test_get_one_by_id_user_found(mocker):
     mock_query.first.return_value = mock_user
 
     # Mock selectinload
-    mocker.patch('data.user.selectinload', return_value=mock_options)
-    
+    mocker.patch('sqlalchemy.orm.selectinload', return_value=mock_options)
+
     mock_session_local = mocker.patch('data.user.SessionLocal')
     mock_session_local.return_value = mock_session
 
@@ -276,8 +285,8 @@ def test_get_one_by_id_user_not_found(mocker):
     mock_query.first.return_value = None
 
     # Mock selectinload
-    mocker.patch('data.user.selectinload', return_value=mock_options)
-    
+    mocker.patch('sqlalchemy.orm.selectinload', return_value=mock_options)
+
     mock_session_local = mocker.patch('data.user.SessionLocal')
     mock_session_local.return_value = mock_session
 
@@ -303,8 +312,8 @@ def test_get_one_by_id_database_error(mocker):
     mock_query.first.side_effect = SQLAlchemyError("Test error")
 
     # Mock selectinload
-    mocker.patch('data.user.selectinload', return_value=mock_options)
-    
+    mocker.patch('sqlalchemy.orm.selectinload', return_value=mock_options)
+
     mock_session_local = mocker.patch('data.user.SessionLocal')
     mock_session_local.return_value = mock_session
 

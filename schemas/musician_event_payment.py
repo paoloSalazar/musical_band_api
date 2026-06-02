@@ -4,7 +4,7 @@ Pydantic schemas for MusicianEventPayment API operations.
 Provides request/response validation for musician event payment endpoints.
 """
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from schemas.event_payment import PaymentType
@@ -16,8 +16,24 @@ class MusicianEventPaymentBase(BaseModel):
     musician_id: int
     amount: Decimal
     payment_type: PaymentType
-    payment_date: datetime = Field(default_factory=datetime.now)
+    payment_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     notes: Optional[str] = None
+
+    @field_validator('payment_date', mode='before')
+    @classmethod
+    def normalize_to_utc(cls, v: datetime | str) -> datetime:
+        """Ensure payment_date is always timezone-aware in UTC."""
+        if isinstance(v, str):
+            # Handle ISO strings with or without timezone (e.g. '2026-05-23T02:37:00' or with Z/+00:00)
+            v = datetime.fromisoformat(v.replace('Z', '+00:00'))
+        if isinstance(v, datetime):
+            if v.tzinfo is None:
+                # Naive datetime: assume it was intended as UTC (common for APIs)
+                v = v.replace(tzinfo=timezone.utc)
+            else:
+                # Convert any timezone to UTC
+                v = v.astimezone(timezone.utc)
+        return v
 
 
 class MusicianEventPaymentCreate(MusicianEventPaymentBase):

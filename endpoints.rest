@@ -1,6 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3NjY4NDc2NX0.2xWPx2A7udDLyDSUCoXLy0vVQgW1LlM3sQVyiUD2VVM
-
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3OTUyMjY5N30.G4k0ZShcGx1XV02r9shv5ulffVGFkiY8deym8BqVki4
 ###
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
@@ -115,6 +114,43 @@ Authorization: Bearer {{user_token}}
 ### Get all users (requires authentication)
 GET {{api}}/users/
 Authorization: Bearer {{user_token}}
+
+### Get users filtered by single role (e.g., musicians)
+GET {{api}}/users/?role=musician
+Authorization: Bearer {{user_token}}
+
+### Get users filtered by multiple roles (e.g., musicians and auxiliar_musicians)
+GET {{api}}/users/?roles=musician&order_by=last_name
+Authorization: Bearer {{user_token}}
+
+### Example response for role filtering:
+# {
+#   "data": [
+#     {
+#       "id": 2,
+#       "name": "John",
+#       "lastname": "Doe",
+#       "second_lastname": null,
+#       "email": "john.doe@example.com",
+#       "phone_number": "+1234567890",
+#       "role_id": 2,
+#       "role": "musician"
+#     },
+#     {
+#       "id": 3,
+#       "name": "Jane",
+#       "lastname": "Smith",
+#       "second_lastname": null,
+#       "email": "jane.smith@example.com",
+#       "phone_number": "+0987654321",
+#       "role_id": 3,
+#       "role": "auxiliar_musician"
+#     }
+#   ],
+#   "total": 2,
+#   "skip": 0,
+#   "limit": 20
+# }
 
 ### Post a new user
 POST {{api}}/users/
@@ -241,6 +277,10 @@ Authorization: Bearer {{user_token}}
 GET {{api}}/events/?page=1&limit=10
 Authorization: Bearer {{user_token}}
 
+### Note for musician/auxiliar_musician roles:
+# Only events the musician is assigned to (via event_musician table) will be returned.
+# Admin and client roles continue to see all events.
+
 ### Get events with filters
 GET {{api}}/events/?page=1&limit=20&status=PENDING&search=rock
 Authorization: Bearer {{user_token}}
@@ -258,7 +298,7 @@ GET {{api}}/events/calendar?year=2026&month=3&user_id=3
 Authorization: Bearer {{user_token}}
 
 ### Get a single event by ID
-GET {{api}}/events/1
+GET {{api}}/events/
 Authorization: Bearer {{user_token}}
 
 ### Post a new event (without user_id - taken from token)
@@ -522,14 +562,14 @@ Authorization: Bearer {{user_token}}
 ### payment_date defaults to current time if not provided
 
 ### Add payment to musician for event (ADVANCE)
-POST {{api}}/events/3/musicians/5/payments
+POST {{api}}/events/6/musicians/5/payments
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "event_id": 1,
+  "event_id": 6,
   "musician_id": 5,
-  "amount": 300.00,
+  "amount": 100.00,
   "payment_type": "ADVANCE",
   "notes": "Advance payment for guitarist"
 }
@@ -591,6 +631,29 @@ Authorization: Bearer {{user_token}}
 ### Check if a musician is available on a specific date
 GET {{api}}/musician-availability/check/5/2026-04-15
 Authorization: Bearer {{user_token}}
+
+### Get musician availability dates by month (for calendar integration)
+GET {{api}}/musician-availability/5/month/2026/5
+Authorization: Bearer {{user_token}}
+
+### Example response:
+# {
+#   "musician_id": 5,
+#   "year": 2026,
+#   "month": 5,
+#   "unavailable_dates": [
+#     {
+#       "id": 30,
+#       "unavailable_date": "2026-05-13",
+#       "reason": "Lage Weekend"
+#     },
+#     {
+#       "id": 31,
+#       "unavailable_date": "2026-05-14",
+#       "reason": "Evento Familiar"
+#     }
+#   ]
+# }
 
 ### Create a new availability entry (musicians/auxiliar_musicians can only create for themselves, admin can create for any)
 POST {{api}}/musician-availability

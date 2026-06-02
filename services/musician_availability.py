@@ -6,6 +6,7 @@ including validation, authorization, and data transformation.
 
 Functions:
     - get_by_musician: Get availability for a musician (with authorization)
+    - get_musician_availability_by_month: Get monthly availability for a musician (with authorization)
     - get_all_by_date: Get all musicians unavailable on a date (admin only)
     - create: Create new availability entry (musician only)
     - create_bulk: Create multiple entries (musician only)
@@ -22,7 +23,8 @@ from schemas.musician_availability import (
     MusicianAvailabilityCreate,
     MusicianAvailabilityUpdate,
     MusicianAvailabilityResponse,
-    MusicianAvailabilitySummaryResponse
+    MusicianAvailabilitySummaryResponse,
+    MusicianAvailabilityMonthlyResponse
 )
 import data.musician_availability as data
 import data.user as user_data
@@ -44,7 +46,7 @@ def get_by_musician(musician_id: int, current_user: dict) -> List[MusicianAvaila
     Retrieve all availability entries for a specific musician.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only view their own availability
+    - Musicians, auxiliar_musicians, and helpers can only view their own availability
     - Admins can view anyone's availability
 
     Args:
@@ -75,6 +77,57 @@ def get_by_musician(musician_id: int, current_user: dict) -> List[MusicianAvaila
         return availabilities
     except (DatabaseError, DatabaseConnectionError) as e:
         logger.error(f"Service error in get_by_musician for musician {musician_id}")
+        raise DatabaseError("Service error")
+
+
+def get_musician_availability_by_month(musician_id: int, year: int, month: int, current_user: dict) -> MusicianAvailabilityMonthlyResponse:
+    """
+    Retrieve all unavailable dates for a musician within a specific month.
+
+    Authorization:
+    - Musicians, auxiliar_musicians, and helpers can only view their own availability
+    - Admins can view anyone's availability
+
+    Args:
+        musician_id: The ID of the musician.
+        year: The year to query.
+        month: The month to query (1-12).
+        current_user: Current authenticated user dict with 'id', 'role', 'permissions'.
+
+    Returns:
+        MusicianAvailabilityMonthlyResponse with unavailable dates for the month.
+
+    Raises:
+        UnauthorizedError: If user lacks permission to view availability.
+        ValidationError: If year/month are invalid.
+        DatabaseError: If database operation fails.
+    """
+    # Validate year and month
+    if not (1 <= month <= 12):
+        raise ValidationError("Month must be between 1 and 12")
+    if year < 2000 or year > 2100:
+        raise ValidationError("Year must be between 2000 and 2100")
+
+    # Authorization check
+    current_user_id = current_user.get('id')
+    user_role = current_user.get('role')
+
+    if user_role not in ['admin'] and current_user_id != musician_id:
+        logger.warning(f"User {current_user_id} with role {user_role} attempted to view monthly availability for musician {musician_id}")
+        raise UnauthorizedError("You can only view your own availability")
+
+    try:
+        unavailable_dates = data.get_musician_availability_by_month(musician_id, year, month)
+        response = MusicianAvailabilityMonthlyResponse(
+            musician_id=musician_id,
+            year=year,
+            month=month,
+            unavailable_dates=unavailable_dates
+        )
+        logger.info(f"Retrieved {len(unavailable_dates)} unavailable dates for musician {musician_id} in {year}-{month}")
+        return response
+    except (DatabaseError, DatabaseConnectionError) as e:
+        logger.error(f"Service error in get_musician_availability_by_month for musician {musician_id} in {year}-{month}")
         raise DatabaseError("Service error")
 
 
@@ -147,7 +200,7 @@ def create(availability_create: MusicianAvailabilityCreate, current_user: dict) 
     Create a new availability entry for a musician.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only create availability for themselves
+    - Musicians, auxiliar_musicians, and helpers can only create availability for themselves
     - Admins can create availability for any musician
 
     Args:
@@ -192,6 +245,13 @@ def create(availability_create: MusicianAvailabilityCreate, current_user: dict) 
         logger.error("Service error checking existing availability")
         raise DatabaseError("Service error")
 
+    # New validation: block unavailable date if musician assigned to event that day
+    event_name = data.check_musician_event_assignment(
+        availability_create.musician_id, availability_create.unavailable_date
+    )
+    if event_name:
+        raise ConflictError(f"Cannot mark date unavailable – assigned to event '{event_name}' on this date")
+
     try:
         db_availability = MusicianAvailability(
             musician_id=availability_create.musician_id,
@@ -212,7 +272,7 @@ def create_bulk(availabilities_create: List[MusicianAvailabilityCreate], current
     Create multiple availability entries for a musician.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only create availability for themselves
+    - Musicians, auxiliar_musicians, and helpers can only create availability for themselves
     - Admins can create availability for any musician
 
     Args:
@@ -271,6 +331,12 @@ def create_bulk(availabilities_create: List[MusicianAvailabilityCreate], current
     if conflict_dates:
         raise ConflictError(f"Availability already exists for dates: {', '.join(conflict_dates)}")
 
+    # New validation: block any date where musician is assigned to an event
+    for av_create in availabilities_create:
+        event_name = data.check_musician_event_assignment(musician_id, av_create.unavailable_date)
+        if event_name:
+            raise ConflictError(f"Cannot mark date unavailable – assigned to event '{event_name}' on {av_create.unavailable_date}")
+
     try:
         db_availabilities = [
             MusicianAvailability(
@@ -295,7 +361,7 @@ def update(availability_id: int, availability_update: MusicianAvailabilityUpdate
     Update an existing availability entry.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only update their own availability
+    - Musicians, auxiliar_musicians, and helpers can only update their own availability
     - Admins can update anyone's availability
 
     Args:
@@ -362,7 +428,7 @@ def delete(availability_id: int, current_user: dict) -> bool:
     Delete an availability entry.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only delete their own availability
+    - Musicians, auxiliar_musicians, and helpers can only delete their own availability
     - Admins can delete anyone's availability
 
     Args:
@@ -410,7 +476,7 @@ def delete_by_musician_and_date(musician_id: int, unavailable_date: date, curren
     Delete a specific availability entry by musician and date.
 
     Authorization:
-    - Musicians and auxiliar_musicians can only delete their own availability
+    - Musicians, auxiliar_musicians, and helpers can only delete their own availability
     - Admins can delete anyone's availability
 
     Args:

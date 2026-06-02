@@ -5,6 +5,7 @@ Provides REST endpoints for musician availability management.
 
 Endpoints:
     - GET /api/musician-availability/{musician_id} - Get availability for musician
+    - GET /api/musician-availability/{musician_id}/month/{year}/{month} - Get monthly availability for musician
     - GET /api/musician-availability/check/{musician_id}/{date} - Check availability
     - POST /api/musician-availability - Create availability entry
     - POST /api/musician-availability/bulk - Create bulk availability
@@ -26,7 +27,8 @@ from schemas.musician_availability import (
     MusicianAvailabilityCreate,
     MusicianAvailabilityUpdate,
     MusicianAvailabilityResponse,
-    MusicianAvailabilitySummaryResponse
+    MusicianAvailabilitySummaryResponse,
+    MusicianAvailabilityMonthlyResponse
 )
 import services.musician_availability as service
 from exceptions import DatabaseError, NotFoundError, ConflictError, UnauthorizedError, ValidationError
@@ -37,7 +39,7 @@ router = APIRouter(prefix="/api/musician-availability")
 admin_router = APIRouter(prefix="/api/admin/musician-availability")
 
 # Authorization dependencies
-musician_roles = ["admin", "musician", "auxiliar_musician"]
+musician_roles = ["admin", "musician", "auxiliar_musician", "helper"]
 require_read_musician_availability = RoleAndPermissionChecker(
     required_roles=musician_roles,
     required_permissions=["read:musician_availability"]
@@ -92,6 +94,42 @@ def get_by_musician(
         raise HTTPException(status_code=403, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error in get_by_musician: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{musician_id}/month/{year}/{month}", response_model=MusicianAvailabilityMonthlyResponse)
+def get_musician_availability_by_month(
+    current_user: Annotated[dict, Depends(require_read_musician_availability)],
+    musician_id: int,
+    year: int,
+    month: int
+) -> MusicianAvailabilityMonthlyResponse:
+    """
+    Retrieve all unavailable dates for a musician within a specific month.
+
+    Args:
+        musician_id: The ID of the musician.
+        year: The year to query.
+        month: The month to query (1-12).
+
+    Returns:
+        MusicianAvailabilityMonthlyResponse with unavailable dates for the month.
+
+    Raises:
+        HTTPException: 400 if invalid parameters, 403 if unauthorized, 500 if database error.
+    """
+    try:
+        monthly_availability = service.get_musician_availability_by_month(musician_id, year, month, current_user)
+        logger.info(f"API request: Retrieved monthly availability for musician {musician_id} in {year}-{month}")
+        return monthly_availability
+    except UnauthorizedError as e:
+        logger.warning(f"Unauthorized access attempt: {str(e)}")
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValidationError as e:
+        logger.warning(f"Validation error in get_musician_availability_by_month: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except DatabaseError as e:
+        logger.error(f"Database error in get_musician_availability_by_month: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

@@ -189,13 +189,15 @@ class TestEventDataModify:
 class TestEventDataDelete:
     """Tests for deleting events in data layer"""
     
+    @patch('data.event.check_integrity_before_deletion')
     @patch('data.event.SessionLocal')
-    def test_delete_event_success(self, mock_session_local):
+    def test_delete_event_success(self, mock_session_local, mock_integrity_check):
         """Test successful event deletion"""
         # Arrange
         mock_db = MagicMock()
         mock_session_local.return_value = mock_db
-        
+        mock_integrity_check.return_value = None  # No integrity violations
+
         mock_event = Event(
             id=1,
             name="Event to Delete",
@@ -207,12 +209,13 @@ class TestEventDataDelete:
         mock_db.query.return_value.filter.return_value.first.return_value = mock_event
         mock_db.delete.return_value = None
         mock_db.commit.return_value = None
-        
+
         # Act
         result = event_data.delete(1)
-        
+
         # Assert
         assert result is True
+        mock_integrity_check.assert_called_once_with('event', 1)
         mock_db.delete.assert_called_once_with(mock_event)
         mock_db.commit.assert_called_once()
 
@@ -234,3 +237,77 @@ class TestEventDataDelete:
 # Note: Pagination and calendar functionality is tested in service layer tests
 # See tests/unit/services/test_event.py::TestEventServicePaginated
 # and tests/unit/services/test_event.py::TestEventServiceCalendar
+
+
+class TestEventDataMusicianFiltering:
+    """TDD tests for performer (musician/auxiliar_musician/helper) role-based filtering"""
+
+    @patch('data.event.SessionLocal')
+    def test_get_paginated_musician_returns_only_assigned_events(self, mock_session_local):
+        """Musician should only see events they are assigned to via event_musician"""
+        # Arrange
+        mock_db = MagicMock()
+        mock_session_local.return_value = mock_db
+
+        # Mock query chain for join + filter
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.options.return_value = mock_query
+        mock_query.join.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+        mock_query.count.return_value = 1
+        mock_query.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [MagicMock(id=10)]
+
+        # Act
+        events, total = event_data.get_paginated(
+            page=1, limit=20,
+            current_user_role="musician",
+            current_user_id=5
+        )
+
+        # Assert - verify join on event_musicians was used
+        mock_query.join.assert_called_once()
+        assert total == 1
+        assert len(events) == 1
+
+    @patch('data.event.SessionLocal')
+    def test_get_paginated_admin_returns_all_events(self, mock_session_local):
+        """Admin role must bypass musician filtering and see all events"""
+        mock_db = MagicMock()
+        mock_session_local.return_value = mock_db
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.options.return_value = mock_query
+        mock_query.count.return_value = 42
+        mock_query.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
+
+        events, total = event_data.get_paginated(
+            page=1, limit=20,
+            current_user_role="admin",
+            current_user_id=99
+        )
+
+        # No join should be performed for admin
+        assert not hasattr(mock_query, 'join') or mock_query.join.call_count == 0
+        assert total == 42
+
+    @patch('data.event.SessionLocal')
+    def test_get_by_month_musician_filters_by_assignment(self, mock_session_local):
+        """Calendar view for performer (helper) must also respect assignment filter"""
+        mock_db = MagicMock()
+        mock_session_local.return_value = mock_db
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.options.return_value = mock_query
+        mock_query.join.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = []
+
+        events = event_data.get_events_by_month(
+            year=2026, month=5,
+            current_user_role="helper",
+            current_user_id=7
+        )
+
+        mock_query.join.assert_called_once()
+        assert len(events) == 0

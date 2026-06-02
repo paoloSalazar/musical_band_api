@@ -167,12 +167,34 @@ Implemented specific role-based access control for musician availability endpoin
 - Maintains admin oversight capabilities for system management
 - Blocks access at the API level before reaching business logic
 
-### Sub-Phase 1.12: Integration Testing
+### Monthly Availability Endpoint Implementation
+#### Overview
+This sub-phase adds an endpoint to retrieve musician availability dates by month, enabling calendar views and scheduling interfaces to display unavailable dates for a given musician.
+
 #### Tasks:
-1. Write and run integration tests for availability feature
-   - Full availability management workflows
-   - Authorization rules: musicians set own availability, visibility restrictions
-   - End-to-end scenarios
+1. **Update Data Layer** (`data/musician_availability.py`):
+   - Add `get_musician_availability_by_month(musician_id, year, month)` function
+   - Query unavailable dates within the specified month range
+   - Return list of dates for calendar integration
+
+2. **Update Service Layer** (`services/musician_availability.py`):
+   - Add business logic for monthly availability retrieval
+   - Include authorization checks (own availability or admin access)
+   - Format dates appropriately for API response
+
+3. **Update Web Layer** (`web/musician_availability.py`):
+   - Add `GET /api/musicians/{musician_id}/availability/month/{year}/{month}` endpoint
+   - Validate year/month parameters (valid ranges, future dates)
+   - Return availability data with proper HTTP status codes
+
+4. **Update Schemas** (`schemas/musician_availability.py`):
+   - Add `MusicianAvailabilityMonthlyResponse` schema
+   - Include month/year metadata and list of unavailable dates
+
+5. **Add Tests**:
+   - Unit tests for data/service layer functions
+   - Integration tests for the new endpoint
+   - Test authorization rules and parameter validation
 
 #### Estimated Time: 0.5 days
 #### Dependencies: Sub-Phase 1.11 complete
@@ -663,3 +685,81 @@ This sub-phase implements date-based restrictions for payment timing to ensure p
 - Database Administrator: For migration reviews
 - QA Engineer: For testing and validation
 - DevOps: For deployment support
+
+## IMPROVEMENTS
+
+### Musician Availability Event Assignment Validation (Phase 1)
+
+Implementation Plan Addition (Phase 1 Musician Availability):
+
+1. **Sub-Phase 1.7 (Data Layer)**: Extend `data/musician_availability.py` with `check_musician_event_assignment(musician_id, date)` – query `event_musician` (or events join) for active assignments on that date.
+2. **Sub-Phase 1.9 (Services Layer)**: In `services/musician_availability.py` create/update functions: call above check; if assigned, raise 400/409 with "Cannot mark unavailable – already assigned to event on this date".
+3. **Sub-Phase 1.11 (Web Layer)**: Propagate error in POST `/availability`; update docs/tests for new conflict case.
+4. **Dependencies/Notes**: Requires EventMusician table (Phase 2) or forward-ref; place validation after musician role check; TDD tests in 1.8/1.10; no code edits now.
+
+**Event Name in Error Message**:
+Yes, include event name by joining `event_musician` + `events` in the data-layer check (return event name or None). Pass it to the service error: "Cannot mark date unavailable – assigned to event '{name}' on this date".
+
+### Adding 'helper' Role for Better Task Separation
+
+**Context**:
+A new `helper` role is required. Functionally `helper` is **identical** to `musician` and `auxiliar_musician`:
+- Can be assigned to events (the original request starts at `web/event_musician.py::assign_musician_to_event`)
+- Must see only their own event assignments, calendar events, payments, and availability
+- Treated exactly the same in all authorization, filtering, and validation logic
+
+**Purpose**: Purely for better separation of tasks between different support personnel. No difference in permissions or behavior.
+
+**No code changes are to be performed now** — this subsection only documents the required updates to the existing implementation plan.
+
+#### Impact on Phase 1: Musician Availability
+- Update `web/musician_availability.py:42` (`musician_roles` list) to include `"helper"`
+- Update service docstrings and authorization comments in `services/musician_availability.py` that mention only "musicians and auxiliar_musicians"
+- Ensure `helper` users can manage their own availability (same ownership checks as the other two roles)
+- Update relevant unit tests in `tests/unit/web/test_musician_availability.py` and `tests/unit/services/test_musician_availability.py`
+
+#### Impact on Phase 2: Event Musician Feature
+- **Core change location**: `services/event_musician.py:151` inside `assign_musician()`:
+  ```python
+  if musician.role.name not in ['musician', 'auxiliar_musician', 'helper']:
+  ```
+  Update error message accordingly.
+- Update `web/event_musician.py:35` (`musician_roles = ["musician", "auxiliar_musician"]`) for read access
+- Update `_can_view_musician_assignments` in `services/event_musician.py:422`
+- Update role-based filtering in `data/event.py:360` and `447` (the two `current_user_role in ("musician", "auxiliar_musician")` conditions)
+- Update all docstrings, comments, and tests that hard-code the two-role assumption
+- Add test cases proving `helper` can be assigned and sees only own data
+
+#### Impact on Phase 3: Musician Event Payment Feature
+- Update `web/musician_event_payment.py:31` (`musician_roles` list)
+- Update the two `elif user_role in ['musician', 'auxiliar_musician']:` blocks in `services/musician_event_payment.py:239` and `332`
+- Ensure `helper` users can view only their own payments (same logic as musicians)
+- Update corresponding web tests and service tests
+
+#### Cross-Phase & General Updates
+1. **Centralize Role Set** (recommended improvement): Introduce a single constant (e.g. `PERFORMER_ROLES = {"musician", "auxiliar_musician", "helper"}`) in one place (suggested: `auth/roles.py` or a new `config/roles.py`) and replace all duplicated lists. This prevents the problem from recurring when future performer roles are added.
+2. **Scripts & Constraints**:
+   - Update `scripts/test_constraint_behavior.py` and `scripts/test_comprehensive_constraints.py` (the raw SQL `IN ('musician', 'auxiliar_musician')` clauses)
+3. **Tests**: Systematically search and update every test file that asserts on or mocks only the original two roles.
+4. **Documentation**: Update this plan, `README.md`, and any endpoint descriptions that mention assignable roles.
+
+#### Compliance with "Musician Availability Event Assignment Validation (Phase 1)"
+The `helper` role **must** be fully compliant with the conflict prevention logic added in the "Musician Availability Event Assignment Validation (Phase 1)" improvement:
+
+- When `helper` is added to the allowed roles in `web/musician_availability.py` (see Phase 1 impact above), the `check_musician_event_assignment(musician_id, date)` call in the availability service will automatically protect helper users.
+- Helpers will be prevented from marking a date unavailable if they have an active assignment in the `event_musician` table for that date (same rule as `musician` and `auxiliar_musician`).
+- The validation sits **after** the role check, so once "helper" passes the role gate for availability endpoints, the event-assignment conflict check applies identically.
+- No additional changes needed in the data/service logic of the conflict validator — it operates on `musician_id` only.
+
+This guarantees consistent behavior across all three performer roles.
+
+**Verification Steps (after the planned code updates)**:
+- Create `helper` role + user via admin API
+- Assign the helper to an event
+- Confirm the helper appears in event musician lists, can see the event in their calendar, can manage their own availability, and can view their own payments
+- Confirm all existing `musician` and `auxiliar_musician` behavior is unchanged
+- Full test suite passes (`.\venv\Scripts\python.exe -m pytest -q`)
+
+**Estimated Additional Effort**: 0.5–1 day (mostly mechanical list updates + test additions + one new constant)
+
+**Risk**: Low — purely additive; no behavior change for existing roles. The only risk is missing one of the duplicated role lists (hence the recommendation to centralize).
