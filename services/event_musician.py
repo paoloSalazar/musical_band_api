@@ -418,7 +418,8 @@ def get_musicians_summary(event_id: int, current_user: dict) -> dict:
 
 def _can_manage_event_musicians(event, current_user: dict) -> bool:
     """Check if user can manage musicians for the event."""
-    return current_user.get('role') == 'admin' or event.user_id == current_user.get('id')
+    ### consider to fix, permissions checker 
+    return current_user.get('role') == 'admin' or event.user_id == current_user.get('id') or current_user.get('role') in ['musician', 'auxiliar_musician', 'helper']
 
 
 def _can_view_musician_assignments(musician_id: int, current_user: dict) -> bool:
