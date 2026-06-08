@@ -7,6 +7,8 @@ Endpoints:
     - POST /api/events/{event_id}/musicians/{musician_id}/payments - Add payment
     - GET /api/events/{event_id}/musicians/{musician_id}/payments - List payments
     - GET /api/events/{event_id}/musicians/{musician_id}/payments/summary - Payment summary
+    - GET /api/events/{event_id}/musicians/payment-summary - Musician payment summary for event (admin only)
+    - GET /api/events/{event_id}/billing-summary - Event billing summary (admin or owner)
 """
 
 import logging
@@ -19,6 +21,8 @@ from schemas.musician_event_payment import (
     MusicianEventPaymentCreate,
     MusicianEventPaymentResponse,
     MusicianPaymentSummaryResponse,
+    MusicianEventSummaryResponse,
+    EventBillingSummaryResponse,
 )
 import services.musician_event_payment as service
 from exceptions import DatabaseError, NotFoundError, ValidationError, UnauthorizedError
@@ -173,4 +177,84 @@ def get_musician_payment_summary(
         raise HTTPException(status_code=403, detail=str(e))
     except DatabaseError as e:
         logger.error(f"Database error getting payment summary for event {event_id}, musician {musician_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get(
+    "/{event_id}/musicians/payment-summary",
+    response_model=List[MusicianEventSummaryResponse],
+    dependencies=[Depends(require_write_musician_event_payment)],  # Admin only as per updated plan
+    summary="Get musician payment summary for event",
+    description="Retrieve payment summary for all musicians assigned to an event (admin only)."
+)
+def get_event_musician_payment_summary(
+    event_id: int,
+    current_user: Annotated[dict, Depends(get_current_user)]
+) -> List[MusicianEventSummaryResponse]:
+    """
+    Get payment summary for all musicians assigned to an event.
+
+    Args:
+        event_id: The ID of the event.
+        current_user: Current authenticated user (must be admin).
+
+    Returns:
+        List of musician payment summary information.
+
+    Raises:
+        HTTPException: For authorization, not found, or validation errors.
+    """
+    try:
+        return service.get_musician_payment_summary_for_event(event_id, current_user)
+    except NotFoundError as e:
+        logger.warning(f"Not found error getting musician payment summary for event {event_id}: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except UnauthorizedError as e:
+        logger.warning(f"Unauthorized error getting musician payment summary for event {event_id}: {e}")
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValidationError as e:
+        logger.warning(f"Validation error getting musician payment summary for event {event_id}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except DatabaseError as e:
+        logger.error(f"Database error getting musician payment summary for event {event_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get(
+    "/{event_id}/billing-summary",
+    response_model=EventBillingSummaryResponse,
+    dependencies=[Depends(require_read_musician_event_payment)],  # Admin or owner as per plan
+    summary="Get event billing summary",
+    description="Retrieve billing summary for an event including total paid, remaining payment, and payments to musicians."
+)
+def get_event_billing_summary_endpoint(
+    event_id: int,
+    current_user: Annotated[dict, Depends(get_current_user)]
+) -> EventBillingSummaryResponse:
+    """
+    Get billing summary for an event.
+
+    Args:
+        event_id: The ID of the event.
+        current_user: Current authenticated user (admin or event owner).
+
+    Returns:
+        Event billing summary information.
+
+    Raises:
+        HTTPException: For authorization, not found, or validation errors.
+    """
+    try:
+        return service.get_event_billing_summary(event_id, current_user)
+    except NotFoundError as e:
+        logger.warning(f"Not found error getting event billing summary for event {event_id}: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except UnauthorizedError as e:
+        logger.warning(f"Unauthorized error getting event billing summary for event {event_id}: {e}")
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValidationError as e:
+        logger.warning(f"Validation error getting event billing summary for event {event_id}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except DatabaseError as e:
+        logger.error(f"Database error getting event billing summary for event {event_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")

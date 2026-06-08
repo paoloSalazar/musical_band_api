@@ -313,3 +313,33 @@ def get_total_paid_by_musician(musician_id: int) -> Decimal:
         raise DatabaseError("Failed to calculate total paid")
     finally:
         db.close()
+
+
+def get_total_paid_by_event_for_musicians(event_id: int) -> Decimal:
+    """
+    Calculate the total amount paid to all musicians for a specific event.
+
+    Args:
+        event_id: The ID of the event.
+
+    Returns:
+        The total amount paid as Decimal.
+
+    Raises:
+        DatabaseConnectionError: If database connection fails.
+        DatabaseError: If database operation fails.
+    """
+    db = SessionLocal()
+    try:
+        result = db.query(func.coalesce(func.sum(MusicianEventPayment.amount), 0)).filter(
+            MusicianEventPayment.event_id == event_id
+        ).scalar()
+        return result or Decimal("0.00")
+    except (OperationalError, InterfaceError) as e:
+        logger.error(f"Database connection error while calculating total paid to musicians for event '{event_id}'")
+        raise DatabaseConnectionError("Database connection failed")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while calculating total paid to musicians for event '{event_id}'")
+        raise DatabaseError("Failed to calculate total paid to musicians")
+    finally:
+        db.close()

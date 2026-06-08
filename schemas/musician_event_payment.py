@@ -63,3 +63,23 @@ class MusicianPaymentSummaryResponse(BaseModel):
     payment_count: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MusicianEventSummaryResponse(BaseModel):
+    """Schema for musician event payment summary response"""
+    musician_name: str
+    salary: Decimal
+    payment_done: Decimal
+    remaining_payment: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EventBillingSummaryResponse(BaseModel):
+    """Schema for event billing summary response"""
+    event_name: str
+    payment_done: Decimal
+    remaining_payment: Decimal
+    payment_done_to_musicians: Decimal
+
+    model_config = ConfigDict(from_attributes=True)

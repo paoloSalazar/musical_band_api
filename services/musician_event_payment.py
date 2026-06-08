@@ -20,7 +20,9 @@ from models.event_musician import PaymentStatus
 from schemas.musician_event_payment import (
     MusicianEventPaymentCreate,
     MusicianEventPaymentResponse,
-    MusicianPaymentSummaryResponse
+    MusicianPaymentSummaryResponse,
+    MusicianEventSummaryResponse,
+    EventBillingSummaryResponse
 )
 from schemas.event_payment import PaymentType
 import data.musician_event_payment as payment_data
@@ -379,4 +381,106 @@ def get_payment_summary_for_musician(musician_id: int, current_user: dict) -> Mu
         musician_id=musician_id,
         total_paid=total_paid,
         payment_count=payment_count
+    )
+
+
+def get_musician_payment_summary_for_event(
+    event_id: int,
+    current_user: dict
+) -> list[MusicianEventSummaryResponse]:
+    """
+    Get payment summary for all musicians assigned to an event.
+
+    Args:
+        event_id: The ID of the event.
+        current_user: The current user making the request.
+
+    Returns:
+        List of MusicianEventSummaryResponse objects.
+
+    Raises:
+        NotFoundError: If event doesn't exist.
+        UnauthorizedError: If user not authorized (must be admin).
+    """
+    # Check if current user can view this event (admin only for this endpoint)
+    if current_user['role'] != 'admin':
+        raise UnauthorizedError("You can only view payment summaries for your own events")
+    
+    # Get event to validate it exists
+    event = event_data.get_one(event_id)
+    if not event:
+        raise NotFoundError(f"Event with id {event_id} not found")
+
+    # Get all musicians assigned to this event
+    assignments = assignment_data.get_by_event(event_id)
+
+    # Build summary for each musician
+    summaries = []
+    for assignment in assignments:
+        total_paid = payment_data.get_total_paid_by_musician_for_event(
+            event_id, assignment.musician_id
+        )
+        
+        # Construct full name from user fields
+        musician_name = assignment.musician.name
+        if assignment.musician.lastname:
+            musician_name += " " + assignment.musician.lastname
+        if assignment.musician.second_lastname:
+            musician_name += " " + assignment.musician.second_lastname
+
+        summaries.append(MusicianEventSummaryResponse(
+            musician_name=musician_name,
+            salary=assignment.salary,
+            payment_done=total_paid,
+            remaining_payment=max(assignment.salary - total_paid, Decimal("0.00"))
+        ))
+
+    return summaries
+
+
+def get_event_billing_summary(
+    event_id: int,
+    current_user: dict
+) -> EventBillingSummaryResponse:
+    """
+    Get billing summary for an event.
+
+    Args:
+        event_id: The ID of the event.
+        current_user: The current user making the request.
+
+    Returns:
+        EventBillingSummaryResponse object.
+
+    Raises:
+        NotFoundError: If event doesn't exist.
+        UnauthorizedError: If user not authorized (must be admin or event owner).
+        ValidationError: If event price is not set.
+    """
+    # Get event to validate it exists
+    event = event_data.get_one(event_id)
+    if not event:
+        raise NotFoundError(f"Event with id {event_id} not found")
+
+    # Check if current user can view this event (admin or event owner)
+    if current_user['role'] != 'admin' and event.user_id != current_user['id']:
+        raise UnauthorizedError("You can only view billing summaries for your own events")
+
+    # Get event final price
+    if event.price is None:
+        raise ValidationError("Event final price not set")
+
+    final_price = Decimal(str(event.price))
+
+    # Get total paid to musicians for this event
+    payments_to_musicians = payment_data.get_total_paid_by_event_for_musicians(event_id)
+
+    # Calculate remaining payment (what's left to pay musicians)
+    remaining_payment = max(final_price - payments_to_musicians, Decimal("0.00"))
+
+    return EventBillingSummaryResponse(
+        event_name=event.name,
+        payment_done=payments_to_musicians,
+        remaining_payment=remaining_payment,
+        payment_done_to_musicians=payments_to_musicians
     )
