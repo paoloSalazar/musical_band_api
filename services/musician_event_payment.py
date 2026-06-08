@@ -430,6 +430,7 @@ def get_musician_payment_summary_for_event(
 
         summaries.append(MusicianEventSummaryResponse(
             musician_name=musician_name,
+            role=assignment.role,
             salary=assignment.salary,
             payment_done=total_paid,
             remaining_payment=max(assignment.salary - total_paid, Decimal("0.00"))

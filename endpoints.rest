@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc3OTUyMjY5N30.G4k0ZShcGx1XV02r9shv5ulffVGFkiY8deym8BqVki4
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MDkxNDU0M30.WXYauud3mwErjgyu3oDVbcX7rHMrtsnGoMBBsjZMhKQ
 ###
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
@@ -760,3 +760,30 @@ Content-Type: application/json
   "payment_type": "ADVANCE",
   "notes": "Payment for performance advance"
 }
+
+### Musician payment summary for an event (admin only)
+### Returns payment summary for all musicians assigned to an event
+### Example response:
+# [
+#   {
+#     "musician_name": "vicente jimenez calle",
+#     "role": "Baterista",
+#     "salary": "500.00",
+#     "payment_done": "100.00",
+#     "remaining_payment": "400.00"
+#   },
+#   {
+#     "musician_name": "john doe",
+#     "role": "Guitarista",
+#     "salary": "300.00",
+#     "payment_done": "50.00",
+#     "remaining_payment": "250.00"
+#   }
+# ]
+GET {{api}}/events/4/musicians/payment-summary
+Authorization: Bearer {{user_token}}
+
+### Event billing summary (admin or event owner)
+### Returns billing summary for an event including total paid, remaining payment, and payments to musicians
+GET {{api}}/events/3/billing-summary
+Authorization: Bearer {{user_token}}

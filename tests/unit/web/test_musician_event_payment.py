@@ -254,12 +254,14 @@ def test_get_event_musician_payment_summary_admin_success(mocker):
     mock_summary_list = [
         MusicianEventSummaryResponse(
             musician_name="John Doe",
+            role="Lead Guitarist",
             salary=Decimal("1000.00"),
             payment_done=Decimal("300.00"),
             remaining_payment=Decimal("700.00")
         ),
         MusicianEventSummaryResponse(
             musician_name="Jane Smith",
+            role="Vocalist",
             salary=Decimal("800.00"),
             payment_done=Decimal("500.00"),
             remaining_payment=Decimal("300.00")
@@ -275,10 +277,12 @@ def test_get_event_musician_payment_summary_admin_success(mocker):
     assert isinstance(response, list)
     assert len(response) == 2
     assert response[0].musician_name == "John Doe"
+    assert response[0].role == "Lead Guitarist"
     assert response[0].salary == Decimal("1000.00")
     assert response[0].payment_done == Decimal("300.00")
     assert response[0].remaining_payment == Decimal("700.00")
     assert response[1].musician_name == "Jane Smith"
+    assert response[1].role == "Vocalist"
     assert response[1].salary == Decimal("800.00")
     assert response[1].payment_done == Decimal("500.00")
     assert response[1].remaining_payment == Decimal("300.00")

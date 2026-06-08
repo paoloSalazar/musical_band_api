@@ -68,6 +68,7 @@ class MusicianPaymentSummaryResponse(BaseModel):
 class MusicianEventSummaryResponse(BaseModel):
     """Schema for musician event payment summary response"""
     musician_name: str
+    role: str
     salary: Decimal
     payment_done: Decimal
     remaining_payment: Decimal

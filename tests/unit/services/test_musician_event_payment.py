@@ -1094,11 +1094,13 @@ def test_get_musician_payment_summary_for_event_admin_success(mocker):
     assert len(result) == 2
     # First musician
     assert result[0].musician_name == "John Doe"
+    assert result[0].role == "Lead Guitarist"
     assert result[0].salary == Decimal("1000.00")
     assert result[0].payment_done == Decimal("300.00")
     assert result[0].remaining_payment == Decimal("700.00")
     # Second musician
     assert result[1].musician_name == "Jane Smith Jr"
+    assert result[1].role == "Vocalist"
     assert result[1].salary == Decimal("800.00")
     assert result[1].payment_done == Decimal("500.00")
     assert result[1].remaining_payment == Decimal("300.00")
