@@ -1,6 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MDkxNDU0M30.WXYauud3mwErjgyu3oDVbcX7rHMrtsnGoMBBsjZMhKQ
-###
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MTYwOTE2M30.mEMs6RqZSDaBmWXBw1FFgyMtMaIT_5D50xhmwAgi4xE
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
 ###
@@ -298,7 +297,7 @@ GET {{api}}/events/calendar?year=2026&month=3&user_id=3
 Authorization: Bearer {{user_token}}
 
 ### Get a single event by ID
-GET {{api}}/events/
+GET {{api}}/events/4
 Authorization: Bearer {{user_token}}
 
 ### Post a new event (without user_id - taken from token)
@@ -784,6 +783,14 @@ GET {{api}}/events/4/musicians/payment-summary
 Authorization: Bearer {{user_token}}
 
 ### Event billing summary (admin or event owner)
-### Returns billing summary for an event including total paid, remaining payment, and payments to musicians
-GET {{api}}/events/3/billing-summary
+### Returns billing summary for an event including total paid, sum of musician salaries, remaining payment, and payments to musicians
+### Example response:
+# {
+#   "event_name": "Matrimonio Juan&Silvia",
+#   "payment_done": "4000.00",
+#   "sum_of_musician_salaries": "1050.00",
+#   "remaining_payment": "0.00",
+#   "payment_done_to_musicians": "350.00"
+# }
+GET {{api}}/events/4/billing-summary
 Authorization: Bearer {{user_token}}

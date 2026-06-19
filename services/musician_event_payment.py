@@ -27,6 +27,7 @@ from schemas.musician_event_payment import (
 from schemas.event_payment import PaymentType
 import data.musician_event_payment as payment_data
 import data.event as event_data
+import data.event_payment as event_payment_data
 import data.user as user_data
 import data.event_musician as assignment_data
 from exceptions import NotFoundError, ValidationError, UnauthorizedError
@@ -473,15 +474,24 @@ def get_event_billing_summary(
 
     final_price = Decimal(str(event.price))
 
-    # Get total paid to musicians for this event
-    payments_to_musicians = payment_data.get_total_paid_by_event_for_musicians(event_id)
+    # Get total paid for the event (from event_payments table)
+    total_event_payment = event_payment_data.get_total_paid(event_id)
 
-    # Calculate remaining payment (what's left to pay musicians)
-    remaining_payment = max(final_price - payments_to_musicians, Decimal("0.00"))
+    # Get total paid to musicians for this event
+    total_musicians_payment = payment_data.get_total_paid_by_event_for_musicians(event_id)
+
+    # Get sum of musician salaries for this event
+    assignments = assignment_data.get_by_event(event_id)
+    sum_of_musician_salaries = sum((a.salary for a in assignments), Decimal("0.00"))
+
+    # Calculate remaining payment (what's left to pay for the event)
+    remaining_payment = max(final_price - total_event_payment, Decimal("0.00"))
 
     return EventBillingSummaryResponse(
         event_name=event.name,
-        payment_done=payments_to_musicians,
+        event_price=final_price,
+        payment_done=total_event_payment,
+        sum_of_musician_salaries=sum_of_musician_salaries,
         remaining_payment=remaining_payment,
-        payment_done_to_musicians=payments_to_musicians
+        payment_done_to_musicians=total_musicians_payment
     )

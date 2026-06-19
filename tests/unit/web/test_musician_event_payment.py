@@ -311,9 +311,11 @@ def test_get_event_billing_summary_admin_success(mocker):
 
     mock_billing_summary = EventBillingSummaryResponse(
         event_name="Summer Festival",
-        payment_done=Decimal("3000.00"),
-        remaining_payment=Decimal("2000.00"),
-        payment_done_to_musicians=Decimal("3000.00")
+        event_price=Decimal("4000.00"),
+        payment_done=Decimal("4000.00"),
+        sum_of_musician_salaries=Decimal("1050.00"),
+        remaining_payment=Decimal("0.00"),
+        payment_done_to_musicians=Decimal("350.00")
     )
     mock_service = mocker.patch('web.musician_event_payment.service.get_event_billing_summary')
     mock_service.return_value = mock_billing_summary
@@ -324,9 +326,11 @@ def test_get_event_billing_summary_admin_success(mocker):
     # Assert
     assert isinstance(response, EventBillingSummaryResponse)
     assert response.event_name == "Summer Festival"
-    assert response.payment_done == Decimal("3000.00")
-    assert response.remaining_payment == Decimal("2000.00")
-    assert response.payment_done_to_musicians == Decimal("3000.00")
+    assert response.event_price == Decimal("4000.00")
+    assert response.payment_done == Decimal("4000.00")
+    assert response.sum_of_musician_salaries == Decimal("1050.00")
+    assert response.remaining_payment == Decimal("0.00")
+    assert response.payment_done_to_musicians == Decimal("350.00")
     mock_service.assert_called_once_with(event_id, current_user)
 
 
@@ -338,8 +342,10 @@ def test_get_event_billing_summary_owner_success(mocker):
 
     mock_billing_summary = EventBillingSummaryResponse(
         event_name="Winter Concert",
-        payment_done=Decimal("1500.00"),
-        remaining_payment=Decimal("1000.00"),
+        event_price=Decimal("2500.00"),
+        payment_done=Decimal("2500.00"),
+        sum_of_musician_salaries=Decimal("1500.00"),
+        remaining_payment=Decimal("0.00"),
         payment_done_to_musicians=Decimal("1500.00")
     )
     mock_service = mocker.patch('web.musician_event_payment.service.get_event_billing_summary')
@@ -351,8 +357,10 @@ def test_get_event_billing_summary_owner_success(mocker):
     # Assert
     assert isinstance(response, EventBillingSummaryResponse)
     assert response.event_name == "Winter Concert"
-    assert response.payment_done == Decimal("1500.00")
-    assert response.remaining_payment == Decimal("1000.00")
+    assert response.event_price == Decimal("2500.00")
+    assert response.payment_done == Decimal("2500.00")
+    assert response.sum_of_musician_salaries == Decimal("1500.00")
+    assert response.remaining_payment == Decimal("0.00")
     assert response.payment_done_to_musicians == Decimal("1500.00")
     mock_service.assert_called_once_with(event_id, current_user)
 

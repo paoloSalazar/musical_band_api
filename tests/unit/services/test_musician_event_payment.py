@@ -1155,25 +1155,42 @@ def test_get_event_billing_summary_admin_success(mocker):
     mock_event.id = 1
     mock_event.user_id = 1
     mock_event.name = "Summer Festival"
-    mock_event.price = Decimal("5000.00")  # Event final price
+    mock_event.price = Decimal("4000.00")  # Event final price
     mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
     mock_event_data_get.return_value = mock_event
 
+    # Mock total paid for the event (event payments)
+    mock_event_payment_total = mocker.patch('services.musician_event_payment.event_payment_data.get_total_paid')
+    mock_event_payment_total.return_value = Decimal("4000.00")
+
     # Mock total paid to musicians
-    mock_payment_data_total = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_event_for_musicians')
-    mock_payment_data_total.return_value = Decimal("3000.00")
+    mock_musician_payment_total = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_event_for_musicians')
+    mock_musician_payment_total.return_value = Decimal("350.00")
+
+    # Mock sum of musician salaries
+    mock_assignment1 = Mock()
+    mock_assignment1.salary = Decimal("500.00")
+    mock_assignment2 = Mock()
+    mock_assignment2.salary = Decimal("550.00")
+    mock_assignments = [mock_assignment1, mock_assignment2]
+    mock_assignment_data_get_by_event = mocker.patch('services.musician_event_payment.assignment_data.get_by_event')
+    mock_assignment_data_get_by_event.return_value = mock_assignments
 
     # Act
     result = get_event_billing_summary(event_id, current_user)
 
     # Assert
     assert result.event_name == "Summer Festival"
-    assert result.payment_done == Decimal("3000.00")
-    assert result.remaining_payment == Decimal("2000.00")
-    assert result.payment_done_to_musicians == Decimal("3000.00")
-    
+    assert result.event_price == Decimal("4000.00")
+    assert result.payment_done == Decimal("4000.00")
+    assert result.sum_of_musician_salaries == Decimal("1050.00")
+    assert result.remaining_payment == Decimal("0.00")
+    assert result.payment_done_to_musicians == Decimal("350.00")
+
     mock_event_data_get.assert_called_once_with(event_id)
-    mock_payment_data_total.assert_called_once_with(event_id)
+    mock_event_payment_total.assert_called_once_with(event_id)
+    mock_musician_payment_total.assert_called_once_with(event_id)
+    mock_assignment_data_get_by_event.assert_called_once_with(event_id)
 
 
 def test_get_event_billing_summary_owner_success(mocker):
@@ -1190,18 +1207,38 @@ def test_get_event_billing_summary_owner_success(mocker):
     mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
     mock_event_data_get.return_value = mock_event
 
+    # Mock total paid for the event (event payments)
+    mock_event_payment_total = mocker.patch('services.musician_event_payment.event_payment_data.get_total_paid')
+    mock_event_payment_total.return_value = Decimal("2500.00")
+
     # Mock total paid to musicians
-    mock_payment_data_total = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_event_for_musicians')
-    mock_payment_data_total.return_value = Decimal("1500.00")
+    mock_musician_payment_total = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_event_for_musicians')
+    mock_musician_payment_total.return_value = Decimal("1500.00")
+
+    # Mock sum of musician salaries
+    mock_assignment1 = Mock()
+    mock_assignment1.salary = Decimal("800.00")
+    mock_assignment2 = Mock()
+    mock_assignment2.salary = Decimal("700.00")
+    mock_assignments = [mock_assignment1, mock_assignment2]
+    mock_assignment_data_get_by_event = mocker.patch('services.musician_event_payment.assignment_data.get_by_event')
+    mock_assignment_data_get_by_event.return_value = mock_assignments
 
     # Act
     result = get_event_billing_summary(event_id, current_user)
 
     # Assert
     assert result.event_name == "Winter Concert"
-    assert result.payment_done == Decimal("1500.00")
-    assert result.remaining_payment == Decimal("1000.00")
+    assert result.event_price == Decimal("2500.00")
+    assert result.payment_done == Decimal("2500.00")
+    assert result.sum_of_musician_salaries == Decimal("1500.00")
+    assert result.remaining_payment == Decimal("0.00")
     assert result.payment_done_to_musicians == Decimal("1500.00")
+
+    mock_event_data_get.assert_called_once_with(event_id)
+    mock_event_payment_total.assert_called_once_with(event_id)
+    mock_musician_payment_total.assert_called_once_with(event_id)
+    mock_assignment_data_get_by_event.assert_called_once_with(event_id)
 
 
 def test_get_event_billing_summary_unauthorized(mocker):

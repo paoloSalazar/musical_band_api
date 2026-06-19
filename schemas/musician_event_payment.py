@@ -79,7 +79,9 @@ class MusicianEventSummaryResponse(BaseModel):
 class EventBillingSummaryResponse(BaseModel):
     """Schema for event billing summary response"""
     event_name: str
+    event_price: Decimal
     payment_done: Decimal
+    sum_of_musician_salaries: Decimal
     remaining_payment: Decimal
     payment_done_to_musicians: Decimal
 
