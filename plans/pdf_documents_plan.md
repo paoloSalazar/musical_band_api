@@ -224,3 +224,103 @@ Generates and downloads contract for a specific event.
 3. **Templates**: Store in `templates/` directory, rendered via Jinja2
 4. **Number to Words**: Spanish Bolivian format (e.g., "1,500.00" -> "Un mil quinientos 00/100")
 5. **Authentication**: Both endpoints require valid JWT token
+
+---
+
+## 9. Test-Driven Development Approach
+
+### 9.1 Test File Structure
+```
+tests/
+├── unit/
+│   ├── models/
+│   │   └── test_event.py, test_user.py, test_event_payment.py
+│   ├── schemas/
+│   │   └── test_event.py, test_user.py
+│   ├── data/
+│   │   └── test_event.py, test_user.py, test_event_payment.py
+│   └── services/
+│       └── test_event.py, test_user.py, test_event_payment.py
+├── integration/
+│   └── test_event_payment_api.py  # API endpoint tests
+└── conftest.py
+```
+
+### 9.2 Test Cases (TDD - Write First)
+
+**Unit Tests - `tests/unit/models/test_event.py`**
+```python
+def test_event_has_price_field():
+    """Test that Event model has price field"""
+    event = Event(name="Test", place="Venue", ...)
+    assert hasattr(event, 'price')
+```
+
+**Data Layer Tests - `tests/unit/data/test_event.py`**
+```python
+def test_get_one_with_payments(db_session):
+    """Test retrieving event with payments"""
+    ...
+
+def test_get_payments_by_event(db_session):
+    """Test getting payments for an event"""
+    ...
+```
+
+**Service Layer Tests - `tests/unit/services/test_event_payment.py`**
+```python
+def test_get_event_payment_summary():
+    """Test payment summary calculation"""
+    ...
+```
+
+**Integration Tests - `tests/integration/test_event_payment_api.py`**
+```python
+def test_get_receipt_pdf():
+    """Test GET /api/receipts/{event_id}/pdf endpoint"""
+    response = client.get("/api/receipts/1/pdf")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+
+def test_post_contract_pdf():
+    """Test POST /api/contracts/{event_id}/pdf endpoint"""
+    response = client.post("/api/contracts/1/pdf", json={
+        "client_id": "12345678",
+        "deposit_percent": 30
+    })
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+```
+
+### 9.3 Implementation Order (TDD)
+
+1. **Write failing tests first**
+   - Unit tests for templates context builders
+   - Integration tests for PDF endpoints
+
+2. **Implement changes**
+   - Create `web/receipts.py` and `web/contracts.py`
+   - Create `services/receipt_service.py` and `services/contract_service.py`
+   - Create `templates/receipt.html` and `templates/contract.html`
+   - Create `utils/number_to_words.py`
+
+3. **Run tests and verify**
+   - All tests should pass after implementation
+
+4. **Update main.py**
+   - Include new routers
+
+---
+
+## 10. Test Commands
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run PDF-related tests
+pytest tests/unit/services/test_event_payment.py tests/integration/ -v
+
+# Run with coverage
+pytest tests/ --cov=. --cov-report=html
+```
