@@ -103,6 +103,7 @@ def get_current_user_info(current_user: Annotated[dict, Depends(get_auth_current
             "second_lastname": user.second_lastname,
             "email": user.email,
             "phone_number": user.phone_number,
+            "ci": user.ci,
             "role": current_user.get("role"),
             "role_id": current_user.get("role_id"),
             "permissions": current_user.get("permissions", []),
@@ -146,7 +147,8 @@ def modify_me(current_user: Annotated[dict, Depends(get_current_user)], user_upd
             name=user_update.name,
             lastname=user_update.lastname,
             second_lastname=user_update.second_lastname,
-            phone_number=user_update.phone_number
+            phone_number=user_update.phone_number,
+            ci=user_update.ci
         )
         updated_user = service.modify_by_id(user_id, user_update_full)
         logger.info(f"API request: Modified profile for user with id {user_id} by {current_user.get('sub')}")

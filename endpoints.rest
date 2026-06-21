@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MTYwOTE2M30.mEMs6RqZSDaBmWXBw1FFgyMtMaIT_5D50xhmwAgi4xE
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MTkzMTA5M30.dYjbBoRDMrIbjse_alr3cckpKA_yif-sCRqU0nwFP_w
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
 ###
@@ -111,7 +111,7 @@ Authorization: Bearer {{user_token}}
 ###
 ### USERS ENDPOINTS ###
 ### Get all users (requires authentication)
-GET {{api}}/users/
+GET {{api}}/users/me
 Authorization: Bearer {{user_token}}
 
 ### Get users filtered by single role (e.g., musicians)
@@ -157,13 +157,14 @@ Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "name": "admin",
-  "lastname": "admin",
+  "name": "jimena",
+  "lastname": "rosales",
   "second_lastname": "villarroel",
-  "email": "admin@example.com",
-  "password": "admin",
+  "email": "jimena.rosales@example.com",
+  "password": "rosales",
   "phone_number": "1234567890",
-  "role_id": 1
+  "role_id": 1,
+  "ci": "12345678"
 }
 
 ### Get a specific user

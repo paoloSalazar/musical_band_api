@@ -383,6 +383,7 @@ def test_get_current_user_info_success(mocker):
     mock_user.second_lastname = "Smith"
     mock_user.email = "john.doe@example.com"
     mock_user.phone_number = "+1234567890"
+    mock_user.ci = "12345678"
     mock_service = mocker.patch('web.user.service.get_one')
     mock_service.return_value = mock_user
 
@@ -396,6 +397,7 @@ def test_get_current_user_info_success(mocker):
     assert result["lastname"] == "Doe"
     assert result["second_lastname"] == "Smith"
     assert result["phone_number"] == "+1234567890"
+    assert result["ci"] == "12345678"
     assert result["role"] == "admin"
     assert result["role_id"] == 1
     assert result["permissions"] == ["users:read", "users:write", "users:delete"]
@@ -418,6 +420,7 @@ def test_get_current_user_info_with_empty_permissions(mocker):
     mock_user.lastname = "Smith"
     mock_user.second_lastname = None
     mock_user.email = "jane.smith@example.com"
+    mock_user.ci = None
     mock_service = mocker.patch('web.user.service.get_one')
     mock_service.return_value = mock_user
 
@@ -430,6 +433,7 @@ def test_get_current_user_info_with_empty_permissions(mocker):
     assert result["name"] == "Jane"
     assert result["lastname"] == "Smith"
     assert result["second_lastname"] is None
+    assert result["ci"] is None
     assert result["role"] == "user"
     assert result["permissions"] == []
 
