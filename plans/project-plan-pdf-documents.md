@@ -1011,40 +1011,199 @@ async def download_contract_pdf(
 
 ---
 
-## Notas legales
+## 6. Endpoints FastAPI — Resumen
 
-> ⚠️ El contrato incluido en este documento es un **modelo referencial** redactado en base
-> a la legislación boliviana vigente (Ley N° 439 — Código Procesal Civil y Código Civil boliviano).
-> Se recomienda revisarlo con un abogado antes de su uso oficial para adaptar cláusulas
-> específicas según la operación y condiciones particulares del negocio.
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/receipts/{id}/pdf` | Descarga el recibo N° `id` en PDF |
+| `POST` | `/contracts/{id}/pdf` | Genera el contrato con los datos del body |
+
+### Permisos
+
+Ambos endpoints requieren autenticación mediante token JWT. Además:
+- **Propietarios del evento** (usuarios que crearon el evento) pueden generar recibos y contratos
+- **Administradores** pueden generar recibos y contratos para cualquier evento
+- Otros usuarios autenticados reciben acceso denegado (403)
 
 ---
 
-## Notas de implementación — Permisos
+## 7. Frontend React
 
-> **Importante:** Los endpoints de PDF requieren verificación de permisos.
-> - Event owners (usuarios que crearon el evento) pueden generar recibos y contratos
-> - Administradores pueden generar recibos y contratos para cualquier evento
-> - Otros usuarios reciben error 403 (Prohibido)
->
-> No se requiere código adicional por ahora; las pruebas deben verificar este comportamiento.
+### `hooks/useDownloadPdf.ts`
+Hook genérico reutilizable para ambos documentos.
 
-### `main.py`
-```python
-from fastapi import FastAPI
-from routers import receipts, contracts
+```typescript
+export function useDownloadPdf() {
+  const download = async (
+    url: string,
+    filename: string,
+    options?: RequestInit
+  ): Promise<void> => {
+    const response = await fetch(url, options);
 
-app = FastAPI(title="Servicios Musicales API")
+    if (!response.ok) {
+      throw new Error(`Failed to generate PDF: ${response.statusText}`);
+    }
 
-app.include_router(receipts.router)
-app.include_router(contracts.router)
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.click();
+
+    URL.revokeObjectURL(objectUrl);
+  };
+
+  return { download };
+}
+```
+
+### `components/ReceiptDownloadButton.tsx`
+
+```typescript
+import { useState } from "react";
+import { useDownloadPdf } from "../hooks/useDownloadPdf";
+
+interface Props {
+  receiptId: number;
+}
+
+export function ReceiptDownloadButton({ receiptId }: Props) {
+  const { download } = useDownloadPdf();
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      await download(
+        `/api/receipts/${receiptId}/pdf`,
+        `recibo-${String(receiptId).padStart(7, "0")}.pdf`
+      );
+    } catch {
+      alert("No se pudo generar el recibo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button onClick={handleClick} disabled={loading}>
+      {loading ? "Generando..." : "⬇ Descargar Recibo"}
+    </button>
+  );
+}
+```
+
+### `components/ContractDownloadButton.tsx`
+
+```typescript
+import { useState } from "react";
+import { useDownloadPdf } from "../hooks/useDownloadPdf";
+
+interface ContractData {
+  client_name: string;
+  client_id: string;
+  client_phone: string;
+  company_name: string;
+  event: {
+    name: string;
+    location: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+  };
+  total_amount: number;
+  deposit_percent: number; // 30 to 50
+}
+
+interface Props {
+  contractId: number;
+  data: ContractData;
+}
+
+export function ContractDownloadButton({ contractId, data }: Props) {
+  const { download } = useDownloadPdf();
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      await download(
+        `/api/contracts/${contractId}/pdf`,
+        `contrato-${String(contractId).padStart(6, "0")}.pdf`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      );
+    } catch {
+      alert("No se pudo generar el contrato.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button onClick={handleClick} disabled={loading}>
+      {loading ? "Generando..." : "⬇ Descargar Contrato"}
+    </button>
+  );
+}
 ```
 
 ---
 
-## Notas legales
+## 10. Comandos de prueba
 
-> ⚠️ El contrato incluido en este documento es un **modelo referencial** redactado en base
-> a la legislación boliviana vigente (Ley N° 439 — Código Procesal Civil y Código Civil boliviano).
-> Se recomienda revisarlo con un abogado antes de su uso oficial para adaptar cláusulas
-> específicas según la operación y condiciones particulares del negocio.
+```bash
+# Ejecutar todas las pruebas
+pytest tests/ -v
+
+# Ejecutar pruebas relacionadas con PDF
+pytest tests/unit/services/test_event_payment.py tests/integration/ -v
+
+# Ejecutar con cobertura
+pytest tests/ --cov=. --cov-report=html
+```
+
+---
+
+## 11. Estructura de commits recomendada
+
+Cada commit debe ser autónomo y enfocado:
+
+1. **Commit: `feat(pdf): add number_to_words utility`**
+   - Agregar `utils/number_to_words.py`
+   - Convertir montos numéricos a texto en español (formato boliviano)
+
+2. **Commit: `feat(pdf): add data access layer for receipts and contracts`**
+   - Agregar `data/receipt_service.py`
+   - Agregar `data/contract_service.py`
+   - Funciones para obtener datos de eventos, usuarios y pagos
+
+3. **Commit: `feat(pdf): add PDF templates`**
+   - Agregar `templates/receipt.html` (formato A6 horizontal)
+   - Agregar `templates/contract.html` (formato A4)
+
+4. **Commit: `feat(pdf): add receipt PDF endpoint`**
+   - Agregar `web/receipts.py` con `GET /api/receipts/{event_id}/pdf`
+   - Incluir verificación de permisos (propietario/admin)
+
+5. **Commit: `feat(pdf): add contract PDF endpoint`**
+   - Agregar `web/contracts.py` con `POST /api/contracts/{event_id}/pdf`
+   - Incluir verificación de permisos (propietario/admin)
+
+6. **Commit: `feat(pdf): register PDF routes in main.py`**
+   - Incluir nuevos routers en la aplicación FastAPI
+
+7. **Commit: `test(pdf): add unit tests for PDF services`**
+   - Probar funciones de contexto de plantillas
+   - Probar conversión number_to_words
+
+8. **Commit: `test(pdf): add integration tests for PDF endpoints`**
+- Probar generación exitosa de PDF
+    - Probar denegación de permisos (403)
+    - Probar escenarios no encontrados (404)

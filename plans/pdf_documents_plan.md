@@ -336,7 +336,46 @@ def test_contract_pdf_permission_denied():
 
 ---
 
-## 10. Test Commands
+## 10. Recommended Git Commit Structure
+
+Each commit should be self-contained and focused:
+
+1. **Commit: `feat(pdf): add number_to_words utility`**
+   - Add `utils/number_to_words.py`
+   - Convert numeric amounts to Spanish text (Bolivian format)
+
+2. **Commit: `feat(pdf): add data access layer for receipts and contracts`**
+   - Add `data/receipt_service.py`
+   - Add `data/contract_service.py`
+   - Functions to retrieve event, user, and payment data
+
+3. **Commit: `feat(pdf): add PDF templates`**
+   - Add `templates/receipt.html` (A6 landscape format)
+   - Add `templates/contract.html` (A4 format)
+
+4. **Commit: `feat(pdf): add receipt PDF endpoint`**
+   - Add `web/receipts.py` with `GET /api/receipts/{event_id}/pdf`
+   - Include permission checks (event owner/admin)
+
+5. **Commit: `feat(pdf): add contract PDF endpoint`**
+   - Add `web/contracts.py` with `POST /api/contracts/{event_id}/pdf`
+   - Include permission checks (event owner/admin)
+
+6. **Commit: `feat(pdf): register PDF routes in main.py`**
+   - Include new routers in FastAPI app
+
+7. **Commit: `test(pdf): add unit tests for PDF services`**
+   - Test context builder functions
+   - Test number_to_words conversion
+
+8. **Commit: `test(pdf): add integration tests for PDF endpoints`**
+   - Test successful PDF generation
+   - Test permission denial (403)
+   - Test not found scenarios (404)
+
+---
+
+## 11. Test Commands
 
 ```bash
 # Run all tests
@@ -348,14 +387,3 @@ pytest tests/unit/services/test_event_payment.py tests/integration/ -v
 # Run with coverage
 pytest tests/ --cov=. --cov-report=html
 ```
-
----
-
-## 11. Permissions Notes
-
-> **Important:** PDF endpoints require permission verification.
-> - Event owners (users who created the event) can generate receipts and contracts
-> - Admins can generate receipts and contracts for any event
-> - Other authenticated users receive 403 (Forbidden)
->
-> No code changes required for now; tests should verify this behavior.
