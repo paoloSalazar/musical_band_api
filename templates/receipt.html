@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page {
+      size: 148mm 105mm;
+      margin: 8mm;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      color: #1a1a1a;
+      border: 2px solid #1a4fa0;
+      border-radius: 4px;
+      padding: 10px 12px;
+      height: 100%;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .receipt-box {
+      border: 2px solid #1a4fa0;
+      border-radius: 3px;
+      padding: 4px 6px;
+      min-width: 170px;
+    }
+
+    .receipt-title {
+      background: #1a4fa0;
+      color: white;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-align: center;
+      padding: 1px 4px;
+      border-radius: 2px;
+      margin-bottom: 4px;
+    }
+
+    .date-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      border: 1px solid #1a4fa0;
+      font-size: 8px;
+      color: #1a4fa0;
+      text-align: center;
+    }
+
+    .date-grid .header-cell {
+      border-bottom: 1px solid #1a4fa0;
+      padding: 1px 2px;
+    }
+
+    .date-grid .header-cell:not(:last-child),
+    .date-grid .value-cell:not(:last-child) {
+      border-right: 1px solid #1a4fa0;
+    }
+
+    .date-grid .value-cell {
+      padding: 3px 2px;
+      font-size: 9px;
+      color: #1a1a1a;
+    }
+
+    .amount-box { text-align: right; }
+
+    .amount-labels {
+      font-size: 10px;
+      color: #1a4fa0;
+      margin-bottom: 3px;
+      display: flex;
+      gap: 4px;
+      justify-content: flex-end;
+    }
+
+    .amount-label { min-width: 52px; text-align: center; }
+
+    .amount-cells { display: flex; gap: 6px; justify-content: flex-end; }
+
+    .amount-cell {
+      border: 1.5px solid #1a4fa0;
+      width: 60px;
+      height: 22px;
+      border-radius: 2px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 4px;
+    }
+
+    .receipt-number {
+      color: #e53935;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      margin-top: 5px;
+    }
+
+    .field { margin-bottom: 5px; }
+
+    .field label {
+      color: #1a4fa0;
+      font-size: 9px;
+      display: block;
+    }
+
+    .field .line {
+      border-bottom: 1px solid #888;
+      padding-bottom: 1px;
+      min-height: 13px;
+      font-size: 10px;
+    }
+
+    .currency-label {
+      font-size: 9px;
+      color: #1a4fa0;
+      margin-bottom: 5px;
+    }
+
+    .totals-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .totals-row .col { flex: 1; }
+
+    .signatures {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+
+    .signature { width: 44%; text-align: center; }
+
+    .signature .signature-line {
+      border-bottom: 1px solid #555;
+      margin-bottom: 3px;
+    }
+
+    .signature .signature-label {
+      font-size: 8px;
+      color: #1a4fa0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-row">
+    <div class="receipt-box">
+      <div class="receipt-title">RECIBO</div>
+      <div class="date-grid">
+        <div class="header-cell">LUGAR</div>
+        <div class="header-cell">DÍA</div>
+        <div class="header-cell">MES</div>
+        <div class="header-cell">AÑO</div>
+        <div class="value-cell">{{ date.city }}</div>
+        <div class="value-cell">{{ date.day }}</div>
+        <div class="value-cell">{{ date.month }}</div>
+        <div class="value-cell">{{ date.year }}</div>
+      </div>
+    </div>
+
+    <div class="amount-box">
+      <div class="amount-labels">
+        <span class="amount-label">Bs.</span>
+        <span class="amount-label">$us.</span>
+      </div>
+      <div class="amount-cells">
+        <div class="amount-cell">{{ "%.2f"|format(amount_bs) if amount_bs else "" }}</div>
+        <div class="amount-cell">{{ "%.2f"|format(amount_usd) if amount_usd else "" }}</div>
+      </div>
+      <div class="receipt-number">{{ "%07d"|format(number) }}</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Recibí de:</label>
+    <div class="line">{{ received_from }}</div>
+  </div>
+
+  <div class="field">
+    <label>La suma de:</label>
+    <div class="line">{{ amount_in_words }}</div>
+  </div>
+
+  <div class="field">
+    <label>Por concepto de:</label>
+    <div class="line">{{ concept }}</div>
+    {% if concept_extra %}
+    <div class="line" style="margin-top:3px;">{{ concept_extra }}</div>
+    {% endif %}
+  </div>
+
+  <div class="currency-label">Bolivianos/Dólares</div>
+
+  <div class="totals-row">
+    <div class="col field">
+      <label>A cuenta:</label>
+      <div class="line">{{ "%.2f"|format(partial_payment) if partial_payment else "" }}</div>
+    </div>
+    <div class="col field">
+      <label>Saldo:</label>
+      <div class="line">{{ "%.2f"|format(balance) if balance else "" }}</div>
+    </div>
+    <div class="col field">
+      <label>Total:</label>
+      <div class="line">{{ "%.2f"|format(total) }}</div>
+    </div>
+  </div>
+
+  <div class="signatures">
+    <div class="signature">
+      <div class="signature-line"></div>
+      <div class="signature-label">C.I. &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ENTREGUÉ CONFORME</div>
+    </div>
+    <div class="signature">
+      <div class="signature-line"></div>
+      <div class="signature-label">C.I. &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RECIBÍ CONFORME</div>
+    </div>
+  </div>
+
+</body>
+</html>

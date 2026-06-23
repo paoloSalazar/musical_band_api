@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page {
+      size: A4;
+      margin: 2.5cm 2cm;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 11px;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+
+    .contract-header {
+      text-align: center;
+      border-bottom: 2px solid #1a4fa0;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+
+    .contract-header h1 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1a4fa0;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .contract-header .subtitle {
+      font-size: 10px;
+      color: #555;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #1a4fa0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #ccd6e8;
+      padding-bottom: 3px;
+      margin: 16px 0 8px;
+    }
+
+    .party-block {
+      background: #f4f7fc;
+      border-left: 3px solid #1a4fa0;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      border-radius: 0 3px 3px 0;
+    }
+
+    .party-block .party-role {
+      font-weight: 700;
+      color: #1a4fa0;
+      font-size: 10px;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+
+    .clause {
+      margin-bottom: 12px;
+    }
+
+    .clause .clause-title {
+      font-weight: 700;
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .clause ol, .clause ul {
+      padding-left: 20px;
+      margin-top: 4px;
+    }
+
+    .clause li {
+      margin-bottom: 3px;
+    }
+
+    .payment-box {
+      border: 1px solid #1a4fa0;
+      border-radius: 3px;
+      padding: 8px 12px;
+      margin: 8px 0;
+    }
+
+    .payment-box .amount-main {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1a4fa0;
+    }
+
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      border-bottom: 1px solid #e8edf5;
+      font-size: 10px;
+    }
+
+    .payment-row:last-child { border-bottom: none; }
+    .payment-row .label { color: #555; }
+    .payment-row .value { font-weight: 700; }
+
+    .signatures-section {
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .signature-block {
+      width: 44%;
+      text-align: center;
+    }
+
+    .signature-line {
+      border-bottom: 1px solid #555;
+      margin-bottom: 6px;
+      height: 40px;
+    }
+
+    .signature-name { font-weight: 700; font-size: 10px; }
+    .signature-detail { font-size: 9px; color: #555; margin-top: 2px; }
+
+    .page-footer {
+      position: running(footer);
+      font-size: 8px;
+      color: #999;
+      text-align: center;
+      border-top: 1px solid #e0e0e0;
+      padding-top: 4px;
+    }
+
+    @page { @bottom-center { content: element(footer); } }
+  </style>
+</head>
+<body>
+
+  <div class="contract-header">
+    <h1>Contrato de Prestación de Servicios Artísticos y Musicales</h1>
+    <div class="subtitle">
+      Ciudad de Cochabamba, Bolivia — {{ contract_date.day }} de {{ contract_date.month_name }} de {{ contract_date.year }}
+    </div>
+  </div>
+
+  <div class="section-title">Partes Contratantes</div>
+
+  <div class="party-block">
+    <div class="party-role">El Contratante</div>
+    <strong>{{ client_name }}</strong>, con Cédula de Identidad N° <strong>{{ client_id }}</strong>,
+    con domicilio en la ciudad de Cochabamba, con número de teléfono <strong>{{ client_phone }}</strong>,
+    a quien en adelante se denominará <strong>"EL CONTRATANTE"</strong>.
+  </div>
+
+  <div class="party-block">
+    <div class="party-role">El Prestador de Servicios</div>
+    <strong>{{ company_name }}</strong>, legalmente constituida y con domicilio en la ciudad de
+    Cochabamba, Bolivia, a quien en adelante se denominará <strong>"EL PRESTADOR"</strong>.
+  </div>
+
+  <div class="section-title">Cláusulas</div>
+
+  <div class="clause">
+    <div class="clause-title">Primera — Objeto del Contrato</div>
+    El presente contrato tiene por objeto la prestación de servicios artísticos y musicales
+    por parte de EL PRESTADOR en favor de EL CONTRATANTE, para el evento denominado
+    <strong>"{{ event.name }}"</strong>, a realizarse en <strong>{{ event.location }}</strong>,
+    el día <strong>{{ event.date }}</strong>.
+  </div>
+
+  <div class="clause">
+    <div class="clause-title">Segunda — Descripción del Servicio</div>
+    EL PRESTADOR se compromete a brindar los siguientes servicios:
+    <ul>
+      <li>Presentación musical en vivo durante el evento.</li>
+      <li>Equipos de sonido e iluminación según los requerimientos acordados.</li>
+      <li>Personal artístico y técnico necesario para la correcta ejecución del espectáculo.</li>
+      <li>Puntualidad en la hora de inicio según lo acordado entre las partes.</li>
+    </ul>
+  </div>
+
+  <div class="clause">
+    <div class="clause-title">Tercera — Duración del Servicio</div>
+    EL PRESTADOR brindará sus servicios durante la jornada establecida para el evento,
+    desde las <strong>{{ event.start_time }}</strong> hasta las <strong>{{ event.end_time }}</strong>,
+    pudiendo prorrogarse de mutuo acuerdo y con el pago adicional correspondiente.
+  </div>
+
+  <div class="clause">
+    <div class="clause-title">Cuarta — Precio y Forma de Pago</div>
+    Las partes acuerdan una retribución económica de:
+
+    <div class="payment-box">
+      <div class="amount-main">Bs. {{ "%.2f"|format(payment.total) }}</div>
+      <div style="font-size:10px; color:#555; margin-bottom:8px;">
+        {{ payment.total_in_words }}
+      </div>
+      <div class="payment-row">
+        <span class="label">Anticipo ({{ payment.deposit_percent }}%) — a la firma del contrato</span>
+        <span class="value">Bs. {{ "%.2f"|format(payment.deposit) }}</span>
+      </div>
+      <div class="payment-row">
+        <span class="label">Saldo restante — al inicio del evento</span>
+        <span class="value">Bs. {{ "%.2f"|format(payment.balance) }}</span>
+      </div>
+    </div>
+
+    El pago podrá realizarse mediante cualquiera de las siguientes modalidades,
+    a elección de EL CONTRATANTE:
+    <ol>
+      <li><strong>Efectivo</strong>, entregado directamente al representante de EL PRESTADOR.</li>
+      <li><strong>Transferencia bancaria</strong>, a la cuenta indicada por EL PRESTADOR al momento del pago.</li>
+      <li><strong>Código QR</strong>, mediante las plataformas de pago móvil habilitadas por EL PRESTADOR.</li>
+    </ol>
+    En todos los casos, EL PRESTADOR emitirá el recibo correspondiente como constancia del pago recibido.
+  </div>
+
+  <div class="clause">
+    <div class="clause-title">Quinta — Obligaciones del Prestador</div>
+    EL PRESTADOR se obliga a:
+    <ol>
+      <li>Presentarse puntualmente en el lugar y hora acordados.</li>
+      <li>Contar con el personal artístico y técnico completo para el desarrollo del evento.</li>
+      <li>Garantizar el buen funcionamiento de equipos de sonido e iluminación.</li>
+      <li>Mantener una conducta profesional durante toda la prestación del servicio.</li>
+      <li>Notificar a EL CONTRATANTE con mínimo 72 horas de anticipación ante cualquier eventualidad que pueda afectar la prestación.</li>
+    </ol>
+  </div>
+
+  <div class="clause">
+    <div class="clause-title">Sexta — Obligaciones del Contratante</div>
+    EL CONTRATANTE se obliga a:
+    <ol>
+      <li>Realizar los pagos en los plazos y montos establecidos en la Cláusula Cuarta.</li>
+      <li>Garantizar las condiciones mínimas para la prestación del servicio: espacio adecuado, acceso al lugar, alimentación del personal técnico y artístico.</li>
+      <li>Suministrar energía eléctrica suficiente en el lugar del evento.</li>
+      <li>Informar a EL PRESTADOR sobre cualquier restricción o condición especial del lugar del evento.</li>
+    </ol>
+  </div>
+
+  <div class="clause">
+    <div class="clause-title">Séptima — Cancelación y Penalidades</div>
+    <ul>
+      <li>Si EL CONTRATANTE cancela el evento con <strong>menos de 15 días de anticipación</strong>, el anticipo pagado no será reembolsable.</li>
+      <li>Si EL CONTRATANTE cancela con <strong>más de 15 días de anticipación</strong>, se devolverá el 50% del anticipo.</li>
+      <li>Si EL PRESTADOR cancela el servicio sin causa justificada, deberá devolver el doble del anticipo recibido como penalidad.</li>
+    </ul>
+  </div>
+
+  <div class="clause">
+    <div class="clause-title">Octava — Fuerza Mayor</div>
+    Ninguna de las partes será responsable por el incumplimiento del presente contrato
+    cuando dicho incumplimiento sea causado por eventos de fuerza mayor o caso fortuito debidamente
+    comprobados, tales como desastres naturales, disposiciones gubernamentales
+    o situaciones de emergencia nacional. En tal caso, las partes acordarán de buena fe
+    una nueva fecha para la prestación del servicio.
+  </div>
+
+  <div class="clause">
+    <div class="clause-title">Novena — Resolución de Controversias</div>
+    Cualquier controversia derivada del presente contrato será resuelta en primera
+    instancia mediante acuerdo directo entre las partes. En caso de no llegar a un
+    acuerdo, las partes se someterán a la jurisdicción y competencia de los Juzgados
+    de la ciudad de Cochabamba, de conformidad con la legislación boliviana vigente,
+    en particular la <strong>Ley N° 439 — Código Procesal Civil</strong> y el <strong>Código Civil boliviano</strong>.
+  </div>
+
+  <div class="clause">
+    <div class="clause-title">Décima — Disposiciones Generales</div>
+    El presente contrato se rige por las leyes de la República de Bolivia. Cualquier
+    modificación al mismo deberá constar por escrito y ser firmada por ambas partes.
+    El presente contrato se extiende en dos ejemplares de igual valor, quedando uno
+    en poder de cada parte.
+  </div>
+
+  <div class="signatures-section">
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <div class="signature-name">{{ client_name }}</div>
+      <div class="signature-detail">C.I.: {{ client_id }}</div>
+      <div class="signature-detail">Tel.: {{ client_phone }}</div>
+      <div class="signature-detail" style="margin-top:4px; font-weight:700;">EL CONTRATANTE</div>
+    </div>
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <div class="signature-name">{{ company_name }}</div>
+      <div class="signature-detail">Representante Legal</div>
+      <div class="signature-detail" style="margin-top:4px; font-weight:700;">EL PRESTADOR</div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    {{ company_name }} — Cochabamba, Bolivia — Documento generado el {{ contract_date.day }}/{{ contract_date.month }}/{{ contract_date.year }}
+  </div>
+
+</body>
+</html>
