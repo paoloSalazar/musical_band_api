@@ -46,9 +46,6 @@ musical_band_api/
 ├── web/
 │   ├── receipts.py    # Receipt PDF endpoint
 │   └── contracts.py   # Contract PDF endpoint
-├── services/
-│   ├── receipt_service.py
-│   └── contract_service.py
 ├── utils/
 │   └── number_to_words.py
 ├── templates/
@@ -58,7 +55,9 @@ musical_band_api/
     ├── event.py           # Event data access
     ├── event_payment.py   # Payment data access
     ├── user.py            # User data access
-    └── user_detail.py     # User detail data access (CI, etc.)
+    ├── user_detail.py     # User detail data access (CI, etc.)
+    ├── receipt_service.py # Receipt data retrieval
+    └── contract_service.py # Contract data retrieval
 ```
 
 ---
@@ -318,14 +317,14 @@ def test_contract_pdf_permission_denied():
 ### 9.3 Implementation Order (TDD)
 
 1. **Write failing tests first**
-   - Unit tests for templates context builders
+   - Unit tests for templates context builders (in services layer)
    - Integration tests for PDF endpoints (including permission tests)
 
 2. **Implement changes**
-   - Create `web/receipts.py` and `web/contracts.py`
-   - Create `services/receipt_service.py` and `services/contract_service.py`
+   - Create `data/receipt_service.py` and `data/contract_service.py`
    - Create `templates/receipt.html` and `templates/contract.html`
    - Create `utils/number_to_words.py`
+   - Create `web/receipts.py` and `web/contracts.py`
    - Add permission checks in endpoints (event owner/admin only)
 
 3. **Run tests and verify**
@@ -364,8 +363,7 @@ Each commit should be self-contained and focused:
 6. **Commit: `feat(pdf): register PDF routes in main.py`**
    - Include new routers in FastAPI app
 
-7. **Commit: `test(pdf): add unit tests for PDF services`**
-   - Test context builder functions
+7. **Commit: `test(pdf): add unit tests for PDF utilities`**
    - Test number_to_words conversion
 
 8. **Commit: `test(pdf): add integration tests for PDF endpoints`**

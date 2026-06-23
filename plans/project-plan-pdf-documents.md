@@ -40,17 +40,21 @@ pip install fastapi weasyprint jinja2 uvicorn
 ```
 project/
 ├── main.py
-├── routers/
-│   ├── receipts.py
-│   └── contracts.py
-├── services/
-│   ├── receipt_service.py
-│   └── contract_service.py
+├── web/
+│   ├── receipts.py    # Endpoint de recibo PDF
+│   └── contracts.py   # Endpoint de contrato PDF
 ├── utils/
 │   └── number_to_words.py
-└── templates/
-    ├── receipt.html
-    └── contract.html
+├── templates/
+│   ├── receipt.html   # Formato A6 horizontal
+│   └── contract.html  # Formato A4
+└── data/
+    ├── event.py           # Acceso a datos de eventos
+    ├── event_payment.py   # Acceso a datos de pagos
+    ├── user.py            # Acceso a datos de usuarios
+    ├── user_detail.py     # Acceso a detalles de usuarios (CI, etc.)
+    ├── receipt_service.py # Datos para recibo
+    └── contract_service.py # Datos para contrato
 ```
 
 ---
@@ -1199,11 +1203,10 @@ Cada commit debe ser autónomo y enfocado:
 6. **Commit: `feat(pdf): register PDF routes in main.py`**
    - Incluir nuevos routers en la aplicación FastAPI
 
-7. **Commit: `test(pdf): add unit tests for PDF services`**
-   - Probar funciones de contexto de plantillas
+7. **Commit: `test(pdf): add unit tests for PDF utilities`**
    - Probar conversión number_to_words
 
 8. **Commit: `test(pdf): add integration tests for PDF endpoints`**
-- Probar generación exitosa de PDF
-    - Probar denegación de permisos (403)
-    - Probar escenarios no encontrados (404)
+   - Probar generación exitosa de PDF
+   - Probar denegación de permisos (403)
+   - Probar escenarios no encontrados (404)
