@@ -164,6 +164,13 @@ Mimics the standard Bolivian receipt (RECIBO) format:
 | `GET` | `/api/receipts/{event_id}/pdf` | Download receipt for event |
 | `POST` | `/api/contracts/{event_id}/pdf` | Generate contract with body data |
 
+### Permissions
+
+Both PDF endpoints require authentication via JWT token. Additionally:
+- **Event owners** (users who created the event) can generate invoices and contracts
+- **Admins** can generate invoices and contracts for any event
+- Other authenticated users are denied access
+
 ### Endpoint Details
 
 #### GET `/api/receipts/{event_id}/pdf`
@@ -224,6 +231,7 @@ Generates and downloads contract for a specific event.
 3. **Templates**: Store in `templates/` directory, rendered via Jinja2
 4. **Number to Words**: Spanish Bolivian format (e.g., "1,500.00" -> "Un mil quinientos 00/100")
 5. **Authentication**: Both endpoints require valid JWT token
+6. **Authorization**: Event owners and admins only can generate PDFs
 
 ---
 
@@ -290,19 +298,35 @@ def test_post_contract_pdf():
     })
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
+
+def test_receipt_pdf_permission_denied():
+    """Test that non-owners cannot generate receipts"""
+    # Login as user who doesn't own the event
+    # Try to generate receipt
+    response = client.get("/api/receipts/1/pdf")
+    assert response.status_code == 403
+
+def test_contract_pdf_permission_denied():
+    """Test that non-owners cannot generate contracts"""
+    response = client.post("/api/contracts/1/pdf", json={
+        "client_id": "12345678",
+        "deposit_percent": 30
+    })
+    assert response.status_code == 403
 ```
 
 ### 9.3 Implementation Order (TDD)
 
 1. **Write failing tests first**
    - Unit tests for templates context builders
-   - Integration tests for PDF endpoints
+   - Integration tests for PDF endpoints (including permission tests)
 
 2. **Implement changes**
    - Create `web/receipts.py` and `web/contracts.py`
    - Create `services/receipt_service.py` and `services/contract_service.py`
    - Create `templates/receipt.html` and `templates/contract.html`
    - Create `utils/number_to_words.py`
+   - Add permission checks in endpoints (event owner/admin only)
 
 3. **Run tests and verify**
    - All tests should pass after implementation
@@ -324,3 +348,14 @@ pytest tests/unit/services/test_event_payment.py tests/integration/ -v
 # Run with coverage
 pytest tests/ --cov=. --cov-report=html
 ```
+
+---
+
+## 11. Permissions Notes
+
+> **Important:** PDF endpoints require permission verification.
+> - Event owners (users who created the event) can generate receipts and contracts
+> - Admins can generate receipts and contracts for any event
+> - Other authenticated users receive 403 (Forbidden)
+>
+> No code changes required for now; tests should verify this behavior.

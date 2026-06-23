@@ -377,7 +377,7 @@ Replica el talonario boliviano estándar (RECIBO) con:
 ### `routers/receipts.py`
 
 ```python
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Security
 from fastapi.responses import Response
 from fastapi.templating import Jinja2Templates
 from weasyprint import HTML
@@ -385,6 +385,8 @@ from datetime import date
 
 from services.receipt_service import get_receipt
 from utils.number_to_words import number_to_words_es
+from auth.auth import get_current_user
+from models.user import User
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
 templates = Jinja2Templates(directory="templates")
@@ -416,11 +418,21 @@ def _build_receipt_context(receipt_id: int, receipt: dict) -> dict:
 
 
 @router.get("/{receipt_id}/pdf")
-async def download_receipt_pdf(receipt_id: int):
-    """Generate and return a receipt PDF for the given receipt ID."""
+async def download_receipt_pdf(
+    receipt_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate and return a receipt PDF for the given receipt ID.
+    
+    Permission: Event owner or admin only.
+    """
     receipt = get_receipt(receipt_id)
     if not receipt:
         raise HTTPException(status_code=404, detail="Receipt not found")
+    
+    # Check permissions - owner or admin
+    if receipt.get("event_user_id") != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     context = _build_receipt_context(receipt_id, receipt)
     html_string = templates.get_template("receipt.html").render(**context)
@@ -890,7 +902,7 @@ Tel.: [TELÉFONO]
 ### `routers/contracts.py`
 
 ```python
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import Response
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -898,6 +910,9 @@ from weasyprint import HTML
 from datetime import date
 
 from utils.number_to_words import number_to_words_es
+from auth.auth import get_current_user
+from models.user import User
+from services.event import get_event
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 templates = Jinja2Templates(directory="templates")
@@ -964,8 +979,23 @@ def _build_contract_context(contract_id: int, data: ContractRequest) -> dict:
 
 
 @router.post("/{contract_id}/pdf")
-async def download_contract_pdf(contract_id: int, data: ContractRequest):
-    """Generate and return a service contract PDF."""
+async def download_contract_pdf(
+    contract_id: int,
+    data: ContractRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate and return a service contract PDF.
+    
+    Permission: Event owner or admin only.
+    """
+    # Verify event ownership
+    event = get_event(data.event.id if hasattr(data.event, 'id') else None)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if event.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     context = _build_contract_context(contract_id, data)
     html_string = templates.get_template("contract.html").render(**context)
     pdf_bytes = HTML(string=html_string, base_url=".").write_pdf()
@@ -981,12 +1011,23 @@ async def download_contract_pdf(contract_id: int, data: ContractRequest):
 
 ---
 
-## 6. Endpoints FastAPI — Resumen
+## Notas legales
 
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/receipts/{id}/pdf` | Descarga el recibo N° `id` en PDF |
-| `POST` | `/contracts/{id}/pdf` | Genera el contrato con los datos del body |
+> ⚠️ El contrato incluido en este documento es un **modelo referencial** redactado en base
+> a la legislación boliviana vigente (Ley N° 439 — Código Procesal Civil y Código Civil boliviano).
+> Se recomienda revisarlo con un abogado antes de su uso oficial para adaptar cláusulas
+> específicas según la operación y condiciones particulares del negocio.
+
+---
+
+## Notas de implementación — Permisos
+
+> **Importante:** Los endpoints de PDF requieren verificación de permisos.
+> - Event owners (usuarios que crearon el evento) pueden generar recibos y contratos
+> - Administradores pueden generar recibos y contratos para cualquier evento
+> - Otros usuarios reciben error 403 (Prohibido)
+>
+> No se requiere código adicional por ahora; las pruebas deben verificar este comportamiento.
 
 ### `main.py`
 ```python
@@ -997,135 +1038,6 @@ app = FastAPI(title="Servicios Musicales API")
 
 app.include_router(receipts.router)
 app.include_router(contracts.router)
-```
-
----
-
-## 7. Frontend React
-
-### `hooks/useDownloadPdf.ts`
-Hook genérico reutilizable para ambos documentos.
-
-```typescript
-export function useDownloadPdf() {
-  const download = async (
-    url: string,
-    filename: string,
-    options?: RequestInit
-  ): Promise<void> => {
-    const response = await fetch(url, options);
-
-    if (!response.ok) {
-      throw new Error(`Failed to generate PDF: ${response.statusText}`);
-    }
-
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-
-    const anchor = document.createElement("a");
-    anchor.href = objectUrl;
-    anchor.download = filename;
-    anchor.click();
-
-    URL.revokeObjectURL(objectUrl);
-  };
-
-  return { download };
-}
-```
-
-### `components/ReceiptDownloadButton.tsx`
-
-```typescript
-import { useState } from "react";
-import { useDownloadPdf } from "../hooks/useDownloadPdf";
-
-interface Props {
-  receiptId: number;
-}
-
-export function ReceiptDownloadButton({ receiptId }: Props) {
-  const { download } = useDownloadPdf();
-  const [loading, setLoading] = useState(false);
-
-  const handleClick = async () => {
-    setLoading(true);
-    try {
-      await download(
-        `/api/receipts/${receiptId}/pdf`,
-        `recibo-${String(receiptId).padStart(7, "0")}.pdf`
-      );
-    } catch {
-      alert("No se pudo generar el recibo.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <button onClick={handleClick} disabled={loading}>
-      {loading ? "Generando..." : "⬇ Descargar Recibo"}
-    </button>
-  );
-}
-```
-
-### `components/ContractDownloadButton.tsx`
-
-```typescript
-import { useState } from "react";
-import { useDownloadPdf } from "../hooks/useDownloadPdf";
-
-interface ContractData {
-  client_name: string;
-  client_id: string;
-  client_phone: string;
-  company_name: string;
-  event: {
-    name: string;
-    location: string;
-    date: string;
-    start_time: string;
-    end_time: string;
-  };
-  total_amount: number;
-  deposit_percent: number; // 30 to 50
-}
-
-interface Props {
-  contractId: number;
-  data: ContractData;
-}
-
-export function ContractDownloadButton({ contractId, data }: Props) {
-  const { download } = useDownloadPdf();
-  const [loading, setLoading] = useState(false);
-
-  const handleClick = async () => {
-    setLoading(true);
-    try {
-      await download(
-        `/api/contracts/${contractId}/pdf`,
-        `contrato-${String(contractId).padStart(6, "0")}.pdf`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        }
-      );
-    } catch {
-      alert("No se pudo generar el contrato.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <button onClick={handleClick} disabled={loading}>
-      {loading ? "Generando..." : "⬇ Descargar Contrato"}
-    </button>
-  );
-}
 ```
 
 ---

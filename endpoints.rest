@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MTkzMTA5M30.dYjbBoRDMrIbjse_alr3cckpKA_yif-sCRqU0nwFP_w
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MjEzMjEzNX0.wUPpIE7j9LovxKk0PyYKqhEL6yFD3Oy8NFkcXGeHImY
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
 ###
@@ -111,7 +111,7 @@ Authorization: Bearer {{user_token}}
 ###
 ### USERS ENDPOINTS ###
 ### Get all users (requires authentication)
-GET {{api}}/users/me
+GET {{api}}/users/
 Authorization: Bearer {{user_token}}
 
 ### Get users filtered by single role (e.g., musicians)
@@ -172,7 +172,7 @@ GET {{api}}/users/paolo.salazar@example.com
 Authorization: Bearer {{user_token}}
 
 ### Get a specific user by Id
-GET {{api}}/users/1
+GET {{api}}/users/12
 Authorization: Bearer {{user_token}}
 
 ### Update an existing user by ID (PATCH)

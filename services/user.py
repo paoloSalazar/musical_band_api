@@ -76,6 +76,7 @@ def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = Non
                 email=user.email,
                 phone_number=user.phone_number,
                 role_id=user.role_id,
+                ci=user.ci,
                 role=user.role.name  # Get role name from relationship
             )
             for user in db_users
@@ -146,6 +147,7 @@ def get_one_by_id(user_id: int) -> UserResponseWithRole:
             email=db_user.email,
             phone_number=db_user.phone_number,
             role_id=db_user.role_id,
+            ci=db_user.ci,
             role=db_user.role.name  # Get role name from relationship
         )
         logger.info(f"Retrieved user with id {user_id}")
