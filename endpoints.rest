@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MjEzMjEzNX0.wUPpIE7j9LovxKk0PyYKqhEL6yFD3Oy8NFkcXGeHImY
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MjI4ODE0N30.e1VfPdyyi8IuZGS84pEA1glLgr-S-v55ceXutahgcQE
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
 ###
@@ -795,3 +795,28 @@ Authorization: Bearer {{user_token}}
 # }
 GET {{api}}/events/4/billing-summary
 Authorization: Bearer {{user_token}}
+
+### PDF DOCUMENT ENDPOINTS ###
+### Note: Event owners and admins only can generate PDFs
+
+### Download receipt PDF for an event
+GET {{api}}/receipts/4/pdf
+Authorization: Bearer {{user_token}}
+
+### Generate contract PDF for an event
+POST {{api}}/contracts/1/pdf
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "client_name": "John Doe",
+  "client_id": "12345678",
+  "client_phone": "12345678",
+  "company_name": "Musical Band",
+  "event_name": "Concert Event",
+  "event_location": "Venue Name",
+  "event_start_datetime": "2026-06-15T20:00:00",
+  "event_end_datetime": "2026-06-15T23:00:00",
+  "total_amount": 1000.00,
+  "deposit_percent": 30
+}

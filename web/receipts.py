@@ -13,7 +13,6 @@ from fastapi.templating import Jinja2Templates
 from weasyprint import HTML
 
 from auth.auth import get_current_user
-from models.user import User
 from data.receipt_service import get_receipt_data
 from utils.number_to_words import number_to_words_es
 from exceptions import NotFoundError, DatabaseError
@@ -62,7 +61,7 @@ def build_receipt_context(receipt_data: dict) -> dict:
 @router.get("/{event_id}/pdf")
 async def download_receipt_pdf(
     event_id: int,
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[dict, Depends(get_current_user)]
 ):
     """
     Generate and return a receipt PDF for the given event.
@@ -74,12 +73,13 @@ async def download_receipt_pdf(
         if not receipt_data:
             raise HTTPException(status_code=404, detail="Event not found")
 
-        if receipt_data["event_user_id"] != current_user.id and not current_user.is_admin:
+        is_admin = current_user.get("role") == "admin"
+        if receipt_data["event_user_id"] != current_user.get("id") and not is_admin:
             raise HTTPException(status_code=403, detail="Not authorized")
 
         context = build_receipt_context(receipt_data)
         html_string = templates.get_template("receipt.html").render(**context)
-        pdf_bytes = HTML(string=html_string, base_url=".").write_pdf()
+        pdf_bytes = HTML(string=html_string).write_pdf()
 
         return Response(
             content=pdf_bytes,
