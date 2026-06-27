@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MjM4ODE1MX0.duxMbe93gi0EL1fHZk25SfXeI3VllJBYIuXYkLpByXo
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MjU2NTE1OX0.8_At7zqITjCeQOFxYraW4jK1r0cmH2M0NXf6y-h3lwA
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
 ###
@@ -818,7 +818,7 @@ Authorization: Bearer {{user_token}}
 ### Note: Event owners and admins only can generate PDFs
 
 ### Download receipt PDF for an event
-GET {{api}}/receipts/4/pdf
+GET {{api}}/receipts/6/pdf
 Authorization: Bearer {{user_token}}
 
 ### Generate contract PDF for an event

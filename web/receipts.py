@@ -51,6 +51,8 @@ def build_receipt_context(receipt_data: dict) -> dict:
         "received_from": receipt_data["client_name"],
         "amount_in_words": number_to_words_es(total),
         "concept": receipt_data["event_name"],
+        "event_place": receipt_data["event_place"],
+        "event_date": receipt_data["event_date"],
         "concept_extra": None,
         "partial_payment": total_paid,
         "balance": balance,

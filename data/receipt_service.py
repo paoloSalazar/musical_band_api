@@ -64,6 +64,8 @@ def get_receipt_data(event_id: int) -> dict | None:
         return {
             "event_id": event.id,
             "event_name": event.name,
+            "event_place": event.place,
+            "event_date": event.start_datetime.strftime("%d/%m/%Y") if event.start_datetime else None,
             "event_price": float(event.price or 0),
             "event_user_id": event.user_id,
             "client_name": f"{user.name} {user.lastname}",

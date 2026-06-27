@@ -43,14 +43,17 @@ pip install fastapi weasyprint jinja2 uvicorn
 ```
 musical_band_api/
 ├── main.py
+├── static/
+│   └── watermark.png    # Watermark image for PDF documents
 ├── web/
-│   ├── receipts.py    # Receipt PDF endpoint
-│   └── contracts.py   # Contract PDF endpoint
+│   ├── receipts.py      # Receipt PDF endpoint (GET /api/receipts/{event_id}/pdf)
+│   └── contracts.py     # Contract PDF endpoint (GET /api/contracts/{event_id}/pdf)
 ├── utils/
-│   └── number_to_words.py
+│   ├── number_to_words.py
+│   └── image_utils.py   # Base64 image conversion utility
 ├── templates/
-│   ├── receipt.html
-│   └── contract.html
+│   ├── receipt.html     # A6 landscape format (148mm × 105mm)
+│   └── contract.html    # A4 format
 └── data/
     ├── event.py           # Event data access
     ├── event_payment.py   # Payment data access
@@ -170,7 +173,7 @@ Mimics the standard Bolivian receipt (RECIBO) format:
 | Method | Route | Description |
 |--------|-------|-------------|
 | `GET` | `/api/receipts/{event_id}/pdf` | Download receipt for event |
-| `POST` | `/api/contracts/{event_id}/pdf` | Generate contract with body data |
+| `GET` | `/api/contracts/{event_id}/pdf` | Generate contract for event |
 
 ### Permissions
 
@@ -340,7 +343,22 @@ def test_contract_pdf_permission_denied():
 
 ---
 
-## 10. Recommended Git Commit Structure
+## 10. Test Commands
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run PDF-related tests
+pytest tests/unit/services/test_event_payment.py tests/integration/ -v
+
+# Run with coverage
+pytest tests/ --cov=. --cov-report=html
+```
+
+---
+
+## 11. Git Commit Structure
 
 Each commit should be self-contained and focused:
 
@@ -362,7 +380,7 @@ Each commit should be self-contained and focused:
    - Include permission checks (event owner/admin)
 
 5. **Commit: `feat(pdf): add contract PDF endpoint`**
-   - Add `web/contracts.py` with `POST /api/contracts/{event_id}/pdf`
+   - Add `web/contracts.py` with `GET /api/contracts/{event_id}/pdf`
    - Include permission checks (event owner/admin)
 
 6. **Commit: `feat(pdf): register PDF routes in main.py`**
@@ -376,17 +394,131 @@ Each commit should be self-contained and focused:
    - Test permission denial (403)
    - Test not found scenarios (404)
 
+9. **Commit: `feat(pdf): add watermark support`**
+   - Create `static/watermark.png`
+   - Add `utils/image_utils.py` for base64 conversion
+   - Update `web/receipts.py` and `web/contracts.py` with watermark context
+   - Update templates with watermark CSS and img tag
+
 ---
 
-## 11. Test Commands
+## 12. Water Marker Addition
 
-```bash
-# Run all tests
-pytest tests/ -v
+### Implementation Approach
+Watermarks are implemented as image overlays on PDF documents using CSS with WeasyPrint. The watermark image is converted to base64 and passed to the template context.
 
-# Run PDF-related tests
-pytest tests/unit/services/test_event_payment.py tests/integration/ -v
+### Watermark Image Location
+- **Path**: `static/watermark.png`
+- **Purpose**: Semi-transparent logo/text overlay on all PDF pages
 
-# Run with coverage
-pytest tests/ --cov=. --cov-report=html
+### Utility Function: Image to Base64
+
+```python
+# utils/image_utils.py
+import base64
+from pathlib import Path
+
+def image_to_base64(image_path: str) -> str:
+    """Convert a local image file to a base64 data URI."""
+    path = Path(image_path)
+    mime_types = {".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml"}
+    mime = mime_types.get(path.suffix.lower(), "image/png")
+    encoded = base64.b64encode(path.read_bytes()).decode("utf-8")
+    return f"data:{mime};base64,{encoded}"
 ```
+
+### Endpoint Integration
+
+```python
+# web/receipts.py
+from utils.image_utils import image_to_base64
+
+@router.get("/{event_id}/pdf")
+async def download_receipt_pdf(event_id: int):
+    ...
+    context = build_receipt_context(receipt_data)
+    
+    # Add watermark image to context
+    context["watermark_image"] = image_to_base64("static/watermark.png")
+    
+    html_string = templates.get_template("receipt.html").render(**context)
+    pdf_bytes = HTML(string=html_string).write_pdf()
+    ...
+```
+
+### CSS Watermark Styling
+
+```css
+.watermark {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  opacity: 0.08;
+  width: 70mm;
+  z-index: -1;
+}
+```
+
+### Template Implementation
+
+```html
+<style>
+  .watermark {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    opacity: 0.08;
+    width: 70mm;
+    z-index: -1;
+  }
+</style>
+
+<body>
+  <img class="watermark" src="{{ watermark_image }}" alt="">
+  <!-- rest of receipt content -->
+</body>
+```
+
+### Contract Endpoint Integration
+
+```python
+# web/contracts.py
+from utils.image_utils import image_to_base64
+
+@router.get("/{event_id}/pdf")
+async def download_contract_pdf(event_id: int):
+    ...
+    context = build_contract_context(contract_data)
+    
+    # Add watermark image to context
+    context["watermark_image"] = image_to_base64("static/watermark.png")
+    
+    html_string = templates.get_template("contract.html").render(**context)
+    pdf_bytes = HTML(string=html_string).write_pdf()
+    ...
+```
+
+### Contract Template Implementation
+
+```html
+<style>
+  .watermark {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    opacity: 0.08;
+    width: 100mm;
+    z-index: -1;
+  }
+</style>
+
+<body>
+  <img class="watermark" src="{{ watermark_image }}" alt="">
+  <!-- rest of contract content -->
+</body>
+```
+
+---
