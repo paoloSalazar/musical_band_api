@@ -117,35 +117,32 @@ Mimics the standard Bolivian receipt (RECIBO) format:
 ### Required Data Fields
 | Field | Source | Description |
 |-------|--------|-------------|
-| `client_name` | User.name + lastname | Full client name |
-| `client_id` | UserDetail (type="ci") | Cédula de Identidad number |
-| `client_phone` | User.phone_number | Contact phone |
-| `company_name` | Static or configurable | Band/Company name |
+| `client_name` | Event.user.name + lastname | Full client name |
+| `client_id` | Event.user.ci | Cédula de Identidad number (from user's CI field) |
+| `client_phone` | Event.user.phone_number | Contact phone |
+| `company_name` | `GROUP_NAME` env variable | Band/Company name (from environment) |
 | `contract_date` | `date.today()` | Generated automatically |
 | `event_name` | Event.name | Event title |
 | `event_location` | Event.place | Event venue |
-| `event_date` | Event.start_datetime | Event date |
-| `event_start_time` | Event.start_datetime | Start time |
-| `event_end_time` | Event.end_datetime | End time |
+| `event_duration` | Calculated from Event | "6 Horas" for all-day, or calculated hours |
 | `total_amount` | Event.price | Total in Bs. |
-| `deposit_percent` | Configurable | Advance percentage (30-50%) |
+| `deposit_percent` | Default: 30 | Advance percentage |
 
 ### Contract Template Context
 | Variable | Source | Description |
 |----------|--------|-------------|
-| `client_name` | User | Full name |
-| `client_id` | UserDetail | CI number |
-| `client_phone` | User | Phone number |
-| `company_name` | Config | Provider name |
+| `client_name` | Event.user | Full name |
+| `client_id` | Event.user.ci | CI number |
+| `client_phone` | Event.user | Phone number |
+| `company_name` | `GROUP_NAME` env var | Provider name |
 | `contract_date.day/month/month_name/year` | `date.today()` | Contract date |
 | `event.name` | Event | Event name |
 | `event.location` | Event.place | Event venue |
-| `event.date` | Event.start_datetime | Formatted date |
-| `event.start_time` | Event.start_datetime | Start time |
-| `event.end_time` | Event.end_datetime | End time |
+| `event.duration` | Calculated | "6 Horas" or N hours |
+| `event_date.day/month/month_name/year` | Event.start_datetime | Event date |
 | `payment.total` | Event.price | Total amount |
 | `payment.total_in_words` | `number_to_words_es()` | Total in words |
-| `payment.deposit_percent` | Parameter | Advance % |
+| `payment.deposit_percent` | Default 30 | Advance % |
 | `payment.deposit` | Calculated | Advance amount |
 | `payment.balance` | Calculated | Remaining amount |
 
@@ -153,6 +150,18 @@ Mimics the standard Bolivian receipt (RECIBO) format:
 - **Event**: `data.event.get_one(event_id)`
 - **User**: `data.user.get_one_by_id(event.user_id)`
 - **User Details**: `data.user_detail.get_by_user_id(user_id)` (filter for `detail_type="ci"`)
+
+### API Endpoint Change
+**From:** `POST /api/contracts/{event_id}/pdf` with JSON body
+**To:** `GET /api/contracts/{event_id}/pdf` (no body required)
+
+### Template Variables Added
+| Variable | Purpose |
+|----------|---------|
+| `event_date.day` | Day of event |
+| `event_date.month` | Month number (1-12) |
+| `event_date.month_name` | Month name in Spanish |
+| `event_date.year` | Year (e.g., 2026) |
 
 ---
 
@@ -182,16 +191,10 @@ Generates payment receipt PDF for an event.
 # Return PDF as attachment
 ```
 
-#### POST `/api/contracts/{event_id}/pdf`
+#### GET `/api/contracts/{event_id}/pdf`
 Generates service contract PDF for an event.
 
 ```python
-# Request body:
-{
-    "client_id": "12345678",
-    "deposit_percent": 30,
-    "company_name": "Musical Band Name"
-}
 # Query event with user
 # Render contract.html template
 # Return PDF as attachment
@@ -231,6 +234,9 @@ Generates and downloads contract for a specific event.
 4. **Number to Words**: Spanish Bolivian format (e.g., "1,500.00" -> "Un mil quinientos 00/100")
 5. **Authentication**: Both endpoints require valid JWT token
 6. **Authorization**: Event owners and admins only can generate PDFs
+7. **Company Name**: Retrieved from `GROUP_NAME` environment variable
+8. **Client CI**: Retrieved from user's CI field (user_detail table)
+9. **Event Duration**: Calculated from event dates (6 hours for all-day events, otherwise computed)
 
 ---
 
@@ -289,12 +295,9 @@ def test_get_receipt_pdf():
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
 
-def test_post_contract_pdf():
-    """Test POST /api/contracts/{event_id}/pdf endpoint"""
-    response = client.post("/api/contracts/1/pdf", json={
-        "client_id": "12345678",
-        "deposit_percent": 30
-    })
+def test_get_contract_pdf():
+    """Test GET /api/contracts/{event_id}/pdf endpoint"""
+    response = client.get("/api/contracts/1/pdf")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
 
@@ -307,24 +310,23 @@ def test_receipt_pdf_permission_denied():
 
 def test_contract_pdf_permission_denied():
     """Test that non-owners cannot generate contracts"""
-    response = client.post("/api/contracts/1/pdf", json={
-        "client_id": "12345678",
-        "deposit_percent": 30
-    })
+    response = client.get("/api/contracts/1/pdf")
     assert response.status_code == 403
 ```
 
 ### 9.3 Implementation Order (TDD)
 
 1. **Write failing tests first**
-   - Unit tests for templates context builders (in services layer)
+   - Unit tests for templates context builders
    - Integration tests for PDF endpoints (including permission tests)
 
 2. **Implement changes**
    - Create `data/receipt_service.py` and `data/contract_service.py`
    - Create `templates/receipt.html` and `templates/contract.html`
    - Create `utils/number_to_words.py`
-   - Create `web/receipts.py` and `web/contracts.py`
+   - Create `web/receipts.py` with `GET /api/receipts/{event_id}/pdf`
+   - Create `web/contracts.py` with `GET /api/contracts/{event_id}/pdf`
+   - Update `data/contract_service.py` to include company_name, deposit_percent, event_duration
    - Add permission checks in endpoints (event owner/admin only)
 
 3. **Run tests and verify**
@@ -332,6 +334,9 @@ def test_contract_pdf_permission_denied():
 
 4. **Update main.py**
    - Include new routers
+
+5. **Update endpoints.rest**
+   - Add PDF endpoint documentation
 
 ---
 

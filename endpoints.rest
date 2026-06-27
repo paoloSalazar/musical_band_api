@@ -1,5 +1,5 @@
 @api = http://localhost:8000/api
-@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MjI4ODE0N30.e1VfPdyyi8IuZGS84pEA1glLgr-S-v55ceXutahgcQE
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MjM4ODE1MX0.duxMbe93gi0EL1fHZk25SfXeI3VllJBYIuXYkLpByXo
 GET {{api}}/permissions?skip=0&limit=8
 Authorization: Bearer {{user_token}}
 ###
@@ -743,12 +743,30 @@ Content-Type: application/json
 GET {{api}}/musician-availability/5
 Authorization: Bearer {{user_token}}
 
-### MUSICIAN EVENT PAYMENTS ENDPOINTS ###
-### Get payments for a specific musician in an event
+### Músicos Eventos ENDPOINTS ###
+### Obtener pagos para un músico específico en un evento
 GET {{api}}/events/3/musicians/5/payments
 Authorization: Bearer {{user_token}}
 
-### Add payment for a musician in an event
+### Agregar pago para un músico en un evento
+POST {{api}}/events/3/musicians/5/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 3,
+  "musician_id": 5,
+  "amount": 100.00,
+  "payment_type": "ADVANCE",
+  "notes": "Pago de avance para guitarra"
+}
+
+### Músicos Eventos ENDPOINTS ###
+### Obtener pagos para un músico específico en un evento
+GET {{api}}/events/3/musicians/5/payments
+Authorization: Bearer {{user_token}}
+
+### Agregar pago para un músico en un evento
 POST {{api}}/events/3/musicians/5/payments
 Authorization: Bearer {{user_token}}
 Content-Type: application/json
@@ -804,19 +822,5 @@ GET {{api}}/receipts/4/pdf
 Authorization: Bearer {{user_token}}
 
 ### Generate contract PDF for an event
-POST {{api}}/contracts/1/pdf
+GET {{api}}/contracts/4/pdf
 Authorization: Bearer {{user_token}}
-Content-Type: application/json
-
-{
-  "client_name": "John Doe",
-  "client_id": "12345678",
-  "client_phone": "12345678",
-  "company_name": "Musical Band",
-  "event_name": "Concert Event",
-  "event_location": "Venue Name",
-  "event_start_datetime": "2026-06-15T20:00:00",
-  "event_end_datetime": "2026-06-15T23:00:00",
-  "total_amount": 1000.00,
-  "deposit_percent": 30
-}

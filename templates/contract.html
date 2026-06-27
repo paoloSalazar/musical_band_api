@@ -171,8 +171,8 @@
     <div class="clause-title">Primera — Objeto del Contrato</div>
     El presente contrato tiene por objeto la prestación de servicios artísticos y musicales
     por parte de EL PRESTADOR en favor de EL CONTRATANTE, para el evento denominado
-    <strong>"{{ event.name }}"</strong>, a realizarse en <strong>{{ event.location }}</strong>,
-    el día <strong>{{ event.date }}</strong>.
+    <strong>"{{ event.name }}"</strong>, a realizarse el dia {{ event_date.day }} de {{ event_date.month_name }} de {{ event_date.year }} en <strong>{{ event.location }}</strong>,
+    con una duración estimada de <strong>{{ event.duration }}</strong>.
   </div>
 
   <div class="clause">
@@ -189,7 +189,7 @@
   <div class="clause">
     <div class="clause-title">Tercera — Duración del Servicio</div>
     EL PRESTADOR brindará sus servicios durante la jornada establecida para el evento,
-    por el lapzo de {{ event_duration }}</strong>,
+    por un lapso de <strong>{{ event.duration }}</strong>,
     pudiendo prorrogarse de mutuo acuerdo y con el pago adicional correspondiente.
   </div>
 

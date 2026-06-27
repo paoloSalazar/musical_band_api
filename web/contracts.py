@@ -5,18 +5,21 @@ Provides endpoint to generate service contract PDF for an event.
 """
 
 import logging
+import os
 from datetime import date
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import Response
 from fastapi.templating import Jinja2Templates
 from weasyprint import HTML
-from pydantic import BaseModel
+from dotenv import load_dotenv
 
 from auth.auth import get_current_user
 from data.contract_service import get_contract_data
 from utils.number_to_words import number_to_words_es
 from exceptions import DatabaseError
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -29,42 +32,27 @@ MONTH_NAMES_ES = [
 ]
 
 
-class ContractRequest(BaseModel):
-    client_name: str
-    client_id: str
-    client_phone: str
-    company_name: str
-    event_name: str
-    event_location: str
-    event_start_datetime: str
-    event_end_datetime: str
-    total_amount: float
-    deposit_percent: int
-
-
-def build_contract_context(contract_request: ContractRequest) -> dict:
+def build_contract_context(contract_data: dict) -> dict:
     """
     Build template context for contract PDF.
 
     Args:
-        contract_request: Contract request data.
+        contract_data: Contract data from data layer.
 
     Returns:
         Dictionary with template variables.
     """
     today = date.today()
-    deposit = round(contract_request.total_amount * contract_request.deposit_percent / 100, 2)
-    balance = round(contract_request.total_amount - deposit, 2)
-
-    start_dt = contract_request.event_start_datetime
-    end_dt = contract_request.event_end_datetime
+    deposit_percent = 30
+    deposit = round(contract_data["event_price"] * deposit_percent / 100, 2)
+    balance = round(contract_data["event_price"] - deposit, 2)
 
     return {
         "contract_id": 1,
-        "client_name": contract_request.client_name,
-        "client_id": contract_request.client_id,
-        "client_phone": contract_request.client_phone,
-        "company_name": contract_request.company_name,
+        "client_name": contract_data["client_name"],
+        "client_id": contract_data["client_ci"],
+        "client_phone": contract_data["client_phone"],
+        "company_name": os.getenv("GROUP_NAME", "Musical Band"),
         "contract_date": {
             "day": today.day,
             "month": today.month,
@@ -72,26 +60,29 @@ def build_contract_context(contract_request: ContractRequest) -> dict:
             "year": today.year,
         },
         "event": {
-            "name": contract_request.event_name,
-            "location": contract_request.event_location,
-            "date": start_dt.split("T")[0] if "T" in start_dt else start_dt,
-            "start_time": start_dt.split("T")[1][:5] if "T" in start_dt else start_dt,
-            "end_time": end_dt.split("T")[1][:5] if "T" in end_dt else end_dt,
+            "name": contract_data["event_name"],
+            "location": contract_data["event_location"],
+            "duration": contract_data.get("event_duration", "6 Horas"),
+        },
+        "event_date": {
+            "day": contract_data["event_start_datetime"].day,
+            "month": contract_data["event_start_datetime"].month,
+            "month_name": MONTH_NAMES_ES[contract_data["event_start_datetime"].month],
+            "year": contract_data["event_start_datetime"].year,
         },
         "payment": {
-            "total": contract_request.total_amount,
-            "total_in_words": number_to_words_es(contract_request.total_amount),
-            "deposit_percent": contract_request.deposit_percent,
+            "total": contract_data["event_price"],
+            "total_in_words": number_to_words_es(contract_data["event_price"]),
+            "deposit_percent": deposit_percent,
             "deposit": deposit,
             "balance": balance,
         },
     }
 
 
-@router.post("/{event_id}/pdf")
+@router.get("/{event_id}/pdf")
 async def download_contract_pdf(
     event_id: int,
-    contract_request: ContractRequest,
     current_user: Annotated[dict, Depends(get_current_user)]
 ):
     """
@@ -108,7 +99,7 @@ async def download_contract_pdf(
         if contract_data["event_user_id"] != current_user.get("id") and not is_admin:
             raise HTTPException(status_code=403, detail="Not authorized")
 
-        context = build_contract_context(contract_request)
+        context = build_contract_context(contract_data)
         html_string = templates.get_template("contract.html").render(**context)
         pdf_bytes = HTML(string=html_string).write_pdf()
 

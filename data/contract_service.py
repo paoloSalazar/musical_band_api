@@ -6,15 +6,33 @@ Functions:
 """
 
 import logging
+from datetime import datetime
 from config.database import SessionLocal
 from models.event import Event
 from models.user import User
-from models.user_detail import UserDetail
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, InterfaceError
 from exceptions import DatabaseError, DatabaseConnectionError, NotFoundError
 
 logger = logging.getLogger(__name__)
+
+
+def calculate_event_duration(event) -> str:
+    """
+    Calculate event duration string.
+
+    Args:
+        event: Event object with start_datetime, end_datetime, is_all_day.
+
+    Returns:
+        Duration string like "6 Horas" or "3 Horas".
+    """
+    if event.is_all_day:
+        return "6 Horas"
+
+    duration = event.end_datetime - event.start_datetime
+    hours = int(duration.total_seconds() // 3600)
+    return f"{hours} Horas"
 
 
 def get_contract_data(event_id: int) -> dict | None:
@@ -44,14 +62,6 @@ def get_contract_data(event_id: int) -> dict | None:
         if not user:
             raise NotFoundError("User not found for event")
 
-        ci = None
-        user_details = db.query(UserDetail).filter(
-            UserDetail.user_id == user.id,
-            UserDetail.detail_type == "ci"
-        ).first()
-        if user_details:
-            ci = user_details.detail_value
-
         return {
             "event_id": event.id,
             "event_name": event.name,
@@ -61,8 +71,9 @@ def get_contract_data(event_id: int) -> dict | None:
             "event_price": float(event.price or 0),
             "event_user_id": event.user_id,
             "client_name": f"{user.name} {user.lastname}",
-            "client_ci": ci,
+            "client_ci": user.ci,
             "client_phone": user.phone_number,
+            "event_duration": calculate_event_duration(event),
         }
     except (OperationalError, InterfaceError) as e:
         logger.error(f"Database connection error while getting contract for event '{event_id}'")

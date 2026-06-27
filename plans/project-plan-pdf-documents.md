@@ -457,19 +457,30 @@ async def download_receipt_pdf(
 
 ### Datos requeridos
 | Campo | Descripción |
-|---|---|
-| `client_name` | Nombre completo del contratante |
-| `client_id` | Número de Cédula de Identidad |
+|-------|-------------|
+| `client_name` | Nombre completo del contratante (del evento) |
+| `client_id` | Número de Cédula de Identidad (del evento.owner) |
 | `client_phone` | Teléfono de contacto |
-| `company_name` | Nombre del grupo / empresa |
+| `company_name` | Nombre del grupo/empresa (de variable de entorno `GROUP_NAME`) |
 | `contract_date` | Fecha de firma (generada automáticamente) |
 | `event_name` | Nombre del evento |
 | `event_location` | Lugar del evento |
-| `event_date` | Fecha del evento |
-| `event_start_time` | Hora de inicio |
-| `event_end_time` | Hora de finalización |
+| `event_duration` | Duración calculada (6 horas para eventos todo el día, o calculada) |
+| `event_date` | Fecha del evento (día, mes, año) |
 | `total_amount` | Monto total en Bs. |
-| `deposit_percent` | Porcentaje de anticipo (30% a 50%) |
+| `deposit_percent` | Porcentaje de anticipo (30% por defecto) |
+
+### API Endpoint Change
+**De:** `POST /api/contracts/{event_id}/pdf` con cuerpo JSON
+**A:** `GET /api/contracts/{event_id}/pdf` (sin cuerpo requerido)
+
+### Variables agregadas en plantilla
+| Variable | Propósito |
+|----------|---------|
+| `event_date.day` | Día del evento |
+| `event_date.month` | Número de mes (1-12) |
+| `event_date.month_name` | Nombre del mes en español |
+| `event_date.year` | Año (ej: 2026) |
 
 ### Texto completo del contrato
 
@@ -1197,7 +1208,7 @@ Cada commit debe ser autónomo y enfocado:
    - Incluir verificación de permisos (propietario/admin)
 
 5. **Commit: `feat(pdf): add contract PDF endpoint`**
-   - Agregar `web/contracts.py` con `POST /api/contracts/{event_id}/pdf`
+   - Agregar `web/contracts.py` con `GET /api/contracts/{event_id}/pdf`
    - Incluir verificación de permisos (propietario/admin)
 
 6. **Commit: `feat(pdf): register PDF routes in main.py`**
