@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from auth.auth import get_current_user
 from data.contract_service import get_contract_data
 from utils.number_to_words import number_to_words_es
+from utils.image_utils import image_to_base64
 from exceptions import DatabaseError
 
 load_dotenv()
@@ -77,6 +78,7 @@ def build_contract_context(contract_data: dict) -> dict:
             "deposit": deposit,
             "balance": balance,
         },
+        "watermark_image": image_to_base64("static/watermark.png"),
     }
 
 

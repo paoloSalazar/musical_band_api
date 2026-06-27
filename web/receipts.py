@@ -15,6 +15,7 @@ from weasyprint import HTML
 from auth.auth import get_current_user
 from data.receipt_service import get_receipt_data
 from utils.number_to_words import number_to_words_es
+from utils.image_utils import image_to_base64
 from exceptions import NotFoundError, DatabaseError
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ def build_receipt_context(receipt_data: dict) -> dict:
         "partial_payment": total_paid,
         "balance": balance,
         "total": total,
+        "watermark_image": image_to_base64("static/watermark.png"),
     }
 
 
