@@ -211,3 +211,6 @@ __marimo__/
 
 # Application logs
 logs/logs.txt
+
+# Docker environment (template with actual secrets)
+.env.docker

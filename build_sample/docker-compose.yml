@@ -1,0 +1,74 @@
+name: musical_band
+
+services:
+  db:
+    image: postgres:15-alpine
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - musical_band_network
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-init:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "scripts/sync_database.py", "scripts/backup_data_20260629_InitialState.sql", "--force"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+pg8000://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    networks:
+      - musical_band_network
+    volumes:
+      - ..:/app
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+pg8000://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      SMTP_HOST: mailhog
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_logs:/app/logs
+    networks:
+      - musical_band_network
+    restart: unless-stopped
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - musical_band_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  app_logs:
+
+networks:
+  musical_band_network:
+    driver: bridge
