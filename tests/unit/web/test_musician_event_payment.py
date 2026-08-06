@@ -11,13 +11,17 @@ from fastapi import HTTPException
 from schemas.musician_event_payment import (
     MusicianEventPaymentCreate,
     MusicianEventPaymentResponse,
-    MusicianPaymentSummaryResponse
+    MusicianPaymentSummaryResponse,
+    MusicianEventSummaryResponse,
+    EventBillingSummaryResponse
 )
 from schemas.event_payment import PaymentType
 from web.musician_event_payment import (
     create_musician_payment,
     get_musician_payments,
     get_musician_payment_summary,
+    get_event_musician_payment_summary,
+    get_event_billing_summary_endpoint
 )
 from exceptions import NotFoundError, ValidationError, UnauthorizedError
 
@@ -239,6 +243,140 @@ def test_get_musician_payment_summary_success(mocker):
     assert result.total_paid == Decimal("800.00")
     assert result.payment_count == 2
     mock_service.assert_called_once_with(event_id, musician_id, current_user)
+
+
+def test_get_event_musician_payment_summary_admin_success(mocker):
+    """Test get_event_musician_payment_summary() returns list for admin"""
+    # Arrange
+    event_id = 1
+    current_user = {"id": 1, "role": "admin", "permissions": ["write:musician_event_payment"]}  # Admin role requires write permission
+
+    mock_summary_list = [
+        MusicianEventSummaryResponse(
+            musician_name="John Doe",
+            role="Lead Guitarist",
+            salary=Decimal("1000.00"),
+            payment_done=Decimal("300.00"),
+            remaining_payment=Decimal("700.00")
+        ),
+        MusicianEventSummaryResponse(
+            musician_name="Jane Smith",
+            role="Vocalist",
+            salary=Decimal("800.00"),
+            payment_done=Decimal("500.00"),
+            remaining_payment=Decimal("300.00")
+        )
+    ]
+    mock_service = mocker.patch('web.musician_event_payment.service.get_musician_payment_summary_for_event')
+    mock_service.return_value = mock_summary_list
+
+    # Act
+    response = get_event_musician_payment_summary(event_id, current_user)
+
+    # Assert
+    assert isinstance(response, list)
+    assert len(response) == 2
+    assert response[0].musician_name == "John Doe"
+    assert response[0].role == "Lead Guitarist"
+    assert response[0].salary == Decimal("1000.00")
+    assert response[0].payment_done == Decimal("300.00")
+    assert response[0].remaining_payment == Decimal("700.00")
+    assert response[1].musician_name == "Jane Smith"
+    assert response[1].role == "Vocalist"
+    assert response[1].salary == Decimal("800.00")
+    assert response[1].payment_done == Decimal("500.00")
+    assert response[1].remaining_payment == Decimal("300.00")
+    mock_service.assert_called_once_with(event_id, current_user)
+
+
+def test_get_event_musician_payment_summary_unauthorized(mocker):
+    """Test get_event_musician_payment_summary() raises HTTPException for non-admin"""
+    # Arrange
+    event_id = 1
+    current_user = {"id": 1, "role": "user", "permissions": []}  # Regular user
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        get_event_musician_payment_summary(event_id, current_user)
+
+    assert exc_info.value.status_code == 403  # Forbidden
+    assert "You can only view payment summaries for your own events" in str(exc_info.value.detail)
+
+
+def test_get_event_billing_summary_admin_success(mocker):
+    """Test get_event_billing_summary_endpoint() returns billing summary for admin"""
+    # Arrange
+    event_id = 1
+    current_user = {"id": 1, "role": "admin", "permissions": ["read:musician_event_payment"]}
+
+    mock_billing_summary = EventBillingSummaryResponse(
+        event_name="Summer Festival",
+        event_price=Decimal("4000.00"),
+        payment_done=Decimal("4000.00"),
+        sum_of_musician_salaries=Decimal("1050.00"),
+        remaining_payment=Decimal("0.00"),
+        payment_done_to_musicians=Decimal("350.00")
+    )
+    mock_service = mocker.patch('web.musician_event_payment.service.get_event_billing_summary')
+    mock_service.return_value = mock_billing_summary
+
+    # Act
+    response = get_event_billing_summary_endpoint(event_id, current_user)
+
+    # Assert
+    assert isinstance(response, EventBillingSummaryResponse)
+    assert response.event_name == "Summer Festival"
+    assert response.event_price == Decimal("4000.00")
+    assert response.payment_done == Decimal("4000.00")
+    assert response.sum_of_musician_salaries == Decimal("1050.00")
+    assert response.remaining_payment == Decimal("0.00")
+    assert response.payment_done_to_musicians == Decimal("350.00")
+    mock_service.assert_called_once_with(event_id, current_user)
+
+
+def test_get_event_billing_summary_owner_success(mocker):
+    """Test get_event_billing_summary_endpoint() returns billing summary for event owner"""
+    # Arrange
+    event_id = 1
+    current_user = {"id": 1, "role": "user", "permissions": ["read:musician_event_payment"]}  # User is owner
+
+    mock_billing_summary = EventBillingSummaryResponse(
+        event_name="Winter Concert",
+        event_price=Decimal("2500.00"),
+        payment_done=Decimal("2500.00"),
+        sum_of_musician_salaries=Decimal("1500.00"),
+        remaining_payment=Decimal("0.00"),
+        payment_done_to_musicians=Decimal("1500.00")
+    )
+    mock_service = mocker.patch('web.musician_event_payment.service.get_event_billing_summary')
+    mock_service.return_value = mock_billing_summary
+
+    # Act
+    response = get_event_billing_summary_endpoint(event_id, current_user)
+
+    # Assert
+    assert isinstance(response, EventBillingSummaryResponse)
+    assert response.event_name == "Winter Concert"
+    assert response.event_price == Decimal("2500.00")
+    assert response.payment_done == Decimal("2500.00")
+    assert response.sum_of_musician_salaries == Decimal("1500.00")
+    assert response.remaining_payment == Decimal("0.00")
+    assert response.payment_done_to_musicians == Decimal("1500.00")
+    mock_service.assert_called_once_with(event_id, current_user)
+
+
+def test_get_event_billing_summary_unauthorized(mocker):
+    """Test get_event_billing_summary_endpoint() raises HTTPException for non-owner, non-admin"""
+    # Arrange
+    event_id = 1
+    current_user = {"id": 2, "role": "user", "permissions": []}  # Not admin, not owner
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        get_event_billing_summary_endpoint(event_id, current_user)
+
+    assert exc_info.value.status_code == 403  # Forbidden
+    assert "You can only view billing summaries for your own events" in str(exc_info.value.detail)
 
 
 def test_get_musician_payment_summary_not_found(mocker):

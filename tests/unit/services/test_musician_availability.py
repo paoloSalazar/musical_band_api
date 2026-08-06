@@ -629,7 +629,7 @@ def test_get_musician_availability_by_month_admin_access(mocker):
     current_user = {'id': 1, 'role': 'admin'}
 
     expected_availabilities = [
-        MusicianAvailability(id=10, musician_id=2, unavailable_date=date(2026, 6, 10), reason="Meeting")
+        MusicianAvailability(id=10, musician_id=2, unavailable_date=date.today() + timedelta(days=10), reason="Meeting")
     ]
     mock_data_get = mocker.patch('services.musician_availability.data.get_musician_availability_by_month')
     mock_data_get.return_value = expected_availabilities

@@ -14,7 +14,9 @@ from services.musician_event_payment import (
     get_payments_for_event,
     get_payments_for_musician,
     get_payment_summary_for_musician_event,
-    get_payment_summary_for_musician
+    get_payment_summary_for_musician,
+    get_musician_payment_summary_for_event,
+    get_event_billing_summary
 )
 from schemas.musician_event_payment import (
     MusicianEventPaymentCreate,
@@ -1032,3 +1034,266 @@ def test_get_payment_summary_for_musician_success(mocker):
     assert result.musician_id == 2
     assert result.total_paid == Decimal("2500.00")
     mock_payment_data_total.assert_called_once_with(musician_id)
+
+
+def test_get_musician_payment_summary_for_event_admin_success(mocker):
+    """Test get_musician_payment_summary_for_event() returns summary for admin"""
+    # Arrange
+    event_id = 1
+    current_user = {'id': 1, 'role': 'admin'}
+
+    mock_event = Mock()
+    mock_event.id = 1
+    mock_event.user_id = 1
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = mock_event
+
+    # Mock musician assignments
+    mock_musician1 = Mock()
+    mock_musician1.id = 2
+    mock_musician1.name = "John"
+    mock_musician1.lastname = "Doe"
+    mock_musician1.second_lastname = None
+
+    mock_musician2 = Mock()
+    mock_musician2.id = 3
+    mock_musician2.name = "Jane"
+    mock_musician2.lastname = "Smith"
+    mock_musician2.second_lastname = "Jr"
+
+    mock_assignment1 = Mock()
+    mock_assignment1.id = 1
+    mock_assignment1.event_id = 1
+    mock_assignment1.musician_id = 2
+    mock_assignment1.role = "Lead Guitarist"
+    mock_assignment1.salary = Decimal("1000.00")
+    mock_assignment1.payment_status = "PENDING"
+    mock_assignment1.musician = mock_musician1
+
+    mock_assignment2 = Mock()
+    mock_assignment2.id = 2
+    mock_assignment2.event_id = 1
+    mock_assignment2.musician_id = 3
+    mock_assignment2.role = "Vocalist"
+    mock_assignment2.salary = Decimal("800.00")
+    mock_assignment2.payment_status = "PARTIAL"
+    mock_assignment2.musician = mock_musician2
+
+    mock_assignments = [mock_assignment1, mock_assignment2]
+    mock_assignment_data_get_by_event = mocker.patch('services.musician_event_payment.assignment_data.get_by_event')
+    mock_assignment_data_get_by_event.return_value = mock_assignments
+
+    # Mock payment totals for each musician
+    mock_payment_data_total_1 = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_musician_for_event')
+    mock_payment_data_total_1.side_effect = [Decimal("300.00"), Decimal("500.00")]  # For musician 2 and 3 respectively
+
+    # Act
+    result = get_musician_payment_summary_for_event(event_id, current_user)
+
+    # Assert
+    assert len(result) == 2
+    # First musician
+    assert result[0].musician_name == "John Doe"
+    assert result[0].role == "Lead Guitarist"
+    assert result[0].salary == Decimal("1000.00")
+    assert result[0].payment_done == Decimal("300.00")
+    assert result[0].remaining_payment == Decimal("700.00")
+    # Second musician
+    assert result[1].musician_name == "Jane Smith Jr"
+    assert result[1].role == "Vocalist"
+    assert result[1].salary == Decimal("800.00")
+    assert result[1].payment_done == Decimal("500.00")
+    assert result[1].remaining_payment == Decimal("300.00")
+    
+    mock_event_data_get.assert_called_once_with(event_id)
+    mock_assignment_data_get_by_event.assert_called_once_with(event_id)
+    assert mock_payment_data_total_1.call_count == 2
+
+
+def test_get_musician_payment_summary_for_event_unauthorized(mocker):
+    """Test get_musician_payment_summary_for_event() raises UnauthorizedError for non-admin"""
+    # Arrange
+    event_id = 1
+    current_user = {'id': 1, 'role': 'user'}  # Not admin
+
+    mock_event = Mock()
+    mock_event.id = 1
+    mock_event.user_id = 1
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = mock_event
+
+    # Act & Assert
+    with pytest.raises(UnauthorizedError) as exc_info:
+        get_musician_payment_summary_for_event(event_id, current_user)
+
+    assert "You can only view payment summaries for your own events" in str(exc_info.value)
+
+
+def test_get_musician_payment_summary_for_event_event_not_found(mocker):
+    """Test get_musician_payment_summary_for_event() raises NotFoundError when event doesn't exist"""
+    # Arrange
+    event_id = 999
+    current_user = {'id': 1, 'role': 'admin'}
+
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = None
+
+    # Act & Assert
+    with pytest.raises(NotFoundError) as exc_info:
+        get_musician_payment_summary_for_event(event_id, current_user)
+
+    assert "Event with id 999 not found" in str(exc_info.value)
+
+
+def test_get_event_billing_summary_admin_success(mocker):
+    """Test get_event_billing_summary() returns billing summary for admin"""
+    # Arrange
+    event_id = 1
+    current_user = {'id': 1, 'role': 'admin'}
+
+    mock_event = Mock()
+    mock_event.id = 1
+    mock_event.user_id = 1
+    mock_event.name = "Summer Festival"
+    mock_event.price = Decimal("4000.00")  # Event final price
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = mock_event
+
+    # Mock total paid for the event (event payments)
+    mock_event_payment_total = mocker.patch('services.musician_event_payment.event_payment_data.get_total_paid')
+    mock_event_payment_total.return_value = Decimal("4000.00")
+
+    # Mock total paid to musicians
+    mock_musician_payment_total = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_event_for_musicians')
+    mock_musician_payment_total.return_value = Decimal("350.00")
+
+    # Mock sum of musician salaries
+    mock_assignment1 = Mock()
+    mock_assignment1.salary = Decimal("500.00")
+    mock_assignment2 = Mock()
+    mock_assignment2.salary = Decimal("550.00")
+    mock_assignments = [mock_assignment1, mock_assignment2]
+    mock_assignment_data_get_by_event = mocker.patch('services.musician_event_payment.assignment_data.get_by_event')
+    mock_assignment_data_get_by_event.return_value = mock_assignments
+
+    # Act
+    result = get_event_billing_summary(event_id, current_user)
+
+    # Assert
+    assert result.event_name == "Summer Festival"
+    assert result.event_price == Decimal("4000.00")
+    assert result.payment_done == Decimal("4000.00")
+    assert result.sum_of_musician_salaries == Decimal("1050.00")
+    assert result.remaining_payment == Decimal("0.00")
+    assert result.payment_done_to_musicians == Decimal("350.00")
+
+    mock_event_data_get.assert_called_once_with(event_id)
+    mock_event_payment_total.assert_called_once_with(event_id)
+    mock_musician_payment_total.assert_called_once_with(event_id)
+    mock_assignment_data_get_by_event.assert_called_once_with(event_id)
+
+
+def test_get_event_billing_summary_owner_success(mocker):
+    """Test get_event_billing_summary() returns billing summary for event owner"""
+    # Arrange
+    event_id = 1
+    current_user = {'id': 1, 'role': 'user'}  # User is the event owner
+
+    mock_event = Mock()
+    mock_event.id = 1
+    mock_event.user_id = 1  # Same as current_user.id
+    mock_event.name = "Winter Concert"
+    mock_event.price = Decimal("2500.00")
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = mock_event
+
+    # Mock total paid for the event (event payments)
+    mock_event_payment_total = mocker.patch('services.musician_event_payment.event_payment_data.get_total_paid')
+    mock_event_payment_total.return_value = Decimal("2500.00")
+
+    # Mock total paid to musicians
+    mock_musician_payment_total = mocker.patch('services.musician_event_payment.payment_data.get_total_paid_by_event_for_musicians')
+    mock_musician_payment_total.return_value = Decimal("1500.00")
+
+    # Mock sum of musician salaries
+    mock_assignment1 = Mock()
+    mock_assignment1.salary = Decimal("800.00")
+    mock_assignment2 = Mock()
+    mock_assignment2.salary = Decimal("700.00")
+    mock_assignments = [mock_assignment1, mock_assignment2]
+    mock_assignment_data_get_by_event = mocker.patch('services.musician_event_payment.assignment_data.get_by_event')
+    mock_assignment_data_get_by_event.return_value = mock_assignments
+
+    # Act
+    result = get_event_billing_summary(event_id, current_user)
+
+    # Assert
+    assert result.event_name == "Winter Concert"
+    assert result.event_price == Decimal("2500.00")
+    assert result.payment_done == Decimal("2500.00")
+    assert result.sum_of_musician_salaries == Decimal("1500.00")
+    assert result.remaining_payment == Decimal("0.00")
+    assert result.payment_done_to_musicians == Decimal("1500.00")
+
+    mock_event_data_get.assert_called_once_with(event_id)
+    mock_event_payment_total.assert_called_once_with(event_id)
+    mock_musician_payment_total.assert_called_once_with(event_id)
+    mock_assignment_data_get_by_event.assert_called_once_with(event_id)
+
+
+def test_get_event_billing_summary_unauthorized(mocker):
+    """Test get_event_billing_summary() raises UnauthorizedError for non-owner, non-admin"""
+    # Arrange
+    event_id = 1
+    current_user = {'id': 2, 'role': 'user'}  # Not admin, not event owner
+
+    mock_event = Mock()
+    mock_event.id = 1
+    mock_event.user_id = 1  # Different from current_user.id
+    mock_event.name = "Summer Festival"
+    mock_event.price = Decimal("5000.00")
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = mock_event
+
+    # Act & Assert
+    with pytest.raises(UnauthorizedError) as exc_info:
+        get_event_billing_summary(event_id, current_user)
+
+    assert "You can only view billing summaries for your own events" in str(exc_info.value)
+
+
+def test_get_event_billing_summary_event_not_found(mocker):
+    """Test get_event_billing_summary() raises NotFoundError when event doesn't exist"""
+    # Arrange
+    event_id = 999
+    current_user = {'id': 1, 'role': 'admin'}
+
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = None
+
+    # Act & Assert
+    with pytest.raises(NotFoundError) as exc_info:
+        get_event_billing_summary(event_id, current_user)
+
+    assert "Event with id 999 not found" in str(exc_info.value)
+
+
+def test_get_event_billing_summary_price_not_set(mocker):
+    """Test get_event_billing_summary() raises ValidationError when event price is not set"""
+    # Arrange
+    event_id = 1
+    current_user = {'id': 1, 'role': 'admin'}
+
+    mock_event = Mock()
+    mock_event.id = 1
+    mock_event.user_id = 1
+    mock_event.name = "Event Without Price"
+    mock_event.price = None  # Price not set
+    mock_event_data_get = mocker.patch('services.musician_event_payment.event_data.get_one')
+    mock_event_data_get.return_value = mock_event
+
+    # Act & Assert
+    with pytest.raises(ValidationError) as exc_info:
+        get_event_billing_summary(event_id, current_user)
+
+    assert "Event final price not set" in str(exc_info.value)

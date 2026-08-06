@@ -28,3 +28,19 @@ def test_user_repr():
     )
     repr_str = repr(user)
     assert repr_str == "<User(name=Jane, email=jane.doe@example.com)>"
+
+
+def test_user_model_has_ci_field():
+    """Test that User model has ci field"""
+    user = User(name="Test", lastname="User", email="test@test.com", password="pass", role_id=1)
+    assert hasattr(user, 'ci')
+    assert user.ci is None
+
+
+def test_user_creation_with_ci():
+    """Test creating user with CI field"""
+    user = User(
+        name="Test", lastname="User", email="test@test.com",
+        password="pass", role_id=1, ci="12345678"
+    )
+    assert user.ci == "12345678"

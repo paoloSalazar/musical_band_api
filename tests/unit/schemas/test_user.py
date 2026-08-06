@@ -55,13 +55,33 @@ def test_user_full():
         name="John",
         lastname="Doe",
         email="john.doe@example.com",
-        role_id=1
+        role_id=1,
+        ci="12345678"
     )
     assert user.id == 1
     assert user.name == "John"
     assert user.lastname == "Doe"
     assert user.email == "john.doe@example.com"
-    assert user.role_id == 1
+    assert user.ci == "12345678"
+
+
+def test_user_create_schema_accepts_ci():
+    """Test UserCreate schema accepts optional ci field"""
+    schema = UserCreate(name="Test", lastname="User", email="test@test.com", password="pass", role_id=1, ci="12345678")
+    assert schema.ci == "12345678"
+
+
+def test_user_response_includes_ci():
+    """Test UserResponse includes ci field"""
+    schema = UserResponse(id=1, name="Test", lastname="User", email="test@test.com", role_id=1, ci="12345678")
+    assert schema.ci == "12345678"
+
+
+def test_user_to_dict_includes_ci():
+    """Test model_dump includes ci field"""
+    user = UserResponse(id=1, name="Test", lastname="User", email="test@test.com", role_id=1, ci="12345678")
+    data = user.model_dump()
+    assert data["ci"] == "12345678"
 
 
 def test_user_from_dict():
@@ -71,14 +91,15 @@ def test_user_from_dict():
         "name": "Jane",
         "lastname": "Smith",
         "email": "jane.smith@example.com",
-        "role_id": 2
+        "role_id": 2,
+        "ci": "87654321"
     }
     user = UserResponse(**data)
     assert user.id == 2
     assert user.name == "Jane"
     assert user.lastname == "Smith"
     assert user.email == "jane.smith@example.com"
-    assert user.role_id == 2
+    assert user.ci == "87654321"
 
 
 def test_user_to_dict():
@@ -88,7 +109,8 @@ def test_user_to_dict():
         name="Bob",
         lastname="Wilson",
         email="bob.wilson@example.com",
-        role_id=1
+        role_id=1,
+        ci="12345678"
     )
     data = user.model_dump()
     expected = {
@@ -98,6 +120,7 @@ def test_user_to_dict():
         "second_lastname": None,
         "email": "bob.wilson@example.com",
         "phone_number": None,
+        "ci": "12345678",
         "role_id": 1
     }
     assert data == expected

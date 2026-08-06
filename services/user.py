@@ -76,6 +76,7 @@ def get_all_paginated(skip: int = 0, limit: int = 20, order_by: str | None = Non
                 email=user.email,
                 phone_number=user.phone_number,
                 role_id=user.role_id,
+                ci=user.ci,
                 role=user.role.name  # Get role name from relationship
             )
             for user in db_users
@@ -146,6 +147,7 @@ def get_one_by_id(user_id: int) -> UserResponseWithRole:
             email=db_user.email,
             phone_number=db_user.phone_number,
             role_id=db_user.role_id,
+            ci=db_user.ci,
             role=db_user.role.name  # Get role name from relationship
         )
         logger.info(f"Retrieved user with id {user_id}")
@@ -187,6 +189,7 @@ def modify_by_id(user_id: int, user_update: UserUpdate) -> UserResponseWithRole:
             email=existing_user.email,  # Keep existing email when updating by ID
             password=existing_user.password,  # Keep existing password
             phone_number=user_update.phone_number if user_update.phone_number is not None else existing_user.phone_number,
+            ci=user_update.ci if user_update.ci is not None else existing_user.ci,
             role_id=user_update.role_id if user_update.role_id else existing_user.role_id
         )
         modified_db_user = data.modify(db_user)
@@ -236,6 +239,7 @@ def create(user_create: UserCreate) -> UserResponse:
             second_lastname=user_create.second_lastname,
             email=user_create.email,
             phone_number=user_create.phone_number,
+            ci=user_create.ci,
             password=get_password_hash(user_create.password),
             role_id=user_create.role_id
         )
@@ -276,6 +280,7 @@ def modify(user_update: UserUpdate) -> UserResponse:
             email=user_update.email if user_update.email else existing_user.email,
             password=existing_user.password,  # Keep existing password
             phone_number=user_update.phone_number if user_update.phone_number is not None else existing_user.phone_number,
+            ci=user_update.ci if user_update.ci is not None else existing_user.ci,
             role_id=user_update.role_id if user_update.role_id else existing_user.role_id
         )
         modified_db_user = data.modify(db_user)
@@ -326,6 +331,8 @@ def modify_password(email: str, current_password: str, new_password: str) -> boo
             second_lastname=existing_user.second_lastname,
             email=existing_user.email,
             password=get_password_hash(new_password),
+            phone_number=existing_user.phone_number,
+            ci=existing_user.ci,
             role_id=existing_user.role_id
         )
         modified_db_user = data.modify(db_user)

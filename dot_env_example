@@ -1,5 +1,7 @@
 DATABASE_URL=postgresql+pg8000://admin:password123@localhost:5432/my_database
 
+GROUP_NAME=Musical Band
+
 # JWT Configuration
 JWT_SECRET_KEY=your-super-secret-key-change-in-production
 JWT_ALGORITHM=HS256
@@ -12,3 +14,8 @@ SMTP_USER=
 SMTP_PASSWORD=
 SMTP_FROM_NAME=Musical Band
 SMTP_FROM_EMAIL=noreply@musicalband.local
+
+# Supabase Configuration (for backup uploads)
+# SUPABASE_URL=https://your-project.supabase.co
+# SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+# SUPABASE_BUCKET=database-backups

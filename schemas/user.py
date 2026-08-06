@@ -8,6 +8,7 @@ class UserBase(BaseModel):
     second_lastname: str | None = None
     email: str
     phone_number: str | None = None
+    ci: str | None = None
     role_id: int
 
 
@@ -36,6 +37,7 @@ class UserUpdate(BaseModel):
     second_lastname: str | None = None
     email: str | None = None
     phone_number: str | None = None
+    ci: str | None = None
     role_id: int | None = None
 
 
@@ -45,6 +47,7 @@ class UserProfileUpdate(BaseModel):
     lastname: str | None = None
     second_lastname: str | None = None
     phone_number: str | None = None
+    ci: str | None = None
 
 
 class UserPasswordUpdate(BaseModel):
@@ -61,6 +64,7 @@ class UserResponseWithRole(BaseModel):
     second_lastname: str | None = None
     email: str
     phone_number: str | None = None
+    ci: str | None = None
     role_id: int
     role: str  # Role name
 
