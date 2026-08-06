@@ -1,0 +1,826 @@
+@api = http://localhost:8000/api
+@user_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsInVzZXJfaWQiOjIsInJvbGVfaWQiOjEsImV4cCI6MTc4MjU2NTE1OX0.8_At7zqITjCeQOFxYraW4jK1r0cmH2M0NXf6y-h3lwA
+GET {{api}}/permissions?skip=0&limit=8
+Authorization: Bearer {{user_token}}
+###
+GET {{api}}/permissions?skip=8&limit=8
+Authorization: Bearer {{user_token}}
+
+###
+POST {{api}}/permissions
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "write:events",
+  "description": "Permission to write event information"
+}
+
+###
+GET {{api}}/permissions/admin/permissions
+Authorization: Bearer {{user_token}}
+
+###
+### Assign permission to role
+POST {{api}}/permissions/roles/assign?permission_name=write:events&role_name=musician
+Authorization: Bearer {{user_token}}
+
+###
+### Remove permission from role
+POST {{api}}/permissions/roles/remove?permission_name=write:user_roles&role_name=admin
+Authorization: Bearer {{user_token}}
+
+###
+### Get permissions for a specific role
+GET {{api}}/permissions/admin/permissions
+Authorization: Bearer {{user_token}}
+
+###
+### Get roles that have a specific permission
+GET {{api}}/permissions/role/write:user_roles/roles
+Authorization: Bearer {{user_token}}
+
+###
+
+PATCH {{api}}/permissions/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "description": "Updated description for the permission"
+}
+
+###
+
+DELETE {{api}}/permissions/read:user_roles
+Authorization : Bearer {{user_token}}
+
+###
+
+
+
+### Get all user roles
+GET {{api}}/user-roles/
+Authorization: Bearer {{user_token}}
+###
+
+### Get a specific user role
+GET {{api}}/user-roles/admin
+
+###
+
+### Create a new user role
+POST {{api}}/user-roles/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "admin",
+  "description": "Administrator role"
+}
+
+###
+
+### Update an existing user role (PATCH)
+PATCH {{api}}/user-roles/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "admin",
+  "description": "Administrator role updated"
+}
+
+###
+
+### Replace an existing user role (PUT)
+PUT {{api}}/user-roles/
+Content-Type: application/json
+
+{
+  "id": 2,
+  "name": "superadmin",
+  "description": "Super administrator role"
+}
+
+###
+### Delete a user role
+DELETE {{api}}/user-roles/musician
+Authorization: Bearer {{user_token}}
+
+###
+### USERS ENDPOINTS ###
+### Get all users (requires authentication)
+GET {{api}}/users/
+Authorization: Bearer {{user_token}}
+
+### Get users filtered by single role (e.g., musicians)
+GET {{api}}/users/?role=musician
+Authorization: Bearer {{user_token}}
+
+### Get users filtered by multiple roles (e.g., musicians and auxiliar_musicians)
+GET {{api}}/users/?roles=musician&order_by=last_name
+Authorization: Bearer {{user_token}}
+
+### Example response for role filtering:
+# {
+#   "data": [
+#     {
+#       "id": 2,
+#       "name": "John",
+#       "lastname": "Doe",
+#       "second_lastname": null,
+#       "email": "john.doe@example.com",
+#       "phone_number": "+1234567890",
+#       "role_id": 2,
+#       "role": "musician"
+#     },
+#     {
+#       "id": 3,
+#       "name": "Jane",
+#       "lastname": "Smith",
+#       "second_lastname": null,
+#       "email": "jane.smith@example.com",
+#       "phone_number": "+0987654321",
+#       "role_id": 3,
+#       "role": "auxiliar_musician"
+#     }
+#   ],
+#   "total": 2,
+#   "skip": 0,
+#   "limit": 20
+# }
+
+### Post a new user
+POST {{api}}/users/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "jimena",
+  "lastname": "rosales",
+  "second_lastname": "villarroel",
+  "email": "jimena.rosales@example.com",
+  "password": "rosales",
+  "phone_number": "1234567890",
+  "role_id": 1,
+  "ci": "12345678"
+}
+
+### Get a specific user
+GET {{api}}/users/paolo.salazar@example.com
+Authorization: Bearer {{user_token}}
+
+### Get a specific user by Id
+GET {{api}}/users/12
+Authorization: Bearer {{user_token}}
+
+### Update an existing user by ID (PATCH)
+PATCH {{api}}/users/me
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "juan",
+  "lastname": "perez",
+  "second_lastname": "garcia",
+  "phone_number": "+1234567891"
+}
+
+### Update an existing user (PATCH)
+PATCH {{api}}/users/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Janet",
+  "lastname": "Smith",
+  "second_lastname": "Johnson",
+  "email": "jane.smith@example.com",
+  "role_id": 3
+}
+
+###
+
+### Update user password (PATCH)
+PATCH {{api}}/users/daniel.peredo@example.com/password
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "current_password": "peredo",
+  "new_password": "peredo123"
+}
+
+###
+### AUTHENTICATION ENDPOINTS ###
+### Initialize token variable
+
+### Login user
+POST {{api}}/users/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "admin"
+}
+
+### Get Current User Info
+GET {{api}}/users/me
+Authorization: Bearer {{user_token}}
+###
+### USER DETAILS ENDPOINTS ###
+
+### Get all details for a user
+GET {{api}}/users/1/details
+Authorization: Bearer {{user_token}}
+
+###
+
+### Get a specific user detail
+GET {{api}}/users/1/details/1
+Authorization: Bearer {{user_token}}
+
+###
+
+### Create a new user detail
+POST {{api}}/users/1/details
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "user_id": 1,
+  "detail_type": "address1",
+  "detail_value": "Cochabamba, Bolivia"
+}
+
+###
+
+### Update a user detail
+PATCH {{api}}/users/1/details/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "detail_value": "calle calama sn"
+}
+
+###
+
+### Delete a user detail
+DELETE {{api}}/users/1/details/1
+Authorization: Bearer {{user_token}}
+
+### EVENTS ENDPOINTS ###
+
+### Get all events (with pagination - table view)
+GET {{api}}/events/?page=1&limit=10
+Authorization: Bearer {{user_token}}
+
+### Note for musician/auxiliar_musician roles:
+# Only events the musician is assigned to (via event_musician table) will be returned.
+# Admin and client roles continue to see all events.
+
+### Get events with filters
+GET {{api}}/events/?page=1&limit=20&status=PENDING&search=rock
+Authorization: Bearer {{user_token}}
+
+### Get events sorted
+GET {{api}}/events/?page=1&limit=20&sort_by=start_datetime&order=desc
+Authorization: Bearer {{user_token}}
+
+### Get events for calendar view (by month)
+GET {{api}}/events/calendar?year=2026&month=3
+Authorization: Bearer {{user_token}}
+
+### Get events for calendar view with user filter
+GET {{api}}/events/calendar?year=2026&month=3&user_id=3
+Authorization: Bearer {{user_token}}
+
+### Get a single event by ID
+GET {{api}}/events/4
+Authorization: Bearer {{user_token}}
+
+### Post a new event (without user_id - taken from token)
+POST {{api}}/events/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Cumpleaños de Miriam2",
+  "place": "Calle Calama y San Martin, Cochabamba",
+  "description": "Celebración del cumpleaños de Martha con amigos y familiares",
+  "start_datetime": "2026-04-02 08:00:00",
+  "end_datetime": "2026-04-02 13:00:00",
+  "is_all_day": true
+}
+
+### Post a new partial day event (without user_id - taken from token)
+POST {{api}}/events/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Reunión de trabajo",
+  "place": "Oficina Central",
+  "description": "Reunión semanal del equipo",
+  "start_datetime": "2026-03-28 14:00:00",
+  "end_datetime": "2026-03-28 16:00:00",
+  "is_all_day": false
+}
+
+### Try to create conflicting event (should fail with 409 Conflict)
+POST {{api}}/events/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Conflicting Event",
+  "place": "Some Place",
+  "start_datetime": "2026-03-27 20:00:00",
+  "end_datetime": "2026-03-27 22:00:00",
+  "is_all_day": false
+}
+
+### Try to create event with end before start (should fail)
+POST {{api}}/events/
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Invalid Event",
+  "place": "Some Place",
+  "start_datetime": "2026-03-29 23:00:00",
+  "end_datetime": "2026-03-29 19:00:00",
+  "is_all_day": false
+}
+
+### Update an existing event (PATCH)
+PATCH {{api}}/events/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "Cumpleaños de Martha - Actualizado",
+  "place": "Nueva Ubicación"
+}
+
+### Update event datetime (PATCH) - should check for conflicts
+PATCH {{api}}/events/2
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "start_datetime": "2026-03-27 18:00:00",
+  "end_datetime": "2026-03-27 22:00:00"
+}
+
+### Delete an event
+DELETE {{api}}/events/10
+Authorization: Bearer {{user_token}}
+
+### Change event status (admin only)
+PATCH {{api}}/events/1/status
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "status": "CONFIRMED"
+}
+
+### Change event status to cancelled
+PATCH {{api}}/events/2/status
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "status": "CANCELLED"
+}
+
+### Get event price
+GET {{api}}/events/1/price
+Authorization: Bearer {{user_token}}
+
+### Set event price
+PATCH {{api}}/events/1/price
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "price": 150.00
+}
+
+### EVENT MUSICIAN ENDPOINTS ###
+### Note: Differentiated role and permission-based access control
+### Read operations (GET): Require 'read:event_musician' permission + musician/auxiliar_musician/admin role
+### Write operations (POST/PATCH): Require 'write:event_musician' permission + admin role only
+### Delete operations (DELETE): Require 'delete:event_musician' permission + admin role only
+### Musicians can view assignments but only admins can create/modify/delete assignments
+
+### Get musicians assigned to an event
+GET {{api}}/events/3/musicians
+Authorization: Bearer {{user_token}}
+
+###
+
+### Assign a musician to an event
+POST {{api}}/events/3/musicians
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 3,
+  "musician_id": 6,
+  "role": "Pianist",
+  "salary": 400.00,
+  "payment_status": "PENDING"
+}
+
+###
+
+### Update a musician's assignment (role/salary)
+PATCH {{api}}/events/6/musicians/5
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "role": "Solo Guitarist",
+  "salary": 400
+}
+
+###
+
+### Remove a musician from an event
+DELETE {{api}}/events/6/musicians/5
+Authorization: Bearer {{user_token}}
+
+###
+
+### Get musicians summary for an event
+GET {{api}}/events/6/musicians/summary
+Authorization: Bearer {{user_token}}
+
+###
+
+### Get all event assignments for a specific musician
+### Returns a list of assignments with event details and musician names
+GET {{api}}/events/musicians/5/assignments
+Authorization: Bearer {{user_token}}
+
+### Example response:
+# [
+#   {
+#     "id": 1,
+#     "event_id": 1,
+#     "musician_id": 5,
+#     "role": "Lead Guitarist",
+#     "salary": "1500.00",
+#     "payment_status": "PENDING",
+#     "musician_name": "John",
+#     "musician_lastname": "Doe",
+#     "created_at": "2026-04-11T06:41:09",
+#     "updated_at": "2026-04-11T06:41:09"
+#   }
+# ]
+
+###
+
+### Try to assign musician who is already assigned (should fail with 409 Conflict)
+POST {{api}}/events/6/musicians
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 3,
+  "musician_id": 5,
+  "role": "Chorist",
+  "salary": 500.00
+}
+
+###
+
+### Try to assign musician who is unavailable (should fail with 409 Conflict)
+POST {{api}}/events/3/musicians
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 3,
+  "musician_id": 6,
+  "role": "Vocalist",
+  "salary": 500.00
+}
+
+###
+
+### Try to manage musicians for another user's event (should fail with 403 Forbidden)
+GET {{api}}/events/3/musicians
+Authorization: Bearer {{user_token}}
+
+###
+
+### Payment Endpoints ###
+### Get event payments
+GET {{api}}/events/3/payments
+Authorization: Bearer {{user_token}}
+
+### Add payment (ADVANCE)
+POST {{api}}/events/3/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 3,
+  "user_id": 4,
+  "amount": 800.00,
+  "payment_type": "ADVANCE",
+  "notes": "First advance payment"
+}
+
+### Add payment (TOTAL)
+POST {{api}}/events/3/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 3,
+  "user_id": 4,
+  "amount": 1500.00,
+  "payment_type": "TOTAL",
+  "notes": "Full payment"
+}
+
+### Get payment summary
+GET {{api}}/events/3/payments/summary
+Authorization: Bearer {{user_token}}
+
+### MUSICIAN EVENT PAYMENT ENDPOINTS ###
+### Note: Differentiated role and permission-based access control
+### Read operations (GET): Require 'read:musician_event_payment' permission + musician/auxiliar_musician/admin role
+### Write operations (POST): Require 'write:musician_event_payment' permission + admin role only
+### Musicians can view their payment information, only admins can create payments
+### payment_date defaults to current time if not provided
+
+### Add payment to musician for event (ADVANCE)
+POST {{api}}/events/6/musicians/5/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 6,
+  "musician_id": 5,
+  "amount": 100.00,
+  "payment_type": "ADVANCE",
+  "notes": "Advance payment for guitarist"
+}
+
+###
+
+### Add payment to musician for event (REMAINING)
+POST {{api}}/events/1/musicians/5/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 1,
+  "musician_id": 5,
+  "amount": 700.00,
+  "payment_type": "REMAINING",
+  "notes": "Remaining balance payment"
+}
+
+###
+
+### Add payment to musician for event (TOTAL)
+POST {{api}}/events/2/musicians/3/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 2,
+  "musician_id": 3,
+  "amount": 500.00,
+  "payment_type": "TOTAL",
+  "notes": "Full payment for drummer"
+}
+
+###
+
+### List all payments for musician in event
+GET {{api}}/events/3/musicians/5/payments
+Authorization: Bearer {{user_token}}
+
+###
+
+### Get payment summary for musician in event
+GET {{api}}/events/3/musicians/5/payments/summary
+Authorization: Bearer {{user_token}}
+
+### MUSICIAN AVAILABILITY ENDPOINTS ###
+### Note: Strict role and permission-based access control
+### Requires BOTH appropriate role (admin/musician/auxiliar_musician) AND specific permission
+### Read operations (GET): Require 'read:musician_availability' permission + valid role
+### Write operations (POST/PATCH): Require 'write:musician_availability' permission + valid role
+### Delete operations (DELETE): Require 'delete:musician_availability' permission + valid role
+### Users can manage their own availability based on assigned permissions
+
+### Get availability for a specific musician (musicians/auxiliar_musicians can only view their own, admin can view any)
+GET {{api}}/musician-availability/6
+Authorization: Bearer {{user_token}}
+
+### Check if a musician is available on a specific date
+GET {{api}}/musician-availability/check/5/2026-04-15
+Authorization: Bearer {{user_token}}
+
+### Get musician availability dates by month (for calendar integration)
+GET {{api}}/musician-availability/5/month/2026/5
+Authorization: Bearer {{user_token}}
+
+### Example response:
+# {
+#   "musician_id": 5,
+#   "year": 2026,
+#   "month": 5,
+#   "unavailable_dates": [
+#     {
+#       "id": 30,
+#       "unavailable_date": "2026-05-13",
+#       "reason": "Lage Weekend"
+#     },
+#     {
+#       "id": 31,
+#       "unavailable_date": "2026-05-14",
+#       "reason": "Evento Familiar"
+#     }
+#   ]
+# }
+
+### Create a new availability entry (musicians/auxiliar_musicians can only create for themselves, admin can create for any)
+POST {{api}}/musician-availability
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "musician_id": 5,
+  "unavailable_date": "2026-04-22",
+  "reason": "Holiday trip"
+}
+
+### Create bulk availability entries (musicians/auxiliar_musicians can only create for themselves, admin can create for any)
+POST {{api}}/musician-availability/bulk
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+[
+  {
+    "musician_id": 5,
+    "unavailable_date": "2026-04-23",
+    "reason": "Family vacation"
+  },
+  {
+    "musician_id": 5,
+    "unavailable_date": "2026-04-21",
+    "reason": "Family vacation"
+  }
+]
+
+### Update an existing availability entry (musicians/auxiliar_musicians can only update their own, admin can update any)
+PATCH {{api}}/musician-availability/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "reason": "Updated reason - medical appointment"
+}
+
+### Update availability date (should check for conflicts)
+PATCH {{api}}/musician-availability/1
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "unavailable_date": "2026-04-19",
+  "reason": "Rescheduled vacation"
+}
+
+### Delete an availability entry (musicians/auxiliar_musicians can only delete their own, admin can delete any)
+DELETE {{api}}/musician-availability/1
+Authorization: Bearer {{user_token}}
+
+### Delete availability by musician and date (musicians/auxiliar_musicians can only delete their own, admin can delete any)
+DELETE {{api}}/musician-availability/5/2026-04-18
+Authorization: Bearer {{user_token}}
+
+### ADMIN ENDPOINTS - Musician Availability ###
+
+### Get all musicians unavailable on a specific date (admin only)
+GET {{api}}/admin/musician-availability/date/2026-04-21
+Authorization: Bearer {{user_token}}
+
+### Try to create availability with past date (should fail with 400 Bad Request)
+POST {{api}}/musician-availability
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "musician_id": 1,
+  "unavailable_date": "2020-01-01",
+  "reason": "Past date test"
+}
+
+### Try to create conflicting availability (should fail with 409 Conflict)
+POST {{api}}/musician-availability
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "musician_id": 5,
+  "unavailable_date": "2026-04-12",
+  "reason": "Duplicate date test"
+}
+
+### Try to access other musician's availability as regular user (should fail with 403 Forbidden)
+GET {{api}}/musician-availability/5
+Authorization: Bearer {{user_token}}
+
+### Músicos Eventos ENDPOINTS ###
+### Obtener pagos para un músico específico en un evento
+GET {{api}}/events/3/musicians/5/payments
+Authorization: Bearer {{user_token}}
+
+### Agregar pago para un músico en un evento
+POST {{api}}/events/3/musicians/5/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 3,
+  "musician_id": 5,
+  "amount": 100.00,
+  "payment_type": "ADVANCE",
+  "notes": "Pago de avance para guitarra"
+}
+
+### Músicos Eventos ENDPOINTS ###
+### Obtener pagos para un músico específico en un evento
+GET {{api}}/events/3/musicians/5/payments
+Authorization: Bearer {{user_token}}
+
+### Agregar pago para un músico en un evento
+POST {{api}}/events/3/musicians/5/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "event_id": 3,
+  "musician_id": 5,
+  "amount": 100.00,
+  "payment_type": "ADVANCE",
+  "notes": "Payment for performance advance"
+}
+
+### Musician payment summary for an event (admin only)
+### Returns payment summary for all musicians assigned to an event
+### Example response:
+# [
+#   {
+#     "musician_name": "vicente jimenez calle",
+#     "role": "Baterista",
+#     "salary": "500.00",
+#     "payment_done": "100.00",
+#     "remaining_payment": "400.00"
+#   },
+#   {
+#     "musician_name": "john doe",
+#     "role": "Guitarista",
+#     "salary": "300.00",
+#     "payment_done": "50.00",
+#     "remaining_payment": "250.00"
+#   }
+# ]
+GET {{api}}/events/4/musicians/payment-summary
+Authorization: Bearer {{user_token}}
+
+### Event billing summary (admin or event owner)
+### Returns billing summary for an event including total paid, sum of musician salaries, remaining payment, and payments to musicians
+### Example response:
+# {
+#   "event_name": "Matrimonio Juan&Silvia",
+#   "payment_done": "4000.00",
+#   "sum_of_musician_salaries": "1050.00",
+#   "remaining_payment": "0.00",
+#   "payment_done_to_musicians": "350.00"
+# }
+GET {{api}}/events/4/billing-summary
+Authorization: Bearer {{user_token}}
+
+### PDF DOCUMENT ENDPOINTS ###
+### Note: Event owners and admins only can generate PDFs
+
+### Download receipt PDF for an event
+GET {{api}}/receipts/6/pdf
+Authorization: Bearer {{user_token}}
+
+### Generate contract PDF for an event
+GET {{api}}/contracts/4/pdf
+Authorization: Bearer {{user_token}}
