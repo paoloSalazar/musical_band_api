@@ -1,4 +1,5 @@
 from utils.logging_config import configure_logging
+from utils.logging_middleware import reset_context_middleware
 
 # Configure logging BEFORE any other imports so loggers are ready for all
 # modules imported below.
@@ -21,6 +22,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.middleware("http")(reset_context_middleware)
 
 app.include_router(user_role.router)
 app.include_router(user.router)
